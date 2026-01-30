@@ -1,0 +1,39 @@
+A Simple "Cheat Sheet" for Reading C Declarations
+To read these, start at the variable name and work your way out (the "Spiral Rule"):
+int (*compar)(...)
+Find the name: compar
+Look inside parentheses: *compar -> "compar is a pointer..."
+Look outside to the right: (...) -> "...to a function..."
+Look outside to the left: int -> "...that returns an
+int."
+int *compar(...)
+Find the name: compar
+Look to the right: (...) -> "compar is a function..."
+Look to the left: int * -> "...that returns a pointer to an int.
+
+Pointers:
+---------
+int n = 50;    // n has type "int" and its value is an integer, the number 50.
+int *p = &n;   // p has type "pointer to int", and its value is an address, the address of the variable n.
+printf("%p\n", p); // prints the memory address stored in p.
+printf("%i\n", *p); // * dereferences the pointer p; p points to an int, *p is the value of that int.
+//  p - pointer (to an int)
+// *p - the int that p points to
+A good mental model:
+p is a map coordinate
+*p is what’s at that coordinate
+
+Arrays decay to pointers:
+-------------------------
+int arr[5];
+
+// 'arr' decays to 'int*' because that's the type of 'ptr'
+int *ptr = arr;
+
+// 'arr' decays to 'int*' to perform pointer arithmetic
+int value = *(arr + 2);
+
+When Arrays Don't Decay
+1. sizeof Operator: Returns the size of the entire array (e.g., sizeof(arr)), not just the size of a pointer.
+2. & Operator Taking the address of an array with &arr gives you a pointer to the whole array, not just the first element. The type of &arr is a pointer to the array type, e.g., int (*)[5] for an int array with 5 elements.
+3. Initialization: When an array is declared and initialized, it is fully allocated in memory and does not decay to a pointer.
