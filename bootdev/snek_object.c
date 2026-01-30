@@ -5,6 +5,8 @@
 #include "munit/munit.h"
 #include "munit/munit_overrides.h"
 
+//make : clang snek_object.c munit/munit.c -o snek_object.out
+
 typedef struct SnekObject snekobject_t;
 
 typedef struct SnekObject {
@@ -12,7 +14,13 @@ typedef struct SnekObject {
     snekobject_t *child;
 } snekobject_t;
 
-snekobject_t new_node(char *name);
+snekobject_t new_node(char *name) {
+    snekobject_t node = {
+        .name = name,
+        .child = NULL,
+    };
+    return node;
+}
 
 
 munit_case(RUN, test_new_node_simple, {
