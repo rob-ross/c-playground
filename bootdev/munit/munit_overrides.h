@@ -11,13 +11,21 @@
 
 #include "munit.h"
 
-#ifdef munit_assert_int
-#undef munit_assert_int
+
+
+
+#ifdef munit_assert_float
+#undef munit_assert_float
+#define munit_assert_float(a, op, b, c) \
+    munit_assert_type(float, "f", a, op, b)
 #endif
 
+#ifdef munit_assert_int
+#undef munit_assert_int
 // added third parameter, unused by macro
 #define munit_assert_int(a, op, b, c) \
-munit_assert_type(int, "d", a, op, b)
+    munit_assert_type(int, "d", a, op, b)
+#endif
 
 #ifdef munit_assert_string_equal
 #undef munit_assert_string_equal
@@ -35,6 +43,20 @@ munit_assert_type(int, "d", a, op, b)
         MUNIT_PUSH_DISABLE_MSVC_C4127_ \
     } while (0) \
 MUNIT_POP_DISABLE_MSVC_C4127_
+
+
+#ifdef munit_assert_ptr_not_equal
+#undef munit_assert_ptr_not_equal
+#define munit_assert_ptr_not_equal(a, b, c) \
+    munit_assert_ptr(a, !=, b)
+#endif
+
+
+#ifdef munit_assert_ptr_not_null
+#undef munit_assert_ptr_not_null
+#define munit_assert_ptr_not_null(ptr, a) \
+    munit_assert_ptr(ptr, !=, NULL)
+#endif
 
 #ifdef munit_assert_null
 #undef munit_assert_null
@@ -73,10 +95,12 @@ MUNIT_POP_DISABLE_MSVC_C4127_
 
 
 
-#define munit_case(a, b, c) \
+#define munit_case(a, b, ...) \
 MunitResult b(const MunitParameter params[], void* user_data_or_fixture) {\
-c   \
-return MUNIT_OK;    \
+    do {                \
+       __VA_ARGS__      \
+    } while (0);        \
+    return MUNIT_OK;    \
 }
 
 #define munit_test(a, b) \
