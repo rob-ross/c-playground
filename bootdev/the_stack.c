@@ -1,14 +1,13 @@
 //
 // Created by Rob Ross on 1/29/26.
 //
-// clang the_stack.c munit/munit.c -o the_stack.out
+// clang -fno-omit-frame-pointer -O0 the_stack.c  -o the_stack.out
 
-#include <stdint.h>
+
 #include <string.h>
 #include <stdio.h>
 
-#include "./munit/munit.h"
-#include "munit/munit_overrides.h"
+
 
 void printMessageOne();
 void printMessageTwo();
@@ -18,6 +17,8 @@ void printStackPointerDiff();
 
 int main() {
     printMessageOne();
+    printMessageTwo();
+    printMessageThree();
     return 0;
 }
 
@@ -25,14 +26,14 @@ void printMessageOne() {
     const char *message = "Dark mode?\n";
     printStackPointerDiff();
     printf("%s\n", message);
-    printMessageTwo();
+    // printMessageTwo();
 }
 
 void printMessageTwo() {
     const char *message = "More like...\n";
     printStackPointerDiff();
     printf("%s\n", message);
-    printMessageThree();
+    // printMessageThree();
 }
 
 void printMessageThree() {

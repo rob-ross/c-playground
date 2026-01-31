@@ -23,6 +23,8 @@ size_t min(size_t int1, size_t int2) {
     return int2;
 }
 
+typedef char* string;
+
 int smart_append(TextBuffer *dest, const char *src) {
     if (!dest || !src || dest->length >= 63) {
         return 1;
