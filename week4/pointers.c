@@ -38,4 +38,25 @@ int main(void) {
     for ( int i = 0; i < strlen(c); i++) {
         printf("using %%s to print c + %i: %s\n", i, c + i);
     }
+
+    printf("\nPrinting chars -128 to 127 as signed char\n");
+    // are chars signed or unsigned?
+    // On my Mac they are signed. so -128 to 127 in range. Which means they can't support extended ASCII.
+    for (char c = -128; c < 127; c++) {
+        printf("using %%i, %%c to print c : %%i: %i, %%c: %c\n", c, c);
+    }
+    // interesting. We can't add 1 to 127 (for signed char type) since that makes it -128. So in the loop above,
+    // c < 128 is never true! We cannot check the "next higher" value in this edge case. So the loop must exit before
+    // c == 127, and we must print the last value (127) here.
+    printf("using %%i, %%c to print c : %%i: %i, %%c: %c\n", 127, 127);
+
+    printf("\nPrinting chars 0 - 255 as unsigned char\n");
+    for (unsigned char c = 0; c < 255; c++) {
+        printf("using %%i, %%c to print c : %%i: %i, %%x: 0x%x, %%c: %c\n", c, c, c);
+
+    }
+    // interesting. We can't add 1 to 255 (for unsigned char type) since that makes it -128. So in the loop above,
+    // c < 128 is never true! We cannot check the "next higher" value in this edge case. So the loop must exit before
+    // c == 127, and we must print the last value (127) here.
+    printf("using %%i, %%c to print c : %%i: %i, %%x: 0x%x, %%c: %c\n", 255, 255, 255);
 }
