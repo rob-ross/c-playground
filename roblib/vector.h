@@ -1,11 +1,14 @@
-#ifndef VECTOR_H
-#define VECTOR_H
+#pragma once
 
 #include <stddef.h>
+
+
+// element type is either scalar/primative or ptr type.
 
 typedef struct Vector {
     size_t length;  // current number of elements in the vector
     size_t capacity;  // total number of elements the buffer can hold
+    char* type_name; // eventually this will be an enum, we have identified 46 types so far.
     int *v;
 } vector_t;
 
@@ -62,4 +65,4 @@ int vector_pop_or(vector_t *v, int fallback);
  */
 int vector_pop_unsafe(vector_t *v);
 
-#endif // VECTOR_H
+

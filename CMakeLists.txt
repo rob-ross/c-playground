@@ -12,4 +12,4 @@ add_executable(hello_prog hello.c cs50.c cs50.h)
 
 add_executable(agree_prog agree.c cs50.c cs50.h)
 add_executable(launcher_prog launcher.c cs50.c cs50.h)
-add_executable(types_prog types.c cs50.c cs50.h)
+add_executable(types_prog playground/types.c cs50.c cs50.h)

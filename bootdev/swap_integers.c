@@ -11,7 +11,7 @@
 void swap_ints(int *a, int *b);
 
 void swap_ints(int *a, int *b) {
-    int temp = *a;
+    const int temp = *a;
     *a = *b;
     *b = temp;
 }

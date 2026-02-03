@@ -4,14 +4,10 @@
 // overrides to standard munit macros to work with bootdev test runner.
 
 
-
-
 #ifndef CS50X_MUNIT_OVERRIDES_H
 #define CS50X_MUNIT_OVERRIDES_H
 
 #include "munit.h"
-
-
 
 
 #ifdef munit_assert_float
@@ -26,6 +22,10 @@
 #define munit_assert_int(a, op, b, c) \
     munit_assert_type(int, "d", a, op, b)
 #endif
+
+
+#define munit_assert_int_equal(a, b, c) \
+    munit_assert_int(a, ==, b, c)
 
 #ifdef munit_assert_string_equal
 #undef munit_assert_string_equal
@@ -42,8 +42,13 @@
         } \
         MUNIT_PUSH_DISABLE_MSVC_C4127_ \
     } while (0) \
-MUNIT_POP_DISABLE_MSVC_C4127_
+    MUNIT_POP_DISABLE_MSVC_C4127_
 
+#ifdef munit_assert_ptr_equal
+#undef munit_assert_ptr_equal
+#define munit_assert_ptr_equal(a, b, c) \
+    munit_assert_ptr(a, ==, b)
+#endif
 
 #ifdef munit_assert_ptr_not_equal
 #undef munit_assert_ptr_not_equal
@@ -51,11 +56,16 @@ MUNIT_POP_DISABLE_MSVC_C4127_
     munit_assert_ptr(a, !=, b)
 #endif
 
-
 #ifdef munit_assert_ptr_not_null
 #undef munit_assert_ptr_not_null
 #define munit_assert_ptr_not_null(ptr, a) \
     munit_assert_ptr(ptr, !=, NULL)
+#endif
+
+#ifdef munit_assert_ptr_null
+#undef munit_assert_ptr_null
+#define munit_assert_ptr_null(ptr, c) \
+    munit_assert_ptr(ptr, ==, NULL)
 #endif
 
 #ifdef munit_assert_null

@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 
-const char *vec_err_str(vec_err_t err)
+const char *vec_err_str(const vec_err_t err)
 {
     switch (err) {
         case VEC_OK:
@@ -33,7 +33,7 @@ const char *vec_err_str(vec_err_t err)
     }
 }
 
-vec_err_t vector_init (vector_t *out, size_t initial_capacity) {
+vec_err_t vector_init (vector_t *out, const size_t initial_capacity) {
     if (!out) {
         return VEC_ERR_NULL_ARG;
     }
@@ -53,11 +53,7 @@ vec_err_t vector_init (vector_t *out, size_t initial_capacity) {
     return VEC_OK;
 }
 
-
-vec_err_t vector_append(vector_t *v, const int i) {
-    if (!v) {
-        return VEC_ERR_NULL_ARG;
-    }
+vec_err_t _ensure_capacity(vector_t *v) {
     if (v->length >= v->capacity) {
         // must grow buffer
         size_t new_capacity = v->capacity ? v->capacity * 2 : 1;
@@ -71,7 +67,35 @@ vec_err_t vector_append(vector_t *v, const int i) {
         v->v = re_ptr;
         v->capacity = new_capacity;
     }
+    return VEC_OK;
+}
+
+vec_err_t vector_append(vector_t *v, const int i) {
+    if (!v) {
+        return VEC_ERR_NULL_ARG;
+    }
+    const int result = _ensure_capacity(v);
+    if (result  != VEC_OK) {
+        return result;
+    }
     v->v[v->length++] = i;
+    return VEC_OK;
+}
+
+//insert i at index position. All subsequent elements are shifted down by one.
+vec_err_t vector_insert(vector_t *v, const int i, const size_t index) {
+    if (!v) {
+        return VEC_ERR_NULL_ARG;
+    }
+    const int result = _ensure_capacity(v);
+    if (result  != VEC_OK) {
+        return result;
+    }
+    v->length++;
+    for (size_t j = index+1; j < v->length; ++j) {
+        v->v[j] = v->v[j-1];
+    }
+    v->v[index] = i;
 
     return VEC_OK;
 }

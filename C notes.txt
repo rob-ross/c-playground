@@ -37,3 +37,43 @@ When Arrays Don't Decay
 1. sizeof Operator: Returns the size of the entire array (e.g., sizeof(arr)), not just the size of a pointer.
 2. & Operator Taking the address of an array with &arr gives you a pointer to the whole array, not just the first element. The type of &arr is a pointer to the array type, e.g., int (*)[5] for an int array with 5 elements.
 3. Initialization: When an array is declared and initialized, it is fully allocated in memory and does not decay to a pointer.
+
+
+Project idea:
+(Python) : extract stdlib docs from pdf to render in html. Look into pymupdf, pdftotext
+
+
+C: Unit testing framework.
+Assertions from Junit:
+assertTrue(boolean, string)
+assertFalse(boolean, string)
+assertNull(object, string)
+
+for comparison methods, JUnit uses expected, actual. It would be nice to let the user customize this to be
+expected, actual or
+actual, expected as desired.
+
+assertEquals(T, T, string)
+assertNotEquals(T, T, string)
+assertSame(ptr, ptr, string)
+assertNotSame(ptr, ptr, string)
+
+assertTimeout(duration, function, string)
+assertArrayEquals(T[], T[], string)
+assertLinesMatch(List<string>, List<string>, string)
+
+assertInstanceOf(Class, Object, string) - probably not useful in C
+
+
+C printf format specifiers start on page 228 of the IOC reference.
+--------------------------------------------------
+
+
+* C idea : hash table
+* C idea : can we use macros to implement a generic type system for arrays and stacks, like instead of
+array_t *array;
+
+we can have
+array_t(int) *array:
+
+and generate create/insert/get/append methods for that specific type?
