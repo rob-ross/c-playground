@@ -11,7 +11,7 @@ struct jpg_signature {
     uint8_t third;
 } jpg_signature = {.first=0xff, .second=0xd8, .third=0xff};
 
-static const char *output_dir = "/out/";
+static const char *output_dir = "./out/";
 
 void file_path(char *output_path, int image_number) {
     char file_path[512];
@@ -34,7 +34,7 @@ void t1(void) {
 
     FILE* input = fopen("card.raw", "r");
     if (!input) {
-        perror("");
+        perror("Error opening input file");
         exit(1);
     }
 
@@ -56,6 +56,11 @@ void t1(void) {
             }
             file_path(path_name, image_count);
             output = fopen( path_name, "w");
+            if (!output) {
+                perror("Error opening output file");
+                fclose(input);
+                exit(1);
+            }
             printf("New jpg file: %s\n", path_name);
             image_count++;
         }
@@ -71,6 +76,11 @@ void t1(void) {
                 fclose(output);  // close currently opened output file.
             }
             output = fopen( path_name, "w");
+            if (!output) {
+                perror("Error opening output file");
+                fclose(input);
+                exit(1);
+            }
             printf("New jpg file: %s\n", path_name);
             image_count++;
         }
