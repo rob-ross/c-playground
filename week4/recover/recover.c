@@ -12,6 +12,7 @@ struct jpg_signature {
 } jpg_signature = {.first=0xff, .second=0xd8, .third=0xff};
 
 static const char *output_dir = "./out/";
+const int BUFFER_SIZE = 512;
 
 void file_path(char *output_path, int image_number) {
     char file_path[512];
@@ -30,25 +31,43 @@ bool is_jpg_header(const uint8_t *buffer) {
     return false;
 }
 
-bool new_jpg_file(FILE** output, const int image_count) {
+bool start_new_jpg_file(FILE** output, const int image_count) {
     if (*output) {
         fclose(*output);  // close currently opened output file.
     }
     char path_name[512];
     file_path(path_name, image_count);
     FILE* o = fopen( path_name, "w");
-    if (!o) {
-        perror("Error opening output file");
+    if ( !o ) {
+        fprintf(stderr, "Could not create output file: %s\n", path_name);
+        perror("Error");
         return false;
     }
-    printf("New jpg file: %s\n", path_name);
+    // printf("New jpg file: %s\n", path_name);
     *output = o;
     return true;
 }
 
-void t1(void) {
+bool process_buffer(const uint8_t *buffer, FILE** output, int *image_count) {
 
-    FILE* input = fopen("card.raw", "r");
+    if (is_jpg_header(buffer)) {
+        if (! start_new_jpg_file(output, *image_count) ) {
+            return false;
+        }
+        (*image_count)++;
+    }
+    if (*output) {
+        if (fwrite(buffer, sizeof(uint8_t), BUFFER_SIZE, *output) != BUFFER_SIZE) {
+            perror("process_buffer fwrite");
+        }
+    }
+
+    return true;
+}
+
+void process_file(const char* file_name) {
+
+    FILE* input = fopen(file_name, "r");
     if (!input) {
         perror("Error opening input file");
         exit(1);
@@ -58,51 +77,39 @@ void t1(void) {
     // we start a new jpg. Keep reading 512b chunks until we see a signature at the start. This ends the last jpg
     // and starts a new jpg.
     int image_count = 0;
-    const int buffer_size = 512;
-    uint8_t buffer[buffer_size];
-
+    uint8_t buffer[BUFFER_SIZE];
     FILE* output = NULL;
-    char path_name[512];
-
     size_t read = 0;
-    while ( (read = fread(buffer,  sizeof(uint8_t), buffer_size, input)) == buffer_size ) {
-        if (is_jpg_header(buffer)) {
-            if (! new_jpg_file(&output, image_count) ) {
-                fclose(input);
-                exit(1);
-            }
-            image_count++;
-        }
-        if (output) {
-            fwrite(buffer, sizeof(uint8_t), buffer_size, output);
+
+    while ( (read = fread(buffer,  sizeof(uint8_t), BUFFER_SIZE, input)) == BUFFER_SIZE ) {
+        if ( !process_buffer(buffer, &output, &image_count)) {
+            fclose(input);
+            exit(1);
         }
     }
 
-    if (read > 0 && read < buffer_size) {
+    if (read > 0 && read < BUFFER_SIZE) {
         // last read was partial
-        if (is_jpg_header(buffer)) {
-            if (is_jpg_header(buffer)) {
-                if (! new_jpg_file(&output, image_count) ) {
-                    fclose(input);
-                    exit(1);
-                }
-                image_count++;
-            }
-            image_count++;
-        }
-        if (output) {
-            fwrite(buffer, sizeof(uint8_t), buffer_size, output);
+        printf("partial read\n");
+        if ( !process_buffer(buffer, &output, &image_count)) {
+            fclose(input);
+            exit(1);
         }
     }
 
     printf("image count: %i\n", image_count);
-
-
 
     fclose(input);
 }
 
 int main(int argc, char *argv[])
 {
-    t1();
+    if ( argc != 2 ) {
+        printf("usage: recover <filename>\n");
+        exit(1);
+    }
+
+    process_file(argv[1]);
+
+    return 0;
 }
