@@ -50,7 +50,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "cs50.h"
+#include "../cs50.h"
 
 // Disable warnings from some compilers about the way we use variadic arguments
 #pragma GCC diagnostic push

@@ -7,7 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "cs50.h"
+#include "../cs50.h"
 
 #define MAX_PYRAMID_HEIGHT 23
 #define PYRAMID_H_GAP 2

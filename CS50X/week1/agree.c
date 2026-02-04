@@ -1,7 +1,7 @@
 //
 // Created by Rob Ross on 1/4/26.
 //
-#include "cs50.h"
+#include "../cs50.h"
 #include <stdio.h>
 
 int main(void) {
