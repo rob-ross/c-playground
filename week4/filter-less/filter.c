@@ -1,11 +1,14 @@
 #include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "helpers.h"
 
-int main(int argc, char *argv[])
+int _main(int argc, char *argv[])
 {
+
+
     // Define allowable filters
     char *filters = "bgrs";
 
@@ -31,6 +34,12 @@ int main(int argc, char *argv[])
         return 3;
     }
 
+    printf("Input arguments:\n");
+    printf("--------------------\n");
+    for (int i = 0; i < argc; ++i) {
+        printf("%i: '%s'\n", i, argv[i]);
+    }
+
     // Remember filenames
     char *infile = argv[optind];
     char *outfile = argv[optind + 1];
@@ -48,7 +57,8 @@ int main(int argc, char *argv[])
     if (outptr == NULL)
     {
         fclose(inptr);
-        printf("Could not create %s.\n", outfile);
+        printf("Could not create '%s' \n", outfile);
+        perror("");
         return 5;
     }
 
@@ -98,6 +108,7 @@ int main(int argc, char *argv[])
     }
 
     // Filter image
+    printf("***Switching on filter : %c\n", filter);
     switch (filter)
     {
         // Blur
@@ -147,4 +158,41 @@ int main(int argc, char *argv[])
     fclose(inptr);
     fclose(outptr);
     return 0;
+}
+
+int main(int argc, char *argv[]) {
+    char *input_files[] = {"images/courtyard.bmp", "images/stadium.bmp", "images/tower.bmp", "images/yard.bmp"};
+    struct filter {
+        char *flag;
+        char *name;
+    };
+    struct filter filters[] = {
+        {.flag="-b", .name="blur"},
+        {.flag="-g", .name="grayscale"},
+        {.flag="-r", .name="reverse"},
+        {.flag="-s", .name="sepia"}
+    };
+
+    for (int file_index = 0; file_index < 4; ++file_index) {
+        for (int flag_index = 0; flag_index < 4; ++flag_index) {
+            char output_file[255] = {0};
+            strcat(output_file, "images_output/");
+            strcat(output_file, strchr(input_files[file_index], '/') + 1); // should copy input file name minus 'images/'
+            strcat(output_file, "-");
+            strcat(output_file, filters[flag_index].name);
+            strcat(output_file, ".bmp");
+
+            char *args[4] = {0};
+            args[0] = "filter.out";
+            args[1] =  filters[flag_index].flag;
+            args[2] =  input_files[file_index];
+            args[3] =  output_file;
+            optind = 1;
+            _main(4, args  );
+        }
+    }
+
+    return 0;
+
+
 }
