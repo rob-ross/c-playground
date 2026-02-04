@@ -13,7 +13,7 @@ void display_file_fgetc(const char *file_name) {
         return;
     }
 
-    // todo is there a method to tell you if the file exists? Or is a NULL return from fopen() the only clue?
+    //is there a method to tell you if the file exists? Or is a NULL return from fopen() the only clue?
     FILE* file = fopen(file_name, "r");
     if (!file) {
         printf("FILE* NULL after: fopen('%s')\n", file_name);
