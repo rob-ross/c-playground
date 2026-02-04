@@ -5,12 +5,12 @@
 
 #include "helpers.h"
 
-int _main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
 
 
     // Define allowable filters
-    char *filters = "bgrs";
+    char *filters = "bgrse";
 
     // Get filter flag and check validity
     char filter = getopt(argc, argv, filters);
@@ -130,6 +130,11 @@ int _main(int argc, char *argv[])
         case 's':
             sepia(height, width, image);
             break;
+
+        // Edge
+        case 'e':
+            edges(height, width, image);
+            break;
     }
 
     // Write outfile's BITMAPFILEHEADER
@@ -160,7 +165,7 @@ int _main(int argc, char *argv[])
     return 0;
 }
 
-int main(int argc, char *argv[]) {
+int _main(int argc, char *argv[]) {
     char *input_files[] = {"images/courtyard.bmp", "images/stadium.bmp", "images/tower.bmp", "images/yard.bmp"};
     struct filter {
         char *flag;
