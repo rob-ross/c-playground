@@ -77,3 +77,10 @@ we can have
 array_t(int) *array:
 
 and generate create/insert/get/append methods for that specific type?
+
+
+git notess:
+-----------
+to stop tracking a file in git (in case you accidentally checked something it you didn't mean to:
+git rm -r --cached <file_name>
+git commit -m "Stop tracking <file_name>"
