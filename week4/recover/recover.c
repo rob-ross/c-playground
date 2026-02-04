@@ -30,6 +30,22 @@ bool is_jpg_header(const uint8_t *buffer) {
     return false;
 }
 
+bool new_jpg_file(FILE** output, const int image_count) {
+    if (*output) {
+        fclose(*output);  // close currently opened output file.
+    }
+    char path_name[512];
+    file_path(path_name, image_count);
+    FILE* o = fopen( path_name, "w");
+    if (!o) {
+        perror("Error opening output file");
+        return false;
+    }
+    printf("New jpg file: %s\n", path_name);
+    *output = o;
+    return true;
+}
+
 void t1(void) {
 
     FILE* input = fopen("card.raw", "r");
@@ -51,17 +67,10 @@ void t1(void) {
     size_t read = 0;
     while ( (read = fread(buffer,  sizeof(uint8_t), buffer_size, input)) == buffer_size ) {
         if (is_jpg_header(buffer)) {
-            if (output) {
-                fclose(output);  // close currently opened output file.
-            }
-            file_path(path_name, image_count);
-            output = fopen( path_name, "w");
-            if (!output) {
-                perror("Error opening output file");
+            if (! new_jpg_file(&output, image_count) ) {
                 fclose(input);
                 exit(1);
             }
-            printf("New jpg file: %s\n", path_name);
             image_count++;
         }
         if (output) {
@@ -72,22 +81,18 @@ void t1(void) {
     if (read > 0 && read < buffer_size) {
         // last read was partial
         if (is_jpg_header(buffer)) {
-            if (output) {
-                fclose(output);  // close currently opened output file.
+            if (is_jpg_header(buffer)) {
+                if (! new_jpg_file(&output, image_count) ) {
+                    fclose(input);
+                    exit(1);
+                }
+                image_count++;
             }
-            output = fopen( path_name, "w");
-            if (!output) {
-                perror("Error opening output file");
-                fclose(input);
-                exit(1);
-            }
-            printf("New jpg file: %s\n", path_name);
             image_count++;
         }
         if (output) {
             fwrite(buffer, sizeof(uint8_t), buffer_size, output);
         }
-
     }
 
     printf("image count: %i\n", image_count);
