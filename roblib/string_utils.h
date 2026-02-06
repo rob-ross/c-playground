@@ -43,6 +43,25 @@ char * sutil_concat_char(const char *str1, ...);
  */
 char * sutil_copy_char(const char *str);
 
+
+/**
+ * Returns true if the input string ends with the specified suffix, otherwise return false.
+ * @param str the input string
+ * @param suffix the substring to match at the end of the input string
+ * @return true if `str` ends with `suffix`, else false.
+ */
+bool sutil_ends_with(const char *str, const char *suffix);
+
+/**
+ * Returns a new copy of the string with all the cased characters converted to lowercase.
+ * Operates by calling tolower() on each character of the input string.
+ * @param str ASCII string
+ * @return a new copy of the string with all the cased characters converted to lowercase.
+ */
+char * sutil_lower(const char *str) ;
+
+
+
 /**
  * Returns a new string with argument `str` centered in a string of length width.
  * Padding is done using the specified fill_char.
@@ -74,8 +93,26 @@ char * sutil_pad_left(const char *str, int width, char fill_char);
  */
 char * sutil_pad_right(const char *str,int width, char fill_char);
 
+
+/**
+ * Returns true if the input string starts with the specified prefix, otherwise return false.
+ * @param str the input string
+ * @param prefix the substring to match at the start of the input string
+ * @return true if `str` starts with `prefix`, else false.
+ */
+bool sutil_starts_with(const char *str, const char *prefix);
+
 bool sutil_strings_equal(const char *str1, const char *str2);
 bool sutil_strings_equal_case(const char *str1, const char *str2, Case c);
 bool sutil_strings_same(const char *s1, const char *s2);
+
+
+/**
+ * Returns a new copy of the string with all the cased characters converted to uppercase.
+ * Operates by calling toupper() on each character of the input string.
+ * @param str ASCII string
+ * @return a new copy of the string with all the cased characters converted to uppercase.
+ */
+char * sutil_upper(const char *str);
 
 char * sutil_zfill(const char* str, int width);

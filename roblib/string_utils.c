@@ -1,6 +1,7 @@
 //
 // Created by Rob Ross on 2/1/26.
 //
+// utility functions for ASCII strings.
 
 #include <ctype.h>
 #include <stdarg.h>
@@ -62,6 +63,32 @@ char * sutil_copy_char(const char *str) {
     return new_string;
 }
 
+
+bool sutil_ends_with(const char *str, const char *suffix) {
+    if (!str || !suffix) return false;
+    const size_t str_len = strlen(str);
+    const size_t suffix_len = strlen(suffix);
+    if ( suffix_len > str_len) return false;
+    for ( size_t index = 0; index < suffix_len; index++ ) {
+        if (str[ str_len - index -1] != suffix[suffix_len - index - 1]) return false;
+    }
+    return true;
+}
+
+
+char * sutil_lower(const char *str) {
+    if (!str) return NULL;
+    size_t len = strlen(str);
+    char *new_string = malloc(len + 1);
+    if (!new_string) return NULL;
+    for (int i = 0; i < len; ++i) {
+        new_string[i] = (char)tolower((unsigned char)str[i]);
+    }
+    new_string[len] = '\0';
+    return new_string;
+}
+
+
 char * sutil_pad_center(const char *str, const int width, const char fill_char) {
     if (!str) return NULL;
     const size_t string_length = strlen(str);
@@ -79,14 +106,7 @@ char * sutil_pad_center(const char *str, const int width, const char fill_char) 
     return new_string;
 }
 
-/**
- * Returns a newly allocated string that is size `width`, left-padded with the fill character.
- * If `width` is <= strlen(str), returns a new copy of the argument string (unchanged.).
- * @param str source string to left fill
- * @param width length of new padded string
- * @param fill_char the character to use for padding
- * @return newly allocated string.
- */
+
 char * sutil_pad_left(const char *str, const int width, const char fill_char) {
     if (!str) return NULL;
     const size_t string_length = strlen(str);
@@ -118,6 +138,20 @@ char * sutil_pad_right(const char *str, const int width, const char fill_char) {
     new_string[width_size] = '\0';
 
     return new_string;
+}
+
+bool sutil_starts_with(const char *str, const char *prefix) {
+    if (!str || !prefix) return false;
+    const size_t str_len = strlen(str);
+    const size_t prefix_len = strlen(prefix);
+    if ( prefix_len > str_len) return false;
+
+    const char *next = prefix;
+    size_t str_index = 0;
+    while ( *next != '\0' && str[str_index] != '\0') {
+        if (str[str_index++] != *next++ ) return false;
+    }
+    return true;
 }
 
 bool sutil_strings_equal(const char *str1, const char *str2) {
@@ -156,6 +190,19 @@ bool sutil_strings_equal_case(const char *str1, const char *str2, const Case c) 
 bool sutil_strings_same(const char *s1, const char *s2) {
     return s1 == s2;
 }
+
+char * sutil_upper(const char *str) {
+    if (!str) return NULL;
+    size_t len = strlen(str);
+    char *new_string = malloc(len + 1);
+    if (!new_string) return NULL;
+    for (int i = 0; i < len; ++i) {
+        new_string[i] = (char)toupper((unsigned char)str[i]);
+    }
+    new_string[len] = '\0';
+    return new_string;
+}
+
 
 char * sutil_zfill(const char* str, int width){
     const size_t string_length = strlen(str);
