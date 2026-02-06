@@ -35,7 +35,7 @@ StringBuffer * sb_centered(const StringBuffer *sb, const int width, const char f
     if (width <=0 || width <= sb->length) {
         return sb_copy(sb);
     }
-    char *temp_string = sutil_centered(sb->buffer.as_char, width, fill_char);
+    char *temp_string = sutil_pad_center(sb->buffer.as_char, width, fill_char);
     StringBuffer *new_sb = sb_new_string_buffer_from_string(temp_string);
     free(temp_string);
     return new_sb;

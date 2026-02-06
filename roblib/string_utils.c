@@ -18,24 +18,6 @@ static inline size_t min_size(const size_t a, const size_t b) {
 }
 
 
-char * sutil_centered(const char *str, const int width, const char fill_char) {
-    if (!str) return NULL;
-    const size_t string_length = strlen(str);
-    if ( width <= 0 || width <= string_length) {
-        return sutil_copy_char(str);
-    }
-    const size_t width_size = (size_t)width;
-    char *new_string = malloc(width_size + 1);
-    if (!new_string) return NULL;
-    const size_t left_index = floor(width_size / 2.0 - string_length / 2.0);
-    memset(new_string, fill_char, width_size);
-    new_string[width_size] = '\0';
-    memcpy(new_string + left_index, str, string_length );
-
-    return new_string;
-}
-
-// '    foo   '
 
 
 char * sutil_concat_char(const char *str1, ...){
@@ -80,6 +62,23 @@ char * sutil_copy_char(const char *str) {
     return new_string;
 }
 
+char * sutil_pad_center(const char *str, const int width, const char fill_char) {
+    if (!str) return NULL;
+    const size_t string_length = strlen(str);
+    if ( width <= 0 || width <= string_length) {
+        return sutil_copy_char(str);
+    }
+    const size_t width_size = (size_t)width;
+    char *new_string = malloc(width_size + 1);
+    if (!new_string) return NULL;
+    const size_t left_index = floor(width_size / 2.0 - string_length / 2.0);
+    memset(new_string, fill_char, width_size);
+    new_string[width_size] = '\0';
+    memcpy(new_string + left_index, str, string_length );
+
+    return new_string;
+}
+
 /**
  * Returns a newly allocated string that is size `width`, left-padded with the fill character.
  * If `width` is <= strlen(str), returns a new copy of the argument string (unchanged.).
@@ -102,7 +101,23 @@ char * sutil_pad_left(const char *str, const int width, const char fill_char) {
     strcpy(new_string + left_index, str);
 
     return new_string;
+}
 
+char * sutil_pad_right(const char *str, const int width, const char fill_char) {
+    if (!str) return NULL;
+    const size_t string_length = strlen(str);
+    if ( width <= 0 || width <= string_length) {
+        return sutil_copy_char(str);
+    }
+    const size_t width_size = (size_t)width;
+    char *new_string = malloc(width_size + 1);
+    if (!new_string) return NULL;
+
+    strcpy(new_string, str);
+    memset(new_string + string_length, fill_char, width_size - string_length);
+    new_string[width_size] = '\0';
+
+    return new_string;
 }
 
 bool sutil_strings_equal(const char *str1, const char *str2) {
@@ -170,26 +185,3 @@ char * sutil_zfill(const char* str, int width){
 
     return new_str;
 }
-
-// make: clang string_utils.c -DSTRING_UTIL_TEST_MAIN -o string_util.out
-#ifdef STRING_UTIL_TEST_MAIN
-
-
-void t_centered(void) {
-    char *str1 = sutil_centered(" foo ", 10, '-');
-    printf("'foo' centered 10 is : '%s'\n", str1);
-    free(str1);
-}
-
-int main(void) {
-
-    // Important: The list of arguments must be terminated with NULL
-    printf("concatenated string: %s\n", sutil_concat_char("foo", "bar", "baz", NULL));
-
-    t_centered();
-
-	return 0;
-}
-#endif
-
-// '    foo    '
