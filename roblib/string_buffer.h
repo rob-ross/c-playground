@@ -22,6 +22,7 @@ typedef enum string_buffer_type_e {
 } SBType;
 
 
+
 typedef struct string_buffer_s {
     SBType type;
     size_t length;
@@ -39,14 +40,13 @@ const StringBuffer NULL_STRING_BUFFER = {.type = SBTYPE_NULL, .length = 0, .buff
 static const size_t MAX_ARGS = 1024;  // max number of variadic arguments processed
 
 
-StringBuffer * sb_join(const char *separator, StringBuffer *sb1, ...);
-
-// Renamed to avoid global namespace collision (sb_zfill is fairly unique, but sb_zfill is safer)
-StringBuffer * sb_zfill(StringBuffer *sb, int width);
 
 
-char * sb_type_name(SBType type);
-
-// Returns mutable pointer. Returns NULL on allocation failure, not NULL_STRING_BUFFER.
-StringBuffer *sb_new_string_buffer_from_string(const char *str);
 void sb_destroy_string_buffer(StringBuffer *sb);
+void sb_display_StringBuffer(const StringBuffer *sb);
+StringBuffer * sb_join(const char *separator, StringBuffer *sb1, ...);
+// Returns mutable pointer. Returns NULL on allocation failure, not NULL_STRING_BUFFER.
+StringBuffer * sb_new_string_buffer_from_string(const char *str);
+char * sb_string_buffer_repr(const StringBuffer *sb);
+const char * sb_type_name(SBType type);
+StringBuffer * sb_zfill(StringBuffer *sb, int width);

@@ -11,31 +11,34 @@
 #include "string_buffer.h"
 
 
-char * sb_type_name(SBType type) {
-    switch (type) {
-        case SBTYPE_ASCII:
-            return "ascii";
-        case SBTYPE_WIDE:
-            return "wide";
-        case SBTYPE_UTF16:
-            return "utf16";
-        case SBTYPE_UTF32:
-            return "utf32";
-        case SBTYPE_NULL:
-            return "null";
-        default:
-            return "unknown";
+void sb_destroy_string_buffer(StringBuffer *sb) {
+    if (sb == &NULL_STRING_BUFFER){
+        return; // never try to free our Null object!
+    }
+
+    if (sb) {
+        if (sb->buffer.as_char){
+            free(sb->buffer.as_char);
+        }
+        sb->buffer.as_char = NULL;
+        sb->length = 0;
+        sb->type = SBTYPE_NULL;
+        free(sb);
     }
 }
 
-void display_StringBuffer(const StringBuffer *sb){
+
+
+
+
+void sb_display_StringBuffer(const StringBuffer *sb){
     switch( sb->type) {
         case SBTYPE_ASCII:
-            printf("StringBuffer(type=%s, length=%zu, char * buffer=%s)\n", sb_type_name(sb->type), sb->length, sb->buffer.as_char);
+            printf("StringBuffer(type=%s, length=%zu, char * buffer='%s')", sb_type_name(sb->type), sb->length, sb->buffer.as_char);
             break;
 
         default:
-            printf("StringBuffer(type=unknown, length=%zu, buffer address=%p)\n",  sb->length, &sb->buffer);
+            printf("StringBuffer(type=unknown, length=%zu, buffer address=%p)",  sb->length, &sb->buffer);
             break;
     }
 }
@@ -75,12 +78,6 @@ StringBuffer * sb_join(const char *separator, StringBuffer *sb1, ...){
 
     total_length += (arg_list_count - 1) * separator_length;  // separators go between strings
 
-    printf("join debug: StringBuffers:\n");
-    for (int i = 0; i < arg_list_count; ++i) {
-        display_StringBuffer(arg_list[i]);
-    }
-
-
     // we need to analyze the incomming StringBuffers types. The longest type controls the output type. I.e., if
     // one is ASCII and the other is wchar_t we need to promote the ascii chars to wide types, etc.
     // this current simple implementation just assumes all arguments are type ascii.
@@ -116,6 +113,75 @@ StringBuffer * sb_join(const char *separator, StringBuffer *sb1, ...){
     return NULL;
 }
 #pragma clang diagnostic pop
+
+
+
+/**
+ * Creates a new StringBuffer object on the heap and makes a copy of the str argument.
+ * Call sb_destroy_string_buffer to reclaim StringBuffer and internal storage memory
+ * @param str
+ * @return
+ */
+StringBuffer *sb_new_string_buffer_from_string(const char *str) {
+    const size_t str_len = strlen(str);
+    char *str_copy = malloc(str_len + 1);
+    if (!str_copy) {
+        return NULL;
+    }
+    StringBuffer *new_string_buffer = malloc(sizeof(StringBuffer));
+    if (!new_string_buffer){
+        free(str_copy);
+        return NULL;
+    }
+    strcpy(str_copy, str);
+    new_string_buffer->length = strlen(str_copy);
+    new_string_buffer->type = SBTYPE_ASCII;
+    new_string_buffer->buffer.as_char = str_copy;
+    return new_string_buffer;
+}
+
+char *sb_string_buffer_repr(const StringBuffer *sb) {
+    if (!sb) return NULL;
+    const char *type_name = sb_type_name(sb->type);
+    int num_bytes = 0;
+    char * format_string = NULL;
+    char * repr_string = NULL;
+    switch( sb->type) {
+        case SBTYPE_ASCII:
+            format_string = "StringBuffer(type=%s, length=%zu, buffer='%s')";
+            num_bytes = snprintf(NULL, 0, format_string, type_name, sb->length, sb->buffer.as_char);
+            if (num_bytes < 0) return NULL; // Encoding error
+            repr_string = malloc(sizeof(char) * num_bytes + 1);
+            if (!repr_string)  return NULL;
+            num_bytes = snprintf(repr_string, num_bytes, format_string, type_name, sb->length, sb->buffer.as_char);
+            return repr_string;
+        default:
+            format_string = "StringBuffer(type=unknown, length=%zu, buffer address=%p)";
+            num_bytes = sprintf(NULL, 0, format_string,  sb->length, &sb->buffer);
+            if (num_bytes < 0) return NULL; // Encoding error
+            repr_string = malloc(sizeof(char) * num_bytes + 1);
+            if (!repr_string) return NULL;}
+    num_bytes = snprintf(repr_string, num_bytes, format_string, type_name, sb->length, sb->buffer.as_char);
+    return repr_string;
+
+}
+
+const char * sb_type_name(SBType type) {
+    switch (type) {
+        case SBTYPE_ASCII:
+            return "ascii";
+        case SBTYPE_WIDE:
+            return "wide";
+        case SBTYPE_UTF16:
+            return "utf16";
+        case SBTYPE_UTF32:
+            return "utf32";
+        case SBTYPE_NULL:
+            return "null";
+        default:
+            return "unknown";
+    }
+}
 
 
 /*
@@ -161,52 +227,13 @@ StringBuffer * sb_zfill(StringBuffer *sb, int width) {
     }
     return sb;
 }
-/**
- * Creates a new StringBuffer object on the heap and makes a copy of the str argument.
- * Call sb_destroy_string_buffer to reclaim StringBuffer and internal storage memory
- * @param str
- * @return
- */
-StringBuffer *sb_new_string_buffer_from_string(const char *str) {
-    const size_t str_len = strlen(str);
-    char *str_copy = malloc(str_len + 1);
-    if (!str_copy) {
-        return NULL;
-    }
-    StringBuffer *new_string_buffer = malloc(sizeof(StringBuffer));
-    if (!new_string_buffer){
-        free(str_copy);
-        return NULL;
-    }
-    strcpy(str_copy, str);
-    new_string_buffer->length = strlen(str_copy);
-    new_string_buffer->type = SBTYPE_ASCII;
-    new_string_buffer->buffer.as_char = str_copy;
-    return new_string_buffer;
-}
-
-void sb_destroy_string_buffer(StringBuffer *sb) {
-    if (sb == &NULL_STRING_BUFFER){
-        return; // never try to free our Null object!
-    }
-
-    if (sb) {
-        if (sb->buffer.as_char){
-            free(sb->buffer.as_char);
-        }
-        sb->buffer.as_char = NULL;
-        sb->length = 0;
-        sb->type = SBTYPE_NULL;
-        free(sb);
-    }
-}
 
 
 void t_zfill(void){
     char *temp = "+42";
     StringBuffer *sb = sb_new_string_buffer_from_string(temp);
     printf("buffer string: %s\n", sb->buffer.as_char);
-    if ( sb->type == SBTYPE_NULL) {
+    if ( !sb || sb->type == SBTYPE_NULL) {
         // No need to destroy, as creation failed and returned the null object.
         exit(1);
     }
@@ -215,6 +242,7 @@ void t_zfill(void){
 
     sb_destroy_string_buffer(sb); // Clean up the allocated memory
 }
+
 
 int main(void) {
     StringBuffer *sb1 = sb_new_string_buffer_from_string("Foo");
@@ -225,7 +253,9 @@ int main(void) {
 
     printf("result = %s\n", result->buffer.as_char);
 
-
+    char *ptr = NULL;
+    printf("repr: %s\n", (ptr = sb_string_buffer_repr(sb3) ) ) ;
+    free(ptr);
 
     sb_destroy_string_buffer(sb1); // Clean up the allocated memory
     sb_destroy_string_buffer(sb2); // Clean up the allocated memory

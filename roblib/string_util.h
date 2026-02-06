@@ -24,8 +24,18 @@ struct string_buffer {
 
 static const size_t MAX_ARGS = 1024;  // max number of variadic arguments processed
 
-bool strings_equal(const char *str1, const char *str2);
-bool strings_equal_case(const char *str1, const char *str2, Case c);
-bool strings_same(const char *s1, const char *s2);
+/**
+ * Concat the strings in the argument list and return a newly allocated string. The last argument must be NULL.
+ *
+ * @param str1 first char* to concat
+ * @param const char * ... zero or more additional strings
+ * @return a newly allocated string concatenation of the arugment list.
+ */
+char * sutil_concat_char(const char *str1, ...);
 
-struct string_buffer concat(const char *str1, const char *str2, ...);
+bool stuil_strings_equal(const char *str1, const char *str2);
+bool sutil_strings_equal_case(const char *str1, const char *str2, const Case c);
+bool sutil_strings_same(const char *s1, const char *s2);
+
+char * sutil_zfill(const char* str, int width);
+
