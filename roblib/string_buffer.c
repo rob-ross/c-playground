@@ -10,7 +10,7 @@
 
 #include "string_buffer.h"
 
-#include "string_util.h"
+#include "string_utils.h"
 
 
 void sb_destroy_string_buffer(StringBuffer *sb) {

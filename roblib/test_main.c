@@ -7,9 +7,9 @@
 
 #include "psytest.h"
 #include "punit.h"
-#include "string_util.h"
+#include "string_utils.h"
 
-// make clang -std=c17 test_main.c string_util.c punit.c psytest.c -o test_main.out
+// make clang -std=c17 test_main.c string_utils.c punit.c psytest.c -o test_main.out
 
 void test_PUNIT_TYPE(void) {
     // todo - unit test every supported type and verify the repr string is correct

@@ -2,8 +2,8 @@
 // Created by Rob Ross on 2/6/26.
 //
 
-#include "string_util.h"
-// make:   clang -std=c17 -o test_string_util.out test_string_util.c string_util.c
+#include "string_utils.h"
+// make:   clang -std=c17 -o test_string_utils.out test_string_utils.c string_utils.c
 
 
 void test_sutil_pad_left(void) {

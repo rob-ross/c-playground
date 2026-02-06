@@ -8,7 +8,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "string_util.h"
+#include "string_utils.h"
 
 #include <tgmath.h>
 
@@ -171,7 +171,7 @@ char * sutil_zfill(const char* str, int width){
     return new_str;
 }
 
-// make: clang string_util.c -DSTRING_UTIL_TEST_MAIN -o string_util.out
+// make: clang string_utils.c -DSTRING_UTIL_TEST_MAIN -o string_util.out
 #ifdef STRING_UTIL_TEST_MAIN
 
 
