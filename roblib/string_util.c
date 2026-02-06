@@ -24,7 +24,7 @@ char * sutil_centered(const char *str, const int width, const char fill_char) {
     if ( width <= 0 || width <= string_length) {
         return sutil_copy_char(str);
     }
-    size_t width_size = (size_t)width;
+    const size_t width_size = (size_t)width;
     char *new_string = malloc(width_size + 1);
     if (!new_string) return NULL;
     const size_t left_index = floor(width_size / 2.0 - string_length / 2.0);
@@ -78,6 +78,31 @@ char * sutil_copy_char(const char *str) {
     if (!new_string) return NULL;
     strcpy(new_string, str);
     return new_string;
+}
+
+/**
+ * Returns a newly allocated string that is size `width`, left-padded with the fill character.
+ * If `width` is <= strlen(str), returns a new copy of the argument string (unchanged.).
+ * @param str source string to left fill
+ * @param width length of new padded string
+ * @param fill_char the character to use for padding
+ * @return newly allocated string.
+ */
+char * sutil_pad_left(const char *str, const int width, const char fill_char) {
+    if (!str) return NULL;
+    const size_t string_length = strlen(str);
+    if ( width <= 0 || width <= string_length) {
+        return sutil_copy_char(str);
+    }
+    const size_t width_size = (size_t)width;
+    char *new_string = malloc(width_size + 1);
+    if (!new_string) return NULL;
+    const size_t left_index = width_size - string_length;
+    memset(new_string, fill_char, left_index);
+    strcpy(new_string + left_index, str);
+
+    return new_string;
+
 }
 
 bool sutil_strings_equal(const char *str1, const char *str2) {
