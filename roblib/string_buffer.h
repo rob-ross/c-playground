@@ -22,7 +22,6 @@ typedef enum string_buffer_type_e {
 } SBType;
 
 
-
 typedef struct string_buffer_s {
     SBType type;
     size_t length;
@@ -37,10 +36,21 @@ typedef struct string_buffer_s {
 // Null object pattern
 const StringBuffer NULL_STRING_BUFFER = {.type = SBTYPE_NULL, .length = 0, .buffer.as_char = NULL};
 
-static const size_t MAX_ARGS = 1024;  // max number of variadic arguments processed
+static const size_t SB_MAX_ARGS = 1024;  // max number of variadic arguments processed
 
 
+/**
+ *
+ * Return a new StringBuffer with argument string centered in a string of length width.
+ * Padding is done using the specified fill_char.
+ * The argument StringBuffer is returned if width is less than or equal to len(s).
+ */
+StringBuffer * sb_centered(const StringBuffer *sb, int width, char fill_char);
 
+/*
+ * Makes a new copy of the argument StringBuffer.
+ */
+StringBuffer * sb_copy(const StringBuffer *sb);
 
 void sb_destroy_string_buffer(StringBuffer *sb);
 void sb_display_StringBuffer(const StringBuffer *sb);

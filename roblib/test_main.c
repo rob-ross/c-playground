@@ -17,7 +17,7 @@ void test_PUNIT_TYPE(void) {
     const int* foo_ptr = &foo;
     char *expected = "const int*";
     char *actual = PUNIT_TYPE(foo_ptr);
-    if (stuil_strings_equal(expected, actual)) {
+    if (sutil_strings_equal(expected, actual)) {
         printf("foo_ptr reported successfully as %s\n", actual);
     } else {
         printf("FAILED. foo_ptr reported as as %s, expected %s\n", actual, expected);

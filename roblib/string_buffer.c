@@ -10,6 +10,8 @@
 
 #include "string_buffer.h"
 
+#include "string_util.h"
+
 
 void sb_destroy_string_buffer(StringBuffer *sb) {
     if (sb == &NULL_STRING_BUFFER){
@@ -28,7 +30,21 @@ void sb_destroy_string_buffer(StringBuffer *sb) {
 }
 
 
+StringBuffer * sb_centered(const StringBuffer *sb, const int width, const char fill_char) {
+    if (!sb) return NULL;
+    if (width <=0 || width <= sb->length) {
+        return sb_copy(sb);
+    }
+    char *temp_string = sutil_centered(sb->buffer.as_char, width, fill_char);
+    StringBuffer *new_sb = sb_new_string_buffer_from_string(temp_string);
+    free(temp_string);
+    return new_sb;
+}
 
+StringBuffer * sb_copy(const StringBuffer *sb) {
+    if (!sb) return NULL;
+    return sb_new_string_buffer_from_string(sb->buffer.as_char);
+}
 
 
 void sb_display_StringBuffer(const StringBuffer *sb){
@@ -63,14 +79,14 @@ StringBuffer * sb_join(const char *separator, StringBuffer *sb1, ...){
     va_start(args, sb1);
     const StringBuffer *next;
     // we need a Vector<StringBuffer> here to collect the args..... use a fixed buffer for now.
-    const StringBuffer *arg_list[MAX_ARGS];
+    const StringBuffer *arg_list[SB_MAX_ARGS];
     size_t arg_list_count = 0;
 
     arg_list[arg_list_count++] = sb1;  // add first non-variadic arg to array
 
     size_t total_length = sb1->length;
     // Loop until NULL sentinel is found or max arguments is reached
-    while ( arg_list_count < MAX_ARGS && (next = va_arg(args, const StringBuffer *)) != NULL) {
+    while ( arg_list_count < SB_MAX_ARGS && (next = va_arg(args, const StringBuffer *)) != NULL) {
         arg_list[arg_list_count++] = next;
         total_length += next->length;
     }
@@ -243,6 +259,8 @@ void t_zfill(void){
     sb_destroy_string_buffer(sb); // Clean up the allocated memory
 }
 
+// make: clang string_buffer.c string_util.c -o string_buffer.out
+
 
 int main(void) {
     StringBuffer *sb1 = sb_new_string_buffer_from_string("Foo");
@@ -256,6 +274,12 @@ int main(void) {
     char *ptr = NULL;
     printf("repr: %s\n", (ptr = sb_string_buffer_repr(sb3) ) ) ;
     free(ptr);
+
+    StringBuffer *centered= sb_centered(sb3, 100, '#');
+    sb_display_StringBuffer(centered);
+    printf("\n");
+    sb_destroy_string_buffer(centered);
+
 
     sb_destroy_string_buffer(sb1); // Clean up the allocated memory
     sb_destroy_string_buffer(sb2); // Clean up the allocated memory
