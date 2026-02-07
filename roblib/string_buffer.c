@@ -160,29 +160,31 @@ char *sb_string_buffer_repr(const StringBuffer *sb) {
     if (!sb) return NULL;
     const char *type_name = sb_type_name(sb->type);
     int num_bytes = 0;
-    char * format_string = NULL;
     char * repr_string = NULL;
+
     switch( sb->type) {
-        case SBTYPE_ASCII:
-            format_string = "StringBuffer(type=%s, length=%zu, buffer='%s')";
+        case SBTYPE_ASCII: {
+            const char *format_string = "StringBuffer(type=%s, length=%zu, buffer='%s')";
             num_bytes = snprintf(NULL, 0, format_string, type_name, sb->length, sb->buffer.as_char);
             if (num_bytes < 0) return NULL; // Encoding error
             repr_string = malloc(sizeof(char) * num_bytes + 1);
             if (!repr_string)  return NULL;
-            num_bytes = snprintf(repr_string, num_bytes, format_string, type_name, sb->length, sb->buffer.as_char);
+            snprintf(repr_string, num_bytes + 1, format_string, type_name, sb->length, sb->buffer.as_char);
             return repr_string;
-        default:
-            format_string = "StringBuffer(type=unknown, length=%zu, buffer address=%p)";
-            num_bytes = sprintf(NULL, 0, format_string,  sb->length, &sb->buffer);
+        }
+        default: {
+            const char *format_string = "StringBuffer(type=unknown, length=%zu, buffer address=%p)";
+            num_bytes = snprintf(NULL, 0, format_string, sb->length, (void *) &sb->buffer);
             if (num_bytes < 0) return NULL; // Encoding error
             repr_string = malloc(sizeof(char) * num_bytes + 1);
-            if (!repr_string) return NULL;}
-    num_bytes = snprintf(repr_string, num_bytes, format_string, type_name, sb->length, sb->buffer.as_char);
-    return repr_string;
-
+            if (!repr_string) return NULL;
+            snprintf(repr_string, num_bytes + 1, format_string, sb->length, (void *) &sb->buffer);
+            return repr_string;
+        }
+    }
 }
 
-const char * sb_type_name(SBType type) {
+const char * sb_type_name(const SBType type) {
     switch (type) {
         case SBTYPE_ASCII:
             return "ascii";
