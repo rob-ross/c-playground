@@ -24,9 +24,33 @@ struct string_buffer {
 
 static const size_t SUTIL_MAX_ARGS = 1024;  // max number of variadic arguments processed
 
+static const char  * const SUTIL_WHITESPACE = " \t\n\r\v\f";
 
 
 
+/**
+ *
+* const char const *whitespace = " \t\n\r\v\f";
+ascii_lowercase = 'abcdefghijklmnopqrstuvwxyz'
+ascii_uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+ascii_letters = ascii_lowercase + ascii_uppercase
+digits = '0123456789'
+hexdigits = digits + 'abcdef' + 'ABCDEF'
+octdigits = '01234567'
+punctuation = r"""!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~"""
+printable = digits + ascii_letters + punctuation + whitespace
+ *
+ *
+ */
+
+
+/**
+ * Returns true if the char `c` is found in the `chars` array.
+ * @param c the character to check
+ * @param chars the characters to check against
+ * @return true if char `c` is found in `chars`, otherwise return false.
+ */
+bool sutil_char_in(char c, const char *chars) ;
 
 /**
  * Concatenates the strings in the argument list and returns a newly allocated string. The last argument must be NULL.
@@ -106,6 +130,41 @@ bool sutil_strings_equal(const char *str1, const char *str2);
 bool sutil_strings_equal_case(const char *str1, const char *str2, Case c);
 bool sutil_strings_same(const char *s1, const char *s2);
 
+/**
+ * Returns a newly allocated copy of the string with leading and trailing characters in `chars` removed.
+ * The chars argument is a string specifying the set of characters to be removed. If empty or NULL, the chars argument
+ * defaults to removing whitespace as specified in SUTIL_WHITESPACE.
+ * Example:
+ *  char *str = "     five leading and trailing spaces removed     ";
+ *  char *str_stripped = sutil_strip( str, "");
+ *  str_stripped == "five leading and trailing spaces removed".
+ *  sutil_strip( str, ""), sutil_strip( str, " "), and sutil_strip( str, NULL) are equivalent for this purpose.
+ *
+ * @param str input string to strip of leading and trailing chars
+ * @param chars the array of chars to check
+ * @return a newly allocated copy of the string with leading and trailing characters removed.
+ */
+char * sutil_strip(const char *str, const char *chars);
+
+/**
+ * Returns a newly allocated copy of the string with leading characters in `chars` removed.
+ * The chars argument is a string specifying the set of characters to be removed. If empty or NULL, the chars argument
+ * defaults to removing whitespace as specified in SUTIL_WHITESPACE.
+ * @param str input string to strip of leading chars
+ * @param chars the array of chars to check
+ * @return a newly allocated copy of the string with leading characters removed.
+ */
+char * sutil_strip_left(const char *str, const char *chars);
+
+/**
+ * Returns a newly allocated copy of the string with trailing characters in `chars` removed.
+ * The chars argument is a string specifying the set of characters to be removed. If empty or NULL, the chars argument
+ * defaults to removing whitespace as specified in SUTIL_WHITESPACE.
+ * @param str input string to strip of trailing chars
+ * @param chars the array of chars to check
+ * @return a newly allocated copy of the string with trailing characters removed.
+ */
+char * sutil_strip_right(const char *str, const char *chars);
 
 /**
  * Returns a new copy of the string with all the cased characters converted to uppercase.
