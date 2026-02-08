@@ -12,22 +12,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if defined(__GNUC__) || defined(__INTEL_COMPILER) || defined(__SUNPRO_CC) || defined(__IBMCPP__)
-#  define PUNIT_THREAD_LOCAL __thread
-#elif (defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201102L)) || defined(_Thread_local)
-#  define PUNIT_THREAD_LOCAL _Thread_local
-#endif
-
 /*** Logging ***/
 
 static PunitLogLevel punit_log_level_visible = PUNIT_LOG_INFO;
 static PunitLogLevel punit_log_level_fatal = PUNIT_LOG_ERROR;
 
+// Define the global pointer here (allocates storage)
 #if defined(PUNIT_THREAD_LOCAL)
-static PUNIT_THREAD_LOCAL bool punit_error_jmp_buf_valid = false;
-static PUNIT_THREAD_LOCAL jmp_buf punit_error_jmp_buf;
+PUNIT_THREAD_LOCAL jmp_buf *punit_active_jmp_buf = NULL;
+PUNIT_THREAD_LOCAL bool punit_capture_asserts = false;
 #endif
-
 
 
 PUNIT_PRINTF(5,0)
@@ -91,15 +85,24 @@ punit_log_internal(PunitLogLevel level, FILE* fp, const char* message) {
 void
 punit_logf_ex(PunitLogLevel level, const char* filename, int line, const char* func, const char* format, ...) {
   va_list ap;
+  bool suppress = false;
 
-  va_start(ap, format);
-  punit_logf_exv(level, stderr, filename, line, func, format, ap);
-  va_end(ap);
+#if defined(PUNIT_THREAD_LOCAL)
+  if (level >= punit_log_level_fatal && punit_capture_asserts) {
+    suppress = true;
+  }
+#endif
+
+  if (!suppress) {
+    va_start(ap, format);
+    punit_logf_exv(level, stderr, filename, line, func, format, ap);
+    va_end(ap);
+  }
 
   if (level >= punit_log_level_fatal) {
 #if defined(PUNIT_THREAD_LOCAL)
-    if (punit_error_jmp_buf_valid) {
-      longjmp(punit_error_jmp_buf, 1);
+    if (punit_active_jmp_buf) {
+      longjmp(*punit_active_jmp_buf, 1);
     }
 #endif
     abort();
@@ -109,14 +112,23 @@ punit_logf_ex(PunitLogLevel level, const char* filename, int line, const char* f
 void
 punit_errorf_ex(const char* filename, int line, const char* func, const char* format, ...) {
   va_list ap;
-
-  va_start(ap, format);
-  punit_logf_exv(PUNIT_LOG_ERROR, stderr, filename, line, func, format, ap);
-  va_end(ap);
+  bool suppress = false;
 
 #if defined(PUNIT_THREAD_LOCAL)
-  if (punit_error_jmp_buf_valid) {
-    longjmp(punit_error_jmp_buf, 1);
+  if (punit_capture_asserts) {
+    suppress = true;
+  }
+#endif
+
+  if (!suppress) {
+    va_start(ap, format);
+    punit_logf_exv(PUNIT_LOG_ERROR, stderr, filename, line, func, format, ap);
+    va_end(ap);
+  }
+
+#if defined(PUNIT_THREAD_LOCAL)
+  if (punit_active_jmp_buf) {
+    longjmp(*punit_active_jmp_buf, 1);
   }
 #endif
   abort();
@@ -147,16 +159,24 @@ int tests_failed = 0;
 
 void run_test(test_case test) {
   // emulate try-catch with longjmp
-  if (setjmp(punit_error_jmp_buf) == 0) {
+#if defined(PUNIT_THREAD_LOCAL)
+  jmp_buf local_env;
+  jmp_buf *old_env = punit_active_jmp_buf;
+  punit_active_jmp_buf = &local_env;
+
+  if (setjmp(local_env) == 0) {
     //Try block
-    punit_error_jmp_buf_valid = true;
     tests_run++;
     test();  // invoke test method
   } else {
     //Except block
     tests_failed++;
   }
-  punit_error_jmp_buf_valid = false;
+  punit_active_jmp_buf = old_env;
+#else
+  tests_run++;
+  test();
+#endif
 }
 
 void test_runner(test_case tests[]) {

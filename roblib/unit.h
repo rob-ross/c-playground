@@ -7,6 +7,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <inttypes.h>
+#include <stdbool.h>
+#include <setjmp.h>
 
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 #  define PUNIT_NO_RETURN _Noreturn
@@ -14,6 +16,14 @@
 #  define PUNIT_NO_RETURN __attribute__((__noreturn__))
 #else
 #  define PUNIT_NO_RETURN
+#endif
+
+#if defined(__GNUC__) || defined(__INTEL_COMPILER) || defined(__SUNPRO_CC) || defined(__IBMCPP__)
+#  define PUNIT_THREAD_LOCAL __thread
+#elif (defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201102L)) || defined(_Thread_local)
+#  define PUNIT_THREAD_LOCAL _Thread_local
+#else
+#  define PUNIT_THREAD_LOCAL
 #endif
 
 typedef enum {
@@ -27,6 +37,31 @@ typedef enum {
 #  define PUNIT_PRINTF(string_index, first_to_check) __attribute__((format (printf, string_index, first_to_check)))
 #else
 #  define PUNIT_PRINTF(string_index, first_to_check)
+#endif
+
+// Pointer to the currently active jump buffer (stack)
+// We use extern so test_unit.c can see the variable defined in unit.c
+#if defined(PUNIT_THREAD_LOCAL)
+extern PUNIT_THREAD_LOCAL jmp_buf *punit_active_jmp_buf;
+extern PUNIT_THREAD_LOCAL bool punit_capture_asserts;
+
+#define assertThrows(expr) \
+    do { \
+        jmp_buf local_env; \
+        jmp_buf *old_env = punit_active_jmp_buf; \
+        bool old_capture = punit_capture_asserts; \
+        punit_active_jmp_buf = &local_env; \
+        punit_capture_asserts = true; \
+        if (setjmp(local_env) == 0) { \
+            expr; \
+            punit_active_jmp_buf = old_env; \
+            punit_capture_asserts = old_capture; \
+            punit_errorf("Expected exception in '%s', but none was thrown.", #expr); \
+        } else { \
+            punit_active_jmp_buf = old_env; \
+            punit_capture_asserts = old_capture; \
+        } \
+    } while (0)
 #endif
 
 PUNIT_PRINTF(5, 6)

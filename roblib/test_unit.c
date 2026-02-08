@@ -133,7 +133,8 @@ void test_equal_ulong_long() {
     unsigned long long l2 = 42;
     unsigned long long l3 = 43;
     assertEqual(l1, l2);
-    assertEqual(l1, l3, "should fail");
+
+    assertThrows( assertEqual(l1, l3, "should fail") );
 }
 
 
