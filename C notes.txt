@@ -65,8 +65,9 @@ assertLinesMatch(List<string>, List<string>, string)
 assertInstanceOf(Class, Object, string) - probably not useful in C
 
 
+---------------------------------------------------------------------
 C printf format specifiers start on page 228 of the IOC reference.
---------------------------------------------------
+---------------------------------------------------------------------
 
 
 * C idea : hash table
@@ -84,3 +85,24 @@ git notess:
 to stop tracking a file in git (in case you accidentally checked something it you didn't mean to:
 git rm -r --cached <file_name>
 git commit -m "Stop tracking <file_name>"
+
+Exception-like handling
+-----------------------
+setjmp and longjmp:
+
+    jmp_buf buffer; // defined in setjmp.h
+
+    if ( setjmp(buffer) != 0)) {
+      // exception handling
+    } else {
+      // Try block
+      jmp_buf_valid = 1;  // this signals the longjmp code there is a buffer in a good state
+      // Here run code that might crash, "throw an exception"
+    }
+
+    On the call to setjmp(buffer),it will return 0. Thus the "try" block runs. If the code run from the "try" block
+    encounters an "exception", it will do a longjump(buffer, 1). Execution then proceedes from the inital setjmp(buffer)
+    call. In this case, the value 1 is returned. Thus the "exception" block now runs.
+    To 'throw an exception' in the try-block path, :
+        if (jmp_buf_valid)
+          longjmp(punit_error_jmp_buf, 1);

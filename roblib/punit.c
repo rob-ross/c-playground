@@ -1434,6 +1434,9 @@ punit_test_runner_run_test_with_params(PunitTestRunner* runner, const PunitTest*
       punit_error_jmp_buf_valid = 1;
       result = punit_test_runner_exec(runner, test, params, &report);
     }
+    /* This acts as a "finally" block to ensure the jump buffer is
+     * never considered valid outside the scope of a running test. */
+    punit_error_jmp_buf_valid = 0;
 #else
     result = punit_test_runner_exec(runner, test, params, &report);
 #endif
