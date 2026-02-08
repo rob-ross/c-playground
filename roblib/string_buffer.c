@@ -12,6 +12,8 @@
 
 #include "string_utils.h"
 
+const StringBuffer NULL_STRING_BUFFER = {.type = SBTYPE_NULL, .length = 0, .buffer.as_char = NULL};
+
 
 void sb_destroy_string_buffer(StringBuffer *sb) {
     if (sb == &NULL_STRING_BUFFER){

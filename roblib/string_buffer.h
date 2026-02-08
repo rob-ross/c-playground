@@ -34,7 +34,7 @@ typedef struct string_buffer_s {
 } StringBuffer;
 
 // Null object pattern
-const StringBuffer NULL_STRING_BUFFER = {.type = SBTYPE_NULL, .length = 0, .buffer.as_char = NULL};
+extern const StringBuffer NULL_STRING_BUFFER;
 
 static const size_t SB_MAX_ARGS = 1024;  // max number of variadic arguments processed
 
