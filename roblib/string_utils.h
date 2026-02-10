@@ -1,6 +1,7 @@
 //
 // Created by Rob Ross on 2/1/26.
 //
+// Various utility functions operating on ASCII strings.
 
 #pragma once
 #include <stdbool.h>
@@ -75,6 +76,9 @@ char * sutil_copy_char(const char *str);
  * @return true if `str` ends with `suffix`, else false.
  */
 bool sutil_ends_with(const char *str, const char *suffix);
+
+
+int sutil_index(const char *str, const char *substring);
 
 /**
  * Returns a new copy of the string with all the cased characters converted to lowercase.

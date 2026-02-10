@@ -27,7 +27,7 @@ static inline size_t min_size(const size_t a, const size_t b) {
 bool sutil_char_in(const char c, const char *chars) {
     if (!chars) return false;
     const size_t chars_len = strlen(chars);
-    for (int i = 0; i < chars_len; ++i) {
+    for (size_t i = 0; i < chars_len; ++i) {
         if (c == chars[i]) return true;
     }
     return false;
@@ -91,6 +91,28 @@ bool sutil_ends_with(const char *str, const char *suffix) {
     return true;
 }
 
+// return the index of the first occurrence of `sub_string` in `str`, or -1 if `substring not found
+// only works on strings ~2GB max.
+// todo naming? index_of? find? Also, macros for providing a start and stop index.
+int sutil_index(const char *str, const char *substring) {
+    if (! str || !substring ) {
+      return -1;
+    }
+    size_t str_len = strlen(str);
+    size_t substring_len = strlen(substring);
+    if (str_len < substring_len || str_len == 0 || substring_len == 0) {
+        return -1;  // we don't count empty substring as a substring of any string.
+    }
+
+    // find start of possible match
+    for (size_t i = 0; i <= str_len - substring_len; i++) {
+        if ( strncmp(&str[i], substring, substring_len) == 0 ) {
+            return (int)i;
+        }
+    }
+
+    return -1;
+}
 
 char * sutil_lower(const char *str) {
     if (!str) return NULL;

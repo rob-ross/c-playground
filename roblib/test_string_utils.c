@@ -11,6 +11,7 @@
 
 
 void test_sutil_ends_with(void) {
+    printf("\ntest_sutil_ends_with\n");
     const char *str = "this is fun!";
     bool actual;
 
@@ -21,7 +22,25 @@ void test_sutil_ends_with(void) {
     printf("sutil_ends_with(%s, \"nope\") = %i, expected: 0\n", str, actual);
 }
 
+void test_sutil_index() {
+    printf("\ntest_sutil_index\n");
+    const char *str1 = "This is a test string";
+    const char *subs1 = "test";
+    int expected = 10;
+    int actual = sutil_index(str1, subs1);
+    printf("expected: %i, actual: %i, expected == actual: %i\n", expected, actual, expected == actual);
+
+    expected = -1;
+    actual = sutil_index(str1, "foo");
+    printf("expected: %i, actual: %i, expected == actual: %i\n", expected, actual, expected == actual);
+
+    expected = 15;
+    actual = sutil_index(str1, "string");
+    printf("expected: %i, actual: %i, expected == actual: %i\n", expected, actual, expected == actual);
+}
+
 void test_sutil_lower(void) {
+    printf("\ntest_sutil_lower\n");
     const char *original = "THIS IS A LOWERCASE STRING. WITH *&^( SOME %OTHER CHAR4CER$";
     const char *expected = "this is a lowercase string. with *&^( some %other char4cer$";
     char *actual = sutil_lower(original);
@@ -30,12 +49,14 @@ void test_sutil_lower(void) {
 }
 
 void test_sutil_pad_center(void) {
+    printf("\ntest_sutil_pad_center\n");
     char *str1 = sutil_pad_center(" foo ", 10, '-');
     printf("'foo' centered 10 is : '%s'\n", str1);
     free(str1);
 }
 
 void test_sutil_pad_left(void) {
+    printf("\ntest_sutil_pad_left\n");
     const char *original = "foo";
     const int width = 10;
     const char fill_char = '*';
@@ -47,6 +68,7 @@ void test_sutil_pad_left(void) {
 }
 
 void test_sutil_pad_right(void) {
+    printf("\ntest_sutil_pad_right\n");
     const char *original = "foo";
     const int width = 10;
     const char fill_char = '*';
@@ -58,6 +80,7 @@ void test_sutil_pad_right(void) {
 }
 
 void test_sutil_starts_with(void) {
+    printf("\ntest_sutil_starts_with\n");
     const char *str = "this is fun!";
     bool actual;
 
@@ -136,6 +159,7 @@ void test_sutil_strip_right(void) {
 }
 
 void test_sutil_upper(void) {
+    printf("\ntest_sutil_upper\n");
     const char *original = "this is a lowercase string. with *&^( some %other char4cer$";
     const char *expected = "THIS IS A LOWERCASE STRING. WITH *&^( SOME %OTHER CHAR4CER$";
     char *actual = sutil_upper(original);
@@ -147,6 +171,7 @@ void test_sutil_upper(void) {
 
 int main(int argc, char *argv[]) {
     test_sutil_ends_with();
+    test_sutil_index();
     test_sutil_lower();
     test_sutil_pad_center();
     test_sutil_pad_left();
