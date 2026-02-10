@@ -124,14 +124,14 @@ do { \
 #define PUNIT_FMT(expr, ...) _Generic( (expr), \
     char              : "%c",   \
     unsigned char     : "%hhu", \
-    signed char       : "%hhi", \
-    short             : "%hi",  \
+    signed char       : "%hhd", \
+    short             : "%hd",  \
     unsigned short    : "%hu",  \
-    int               : "%i",   \
+    int               : "%d",   \
     unsigned int      : "%u",   \
-    long              : "%li",  \
+    long              : "%ld",  \
     unsigned long     : "%lu",  \
-    long long         : "%lli", \
+    long long         : "%lld", \
     unsigned long long: "%llu", \
     float             : "%f",   \
     double            : "%f",   \
