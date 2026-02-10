@@ -8,10 +8,9 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
+#include <limits.h>
 
 #include "string_utils.h"
-
-#include <tgmath.h>
 
 
 static inline size_t min_size(const size_t a, const size_t b) {
@@ -91,27 +90,73 @@ bool sutil_ends_with(const char *str, const char *suffix) {
     return true;
 }
 
-// return the index of the first occurrence of `sub_string` in `str`, or -1 if `substring not found
-// only works on strings ~2GB max.
-// todo naming? index_of? find? Also, macros for providing a start and stop index.
-int sutil_index(const char *str, const char *substring) {
+int sutil_index_start_end_impl_(
+    const char *str,
+    const char *substring,
+    const size_t start,
+    const size_t end,
+    const size_t str_len,
+    const size_t substring_len) {
+    // printf("sutil_index_start_end_(%s, %s, %zu, %zu) \n", str, substring, start, end);
+
     if (! str || !substring ) {
-      return -1;
-    }
-    size_t str_len = strlen(str);
-    size_t substring_len = strlen(substring);
-    if (str_len < substring_len || str_len == 0 || substring_len == 0) {
-        return -1;  // we don't count empty substring as a substring of any string.
+        return -1;
     }
 
+    const size_t max_index = str_len - substring_len; // result index can't be greater than this
+
+    // printf("str_len: %zu, substring_len: %zu, max_index: %zu\n", str_len, substring_len, max_index);
+
+    if (str_len < substring_len || str_len == 0 || str_len > INT_MAX ||
+             substring_len == 0 || start > max_index || end >  str_len ) {
+        return -1;  // we don't count empty substring as a substring of any string.
+             }
+
+    // printf("Got past all if checks.\n");
+
     // find start of possible match
-    for (size_t i = 0; i <= str_len - substring_len; i++) {
+    for (size_t i = start; i <= end; i++) {
         if ( strncmp(&str[i], substring, substring_len) == 0 ) {
-            return (int)i;
+            if (i <= INT_MAX) {
+                return (int)i;
+            }
+            return -1;  // index too big to fit in signed int.
         }
     }
 
     return -1;
+}
+
+int sutil_index_start_end_(const char *str, const char *substring, const size_t start, const size_t end) {
+    return sutil_index_start_end_impl_(str, substring, start, end, strlen(str), strlen(substring));
+}
+
+// make:   clang -DSUTIL_TEST_MAIN -o string_utils.out string_utils.c
+#ifdef SUTIL_TEST_MAIN
+int main(void) {
+    char *str = "this is my test string";
+    char *subs = "test";
+    int actual = sutil_index_(str, subs);
+    printf("called sutil_index_(%s, %s), returns: %d\n", str, subs,actual);
+
+
+
+    return 0;
+}
+#endif
+
+
+int sutil_index_start_(const char *str, const char *substring, const size_t start) {
+    const size_t str_len = strlen(str);
+    return sutil_index_start_end_impl_(str, substring, start, str_len, str_len, strlen(substring));
+}
+
+// return the index of the first occurrence of `sub_string` in `str`, or -1 if `substring not found
+// only works on strings ~2GB max.
+// todo naming? index_of? find?
+int sutil_index_(const char *str, const char *substring) {
+    const size_t str_len = strlen(str);
+    return sutil_index_start_end_impl_(str, substring, 0, str_len, str_len, strlen(substring));
 }
 
 char * sutil_lower(const char *str) {

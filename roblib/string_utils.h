@@ -7,6 +7,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+
+
 // expands to printf( fmt, ...)  but adds a newline to the end of fmt.
 #define println(fmt, ...)               \
     do {                                \
@@ -14,20 +16,14 @@
         putchar('\n');                  \
     } while (0)
 
-typedef enum case_e { CASE_INSENSITIVE, CASE_SENSITIVE } Case;
 
-#define STRING_BUFFER_CAPACITY 1024
 
-struct string_buffer {
-    size_t length;
-    char str_buffer[STRING_BUFFER_CAPACITY];
-};
 
 static const size_t SUTIL_MAX_ARGS = 1024;  // max number of variadic arguments processed
 
 static const char  * const SUTIL_WHITESPACE = " \t\n\r\v\f";
 
-
+typedef enum case_e { CASE_INSENSITIVE, CASE_SENSITIVE } Case;
 
 /**
  *
@@ -77,8 +73,14 @@ char * sutil_copy_char(const char *str);
  */
 bool sutil_ends_with(const char *str, const char *suffix);
 
+#define sutil_index_SELECT(_1, _2, _3, _4, NAME, ...) NAME
+#define sutil_index(...) \
+sutil_index_SELECT(__VA_ARGS__, sutil_index_start_end_, sutil_index_start_, sutil_index_)(__VA_ARGS__)
 
-int sutil_index(const char *str, const char *substring);
+extern int sutil_index_(const char *str, const char *substring);
+extern int sutil_index_start_(const char *str, const char *substring, size_t start);
+extern int sutil_index_start_end_(const char *str, const char *substring, size_t start, size_t end);
+
 
 /**
  * Returns a new copy of the string with all the cased characters converted to lowercase.

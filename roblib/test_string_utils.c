@@ -30,6 +30,9 @@ void test_sutil_index() {
     int actual = sutil_index(str1, subs1);
     printf("expected: %i, actual: %i, expected == actual: %i\n", expected, actual, expected == actual);
 
+    // actual = sutil_index_(str1, subs1);
+    // printf("expected: %i, actual: %i, expected == actual: %i\n", expected, actual, expected == actual);
+
     expected = -1;
     actual = sutil_index(str1, "foo");
     printf("expected: %i, actual: %i, expected == actual: %i\n", expected, actual, expected == actual);
@@ -37,6 +40,20 @@ void test_sutil_index() {
     expected = 15;
     actual = sutil_index(str1, "string");
     printf("expected: %i, actual: %i, expected == actual: %i\n", expected, actual, expected == actual);
+
+
+    char *str2 = "This is a longer string. This has three 'this' in it. This is the third one.";
+    expected = 41; // second "this"
+    actual = sutil_index(str2, "this", 20);
+    printf("expected: %i, actual: %i, expected == actual: %i\n", expected, actual, expected == actual);
+    // actual = sutil_index_start(str2, "this", 20);
+    // printf("expected: %i, actual: %i, expected == actual: %i\n", expected, actual, expected == actual);
+
+    expected = 41;
+    actual = sutil_index(str2, "this", 27, 45);
+    printf("expected: %i, actual: %i, expected == actual: %i\n", expected, actual, expected == actual);
+    // actual = sutil_index_start_end(str2, "this", 27, 45);
+    // printf("expected: %i, actual: %i, expected == actual: %i\n", expected, actual, expected == actual);
 }
 
 void test_sutil_lower(void) {
