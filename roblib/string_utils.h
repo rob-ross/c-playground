@@ -74,12 +74,27 @@ char * sutil_copy_char(const char *str);
 bool sutil_ends_with(const char *str, const char *suffix);
 
 #define sutil_index_SELECT(_1, _2, _3, _4, NAME, ...) NAME
+// Check for Clang specific feature or generic GCC support
+#if (defined(__GNUC__) && !defined(__clang__)) || (defined(__clang__) && __has_extension(statement_expressions))
+// using gnu "statement expression" here instead of do-while because we need to return a value from the block
 #define sutil_index(...) \
-sutil_index_SELECT(__VA_ARGS__, sutil_index_start_end_, sutil_index_start_, sutil_index_)(__VA_ARGS__)
+    __extension__ ({ \
+        extern int sutil_index_(const char *str, const char *substring); \
+        extern int sutil_index_start_(const char *str, const char *substring, size_t start); \
+        extern int sutil_index_start_end_(const char *str, const char *substring, size_t start, size_t end); \
+        sutil_index_SELECT(__VA_ARGS__, sutil_index_start_end_, sutil_index_start_, sutil_index_)(__VA_ARGS__); \
+    })
+#else
+#define sutil_index(...) \
+    sutil_index_SELECT(__VA_ARGS__, sutil_index_start_end_, sutil_index_start_, sutil_index_)(__VA_ARGS__)
+    // In non-GNU environments, these must be exposed to the file scope so the macro can see them.
+    extern int sutil_index_(const char *str, const char *substring);
+    extern int sutil_index_start_(const char *str, const char *substring, size_t start);
+    extern int sutil_index_start_end_(const char *str, const char *substring, size_t start, size_t end);
+#endif
 
-extern int sutil_index_(const char *str, const char *substring);
-extern int sutil_index_start_(const char *str, const char *substring, size_t start);
-extern int sutil_index_start_end_(const char *str, const char *substring, size_t start, size_t end);
+
+
 
 
 /**
