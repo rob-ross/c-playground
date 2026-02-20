@@ -55,21 +55,24 @@ unsigned num_bytes_for(enum type type) {
 
     }
 }
+static long long clamp_ull_to_ll(const unsigned long long v) {
+    return (v > (unsigned long long)LLONG_MAX) ? LLONG_MAX : (long long)v;
+}
 
-long long cast_value(enum type type, size_t value) {
+long long cast_value(const enum type type, const size_t value) {
     long long result = 0;
     switch (type) {
-        case CHAR:
-        case SCHAR:
-        case UCHAR:  result = (unsigned char)value;  break;
-        case SHORT:  result = (short)value;          break;
-        case USHORT: result = (unsigned short)value; break;
-        case INT:    result = (int)value;            break;
-        case UINT:   result = (unsigned int)value;   break;
-        case LONG:   result = (long)value;           break;
-        case ULONG:  result = (unsigned long)value;  break;
+        case CHAR:   result = (long long)(char)value;  break;
+        case SCHAR:  result = (long long)(signed char)value;  break;
+        case UCHAR:  result = (long long)(unsigned char)value;  break;
+        case SHORT:  result = (long long)(short)value;          break;
+        case USHORT: result = (long long)(unsigned short)value; break;
+        case INT:    result = (long long)(int)value;            break;
+        case UINT:   result = (long long)(unsigned int)value;   break;
+        case LONG:   result = (long long)(long)value;           break;
+        case ULONG:  result = clamp_ull_to_ll((unsigned long long)value);  break;
         case LONGLONG:  result = (long long)value;   break;
-        case ULONGLONG: result = (unsigned long long)value; break;
+        case ULONGLONG: result = clamp_ull_to_ll((unsigned long long)value);  break;
         default: result = 0; break;
 
     }
@@ -351,7 +354,7 @@ void calc_limits(void) {
 }
 
 // make:
-// clang -std=c17 -o data_ranges.out data_ranges.c ../../roblib/string_utils.c
+// clang -std=c23 -o data_ranges.out data_ranges.c ../../roblib/string_utils.c
 
 int main(void) {
     all_limits();
