@@ -33,6 +33,7 @@ const char * name_for_type(enum type type) {
         case ULONG: return "unsigned long";
         case LONGLONG: return "long long";
         case ULONGLONG: return "unsigned long long";
+        default: return "unknown type";
 
     }
 }
@@ -50,6 +51,7 @@ unsigned num_bytes_for(enum type type) {
         case ULONG: return sizeof(long);
         case LONGLONG:
         case ULONGLONG: return sizeof(long long);
+        default: return 0;
 
     }
 }
@@ -57,8 +59,8 @@ unsigned num_bytes_for(enum type type) {
 long long cast_value(enum type type, size_t value) {
     long long result = 0;
     switch (type) {
-        case CHAR:   result = (char)value;           break;
-        case SCHAR:  result = (signed char)value;    break;
+        case CHAR:
+        case SCHAR:
         case UCHAR:  result = (unsigned char)value;  break;
         case SHORT:  result = (short)value;          break;
         case USHORT: result = (unsigned short)value; break;
@@ -68,6 +70,7 @@ long long cast_value(enum type type, size_t value) {
         case ULONG:  result = (unsigned long)value;  break;
         case LONGLONG:  result = (long long)value;   break;
         case ULONGLONG: result = (unsigned long long)value; break;
+        default: result = 0; break;
 
     }
 
@@ -294,6 +297,9 @@ void float_limits(void) {
     printf("mantissa digits (in bits): %d, digits: %d, min exp: %d, min10 exp: %d, max exp: %d, max10 exp: %d, epsilon: %f, min: %f, true min: %f, decimal dig: %d, has subnorm: %d\n", DBL_MANT_DIG, DBL_DIG, DBL_MIN_EXP, DBL_MIN_10_EXP, DBL_MAX_EXP, DBL_MAX_10_EXP, DBL_EPSILON, DBL_MIN, DBL_TRUE_MIN, DBL_DECIMAL_DIG, DBL_HAS_SUBNORM);
     printf("max: %f\n", DBL_MAX);
 
+    //max: 179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.000000
+
+
     // long double
     printf("\nlong double (size: %zu) limits:\n", sizeof(long double));
     printf("mantissa digits (in bits): %d, digits: %d, min exp: %d, min10 exp: %d, max exp: %d, max10 exp: %d, epsilon: %Lf, min: %Lf, true min: %Lf, decimal dig: %d, has subnorm: %d\n", LDBL_MANT_DIG, LDBL_DIG, LDBL_MIN_EXP, LDBL_MIN_10_EXP, LDBL_MAX_EXP, LDBL_MAX_10_EXP,  LDBL_EPSILON, LDBL_MIN, LDBL_TRUE_MIN, LDBL_DECIMAL_DIG, LDBL_HAS_SUBNORM);
@@ -307,14 +313,51 @@ void float_limits(void) {
 }
 
 
+
+
+void calc_limits(void) {
+    //maximum finite value / most positive value
+    int float_bits = 32;
+    int double_bits = 64;
+    int ldouble_bits = 128;
+    int mac_ldouble_bits = 80; // standard is 128 but Mac os uses 80
+
+    int float_exp_bits = 8;
+    int double_exp_bits = 11;
+    int ldouble_exp_bits = 15;
+
+    int float_max_exp = pow(2, float_exp_bits - 1) - 1;
+    int double_max_exp = pow(2, double_exp_bits - 1) - 1;
+    int ldouble_max_exp = pow(2, ldouble_exp_bits - 1) - 1;
+
+    // 1 bit for sign
+    int float_mantissa_bits = float_bits - 1 - float_exp_bits;
+    int double_mantissa_bits = double_bits - 1 - double_exp_bits;
+    int ldouble_mantissa_bits = ldouble_bits - 1 - ldouble_exp_bits;
+    int mac_ldouble_mantissaa_bits = mac_ldouble_bits - 1 - ldouble_exp_bits;
+
+    double  float_max_positive = (2 - pow(2, -float_mantissa_bits)) * pow(2, float_max_exp);
+
+    long double double_max_positive = 2 * pow(2, double_max_exp);
+
+    printf("calc limits\n");
+
+    printf("Float:\n");
+    printf("bits: %d, exp bits: %d, mantissa bits: %d, max exp: %d, MPV: %e\n", float_bits, float_exp_bits, float_mantissa_bits, float_max_exp,  float_max_positive);
+
+    printf("Double:\n");
+    printf("bits: %d, exp bits: %d, mantissa bits: %d, max exp: %d, MPV: %Le\n", double_bits, double_exp_bits, double_mantissa_bits, double_max_exp,  double_max_positive);
+
+}
+
 // make:
 // clang -std=c17 -o data_ranges.out data_ranges.c ../../roblib/string_utils.c
 
-
 int main(void) {
-
-    void float_limits(void);
     all_limits();
     float_limits();
+    printf("\n");
+
+    calc_limits();
 
 }
