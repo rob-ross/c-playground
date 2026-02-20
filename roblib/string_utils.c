@@ -5,25 +5,44 @@
 
 #include <ctype.h>
 #include <stdarg.h>
-#include <stdbool.h>
 #include <string.h>
+#include <strings.h>
 #include <stdlib.h>
 #include <limits.h>
 
 #include "string_utils.h"
+
+#include <assert.h>
 
 
 static inline size_t min_size(const size_t a, const size_t b) {
     return (a < b) ? a : b;
 }
 
-/**
- * Returns true if the char `c` is found in the `chars` array.
- * @param c the character to check
- * @param chars the characters to check against
- * @return true if char `c` is found in `chars`, otherwise return false.
- */
-bool sutil_char_in(const char c, const char *chars) {
+
+uint32_t sutil_char_at(const char *str, const size_t index) {
+    assert(str && "str cannot be nullptr");
+    if (!str) {
+        return UINT32_MAX;
+    }
+
+    const size_t str_len = strlen(str);
+    assert(index < str_len && "index can't be greater than size of string");
+    if ( index >= str_len) {
+        return UINT32_MAX;
+    }
+    return (unsigned char)str[index];
+}
+
+size_t sutil_char_count(char const *str) {
+    assert(str && "str cannot be nullptr");
+    if (!str) return 0;
+    return strlen(str);
+}
+
+
+bool sutil_char_in(const uint32_t c, const char *chars) {
+    assert(chars && "chars cannot be nullptr");
     if (!chars) return false;
     const size_t chars_len = strlen(chars);
     for (size_t i = 0; i < chars_len; ++i) {
@@ -32,7 +51,9 @@ bool sutil_char_in(const char c, const char *chars) {
     return false;
 }
 
-char * sutil_concat_char(const char *str1, ...){
+char * sutil_concat_strings(const char *str1, ...){
+    assert(str1 && "str1 cannot be nullptr");
+
     if ( !str1 ) return sutil_copy_char("");
 
     const char * arg_list[SUTIL_MAX_ARGS];
@@ -42,12 +63,12 @@ char * sutil_concat_char(const char *str1, ...){
     arg_list[arg_list_count++] = str1; // add first non-variadic arg to array
     size_t total_length = arg_lengths[0];
 
-    va_list args;
+    va_list args = {};
     va_start(args, str1);
-    const char *next = NULL;
+    const char *next;
 
-    // Loop until NULL sentinel is found or max arguments is reached
-    while ( arg_list_count < SUTIL_MAX_ARGS && (next = va_arg(args, const char *)) != NULL) {
+    // Loop until nullptr sentinel is found or max arguments is reached
+    while ( arg_list_count < SUTIL_MAX_ARGS && (next = va_arg(args, const char *)) != nullptr) {
         size_t len = strlen(next);
         arg_lengths[arg_list_count] = len;
         arg_list[arg_list_count++] = next;
@@ -57,7 +78,7 @@ char * sutil_concat_char(const char *str1, ...){
 
     char *new_str = malloc(sizeof(char) * total_length + 1);
     if (!new_str){
-        return NULL;
+        return nullptr;
     }
 
     char *dest = new_str;
@@ -70,16 +91,21 @@ char * sutil_concat_char(const char *str1, ...){
 }
 
 char * sutil_copy_char(const char *str) {
-    if (!str) return NULL;
-    size_t len = strlen(str);
+    assert(str && "str cannot be nullptr");
+
+    if (!str) return nullptr;
+    const size_t len = strlen(str);
     char *new_string = malloc(len + 1);
-    if (!new_string) return NULL;
+    if (!new_string) return nullptr;
     strcpy(new_string, str);
     return new_string;
 }
 
 
 bool sutil_ends_with(const char *str, const char *suffix) {
+    assert(str && "str cannot be nullptr");
+    assert(suffix && "suffix cannot be nullptr");
+
     if (!str || !suffix) return false;
     const size_t str_len = strlen(str);
     const size_t suffix_len = strlen(suffix);
@@ -97,6 +123,9 @@ int sutil_index_start_end_impl_(
     const size_t end,
     const size_t str_len,
     const size_t substring_len) {
+
+    assert(str && "str cannot be nullptr");
+    assert(substring && "substring cannot be nullptr");
     // printf("sutil_index_start_end_(%s, %s, %zu, %zu) \n", str, substring, start, end);
 
     if (! str || !substring ) {
@@ -128,16 +157,22 @@ int sutil_index_start_end_impl_(
 }
 
 int sutil_index_start_end_(const char *str, const char *substring, const size_t start, const size_t end) {
+    assert(str && "str cannot be nullptr");
+    assert(substring && "substring cannot be nullptr");
+    if (! str || !substring ) {
+        return -1;
+    }
     return sutil_index_start_end_impl_(str, substring, start, end, strlen(str), strlen(substring));
 }
 
 // make:   clang -DSUTIL_TEST_MAIN -o string_utils.out string_utils.c
+// make: clang -std=c23 -fsanitize=address -g -fno-omit-frame-pointer -DSUTIL_TEST_MAIN -o string_utils.out string_utils.c
 #ifdef SUTIL_TEST_MAIN
 int main(void) {
-    char *str = "this is my test string";
-    char *subs = "test";
-    int actual = sutil_index_(str, subs);
-    printf("called sutil_index_(%s, %s), returns: %d\n", str, subs,actual);
+    char *str = "test";
+    int index = 10;
+    int actual = sutil_char_at("test", index);
+    printf("called sutil_char_at(%s, %d), returns: %d\n", str, index, actual);
 
 
 
@@ -147,6 +182,11 @@ int main(void) {
 
 
 int sutil_index_start_(const char *str, const char *substring, const size_t start) {
+    assert(str && "str cannot be nullptr");
+    assert(substring && "substring cannot be nullptr");
+    if (! str || !substring ) {
+        return -1;
+    }
     const size_t str_len = strlen(str);
     return sutil_index_start_end_impl_(str, substring, start, str_len, str_len, strlen(substring));
 }
@@ -155,15 +195,20 @@ int sutil_index_start_(const char *str, const char *substring, const size_t star
 // only works on strings ~2GB max.
 // todo naming? index_of? find?
 int sutil_index_(const char *str, const char *substring) {
+    assert(str && "str cannot be nullptr");
+    assert(substring && "substring cannot be nullptr");
+    if (! str || !substring ) {
+        return -1;
+    }
     const size_t str_len = strlen(str);
     return sutil_index_start_end_impl_(str, substring, 0, str_len, str_len, strlen(substring));
 }
 
 char * sutil_lower(const char *str) {
-    if (!str) return NULL;
+    if (!str) return nullptr;
     size_t len = strlen(str);
     char *new_string = malloc(len + 1);
-    if (!new_string) return NULL;
+    if (!new_string) return nullptr;
     for (int i = 0; i < len; ++i) {
         new_string[i] = (char)tolower((unsigned char)str[i]);
     }
@@ -173,14 +218,14 @@ char * sutil_lower(const char *str) {
 
 
 char * sutil_pad_center(const char *str, const int width, const char fill_char) {
-    if (!str) return NULL;
+    if (!str) return nullptr;
     const size_t string_length = strlen(str);
     if ( width <= 0 || width <= string_length) {
         return sutil_copy_char(str);
     }
     const size_t width_size = (size_t)width;
     char *new_string = malloc(width_size + 1);
-    if (!new_string) return NULL;
+    if (!new_string) return nullptr;
     const size_t left_index = (width_size - string_length) / 2;
     memset(new_string, fill_char, width_size);
     new_string[width_size] = '\0';
@@ -191,14 +236,14 @@ char * sutil_pad_center(const char *str, const int width, const char fill_char) 
 
 
 char * sutil_pad_left(const char *str, const int width, const char fill_char) {
-    if (!str) return NULL;
+    if (!str) return nullptr;
     const size_t string_length = strlen(str);
     if ( width <= 0 || width <= string_length) {
         return sutil_copy_char(str);
     }
     const size_t width_size = (size_t)width;
     char *new_string = malloc(width_size + 1);
-    if (!new_string) return NULL;
+    if (!new_string) return nullptr;
     const size_t left_index = width_size - string_length;
     memset(new_string, fill_char, left_index);
     strcpy(new_string + left_index, str);
@@ -207,14 +252,14 @@ char * sutil_pad_left(const char *str, const int width, const char fill_char) {
 }
 
 char * sutil_pad_right(const char *str, const int width, const char fill_char) {
-    if (!str) return NULL;
+    if (!str) return nullptr;
     const size_t string_length = strlen(str);
     if ( width <= 0 || width <= string_length) {
         return sutil_copy_char(str);
     }
     const size_t width_size = (size_t)width;
     char *new_string = malloc(width_size + 1);
-    if (!new_string) return NULL;
+    if (!new_string) return nullptr;
 
     strcpy(new_string, str);
     memset(new_string + string_length, fill_char, width_size - string_length);
@@ -224,50 +269,40 @@ char * sutil_pad_right(const char *str, const int width, const char fill_char) {
 }
 
 bool sutil_starts_with(const char *str, const char *prefix) {
-    if (!str || !prefix) return false;
-    const size_t str_len = strlen(str);
-    const size_t prefix_len = strlen(prefix);
-    if ( prefix_len > str_len) return false;
+    assert(str && "str cannot be nullptr");
+    assert(prefix && "prefix cannot be nullptr");
 
-    const char *next = prefix;
-    size_t str_index = 0;
-    while ( *next != '\0' && str[str_index] != '\0') {
-        if (str[str_index++] != *next++ ) return false;
+    if (!str || !prefix) return false;
+    const size_t prefix_len = strlen(prefix);
+    const size_t str_len = strlen(str);
+    if (prefix_len > str_len) {
+        return false;
     }
-    return true;
+    // Use strncmp for a direct, readable, and optimized comparison.
+    return strncmp(str, prefix, prefix_len) == 0;
 }
 
 bool sutil_strings_equal(const char *str1, const char *str2) {
-    const size_t len1 = strlen(str1);
-    const size_t len2 = strlen(str2);
-    if (len1 != len2) {
-        return false;
-    }
-    for (int i = 0; i < len1; ++i) {
-        if (str1[i] != str2[i]) {
-            return false;
-        }
-    }
-    return true;
+    // If pointers are identical (both null or same string), they're equal.
+    if (str1 == str2) return true;
+    // If one is null and the other isn't, they're not equal.
+    if (!str1 || !str2) return false;
+
+    // strcmp is highly optimized and handles all comparison logic.
+    return strcmp(str1, str2) == 0;
 }
 
 bool sutil_strings_equal_case(const char *str1, const char *str2, const Case c) {
     if (c == CASE_SENSITIVE) {
         return sutil_strings_equal(str1, str2);
     }
-    const size_t len1 = strlen(str1);
-    const size_t len2 = strlen(str2);
-    if (len1 != len2) {
-        return false;
-    }
-    for (int i = 0; i < len1; ++i) {
-        const int c1 = toupper((unsigned char)str1[i]);
-        const int c2 = toupper((unsigned char)str2[i]);
-        if ( c1 != c2 ) {
-            return false;
-        }
-    }
-    return true;
+    // If pointers are identical (both null or same string), they're equal.
+    if (str1 == str2) return true;
+    // If one is null and the other isn't, they're not equal.
+    if (!str1 || !str2) return false;
+
+    // strcasecmp is highly optimized and handles all comparison logic.
+    return strcasecmp(str1, str2) == 0;
 }
 
 bool sutil_strings_same(const char *s1, const char *s2) {
@@ -276,7 +311,9 @@ bool sutil_strings_same(const char *s1, const char *s2) {
 
 
 char * sutil_strip(const char *str, const char *chars) {
-    if (!str) return NULL;
+    assert(str && "str cannot be null");
+
+    if (!str) return nullptr;
 
     const size_t str_len = strlen(str);
     const char *char_set;
@@ -304,7 +341,7 @@ char * sutil_strip(const char *str, const char *chars) {
     
     size_t new_len = str_len - left_index - end;
     char *new_str = malloc( new_len + 1 );
-    if (!new_str) return NULL;
+    if (!new_str) return nullptr;
     memcpy(new_str, str + left_index, new_len);
     new_str[new_len] = '\0';
     return new_str;
@@ -312,7 +349,9 @@ char * sutil_strip(const char *str, const char *chars) {
 
 
 char * sutil_strip_left(const char *str, const char *chars) {
-    if (!str)  return NULL;
+    assert(str && "str cannot be null");
+
+    if (!str)  return nullptr;
     const size_t str_len = strlen(str);
     const char *char_set;
     if (!chars || chars[0] == '\0' ) char_set = SUTIL_WHITESPACE;
@@ -326,14 +365,16 @@ char * sutil_strip_left(const char *str, const char *chars) {
         }
     }
     char *new_str = malloc(str_len - index + 1);
-    if (!new_str) return NULL;
+    if (!new_str) return nullptr;
     strcpy(new_str, str + index);
 
     return new_str;
 }
 
 char * sutil_strip_right(const char *str, const char *chars) {
-    if (!str) return NULL;
+    assert(str && "str cannot be null");
+
+    if (!str) return nullptr;
     const size_t str_len = strlen(str);
     const char *char_set;
     if (!chars || chars[0] == '\0' ) char_set = SUTIL_WHITESPACE;
@@ -348,7 +389,7 @@ char * sutil_strip_right(const char *str, const char *chars) {
     }
     size_t new_len = str_len - index;
     char *new_str = malloc(new_len + 1);
-    if (!new_str) return NULL;
+    if (!new_str) return nullptr;
     memcpy(new_str, str, new_len);
     new_str[new_len] = '\0';
     return new_str;
@@ -356,10 +397,12 @@ char * sutil_strip_right(const char *str, const char *chars) {
 
 
 char * sutil_upper(const char *str) {
-    if (!str) return NULL;
+    assert(str && "str cannot be null");
+
+    if (!str) return nullptr;
     size_t len = strlen(str);
     char *new_string = malloc(len + 1);
-    if (!new_string) return NULL;
+    if (!new_string) return nullptr;
     for (int i = 0; i < len; ++i) {
         new_string[i] = (char)toupper((unsigned char)str[i]);
     }
@@ -368,8 +411,10 @@ char * sutil_upper(const char *str) {
 }
 
 
-char * sutil_zfill(const char* str, int width){
-    if (!str) return NULL;
+char * sutil_zfill(const char* str, const int width){
+    assert(str && "str cannot be null");
+
+    if (!str) return nullptr;
     const size_t string_length = strlen(str);
     if (width < 0 || (size_t)width <= string_length) {
         // Return a copy so the caller can safely free() the result
@@ -381,7 +426,7 @@ char * sutil_zfill(const char* str, int width){
     }
 
     char *new_str = malloc((size_t)width + 1);
-    if (!new_str) return NULL;
+    if (!new_str) return nullptr;
 
     size_t padding = width - string_length;
     size_t offset = 0;

@@ -184,6 +184,25 @@ void test_sutil_upper(void) {
     free(actual);
 }
 
+void display_defines(void) {
+#ifdef __GNUC__
+    printf("__GNUC__ is defined");
+#else
+    printf("__GNUC__ is not defined");
+#endif
+#ifdef __clang__
+    printf("__clang__ is defined");
+    #if __has_extension(statement_expressions)
+        printf("   __has_extension(statement_expressions) is defined");
+    #else
+        printf("   __has_extension(statement_expressions) NOT is defined");
+
+    #endif
+#else
+    printf("__clang__ is not defined");
+#endif
+}
+
 // make:   clang -std=c17 -o test_string_utils.out test_string_utils.c string_utils.c
 
 int main(int argc, char *argv[]) {
@@ -198,4 +217,5 @@ int main(int argc, char *argv[]) {
     test_sutil_strip_left();
     test_sutil_strip_right();
     test_sutil_upper();
+
 }

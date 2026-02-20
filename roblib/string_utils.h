@@ -6,6 +6,7 @@
 #pragma once
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdint.h>
 
 
 
@@ -42,12 +43,29 @@ printable = digits + ascii_letters + punctuation + whitespace
 
 
 /**
+ * Returns the character at the specified index as a Unicode code point.
+ * @param str the non-NULL input string
+ * @param index the zero-based index of the character to retrieve
+ * @return the character at the specified index, or UINT32_MAX if str is NULL or index is out of bounds.
+ */
+uint32_t sutil_char_at(char const *str, size_t index);
+
+
+/**
+ * Returns the count of characters in the string. I.e., strlen(str). Although an ASCII string's character count
+ * is the same as strlen(), for other encodings (like utf-8), char_count() may not == strlen().
+ * @param str the non-NULL string argument.
+ * @return the count of characters, i.e., strlen(str), or 0 if str is NULL.
+ */
+size_t sutil_char_count(char const *str);
+
+/**
  * Returns true if the char `c` is found in the `chars` array.
  * @param c the character to check
- * @param chars the characters to check against
+ * @param chars the characters to check against, not NULL.
  * @return true if char `c` is found in `chars`, otherwise return false.
  */
-bool sutil_char_in(char c, const char *chars) ;
+bool sutil_char_in(uint32_t c, const char *chars);
 
 /**
  * Concatenates the strings in the argument list and returns a newly allocated string. The last argument must be NULL.
@@ -56,27 +74,35 @@ bool sutil_char_in(char c, const char *chars) ;
  * @param ... const char* zero or more additional strings
  * @return a newly allocated string concatenation of the arugment list.
  */
-char * sutil_concat_char(const char *str1, ...);
+char * sutil_concat_strings(const char *str1, ...);
 /**
  * Returns a newly allocated string that is a copy of the input string.
- * @param str input string
- * @return a newly allocated string copy of the original string
+ * @param str input string, non null
+ * @return a newly allocated string copy of the original string, or nullptr if error occurred.
  */
 char * sutil_copy_char(const char *str);
 
 
 /**
  * Returns true if the input string ends with the specified suffix, otherwise return false.
- * @param str the input string
- * @param suffix the substring to match at the end of the input string
+ * @param str the input string, non null
+ * @param suffix the substring to match at the end of the input string, non null
  * @return true if `str` ends with `suffix`, else false.
  */
 bool sutil_ends_with(const char *str, const char *suffix);
 
 #define sutil_index_SELECT(_1, _2, _3, _4, NAME, ...) NAME
-// Check for Clang specific feature or generic GCC support
-#if (defined(__GNUC__) && !defined(__clang__)) || (defined(__clang__) && __has_extension(statement_expressions))
+// GCC and Clang (which defines __GNUC__) both support statement expressions
+#if defined(__GNUC__)
 // using gnu "statement expression" here instead of do-while because we need to return a value from the block
+/**
+ * sutil_index(const char *str, const char *substring, [size_t start [, size_t end ]]
+ *
+ * Return the index of first occurrence of `substring` in `str`, both non null. Optional arguments `start` and `end`
+ * allow specifying where to start/stop looking for `substr` in `str`.
+ * Returns -1 if `substr` not found.
+ *
+ */
 #define sutil_index(...) \
     __extension__ ({ \
         extern int sutil_index_(const char *str, const char *substring); \
@@ -162,7 +188,7 @@ bool sutil_strings_same(const char *s1, const char *s2);
  *  sutil_strip( str, ""), sutil_strip( str, " "), and sutil_strip( str, NULL) are equivalent for this purpose.
  *
  * @param str input string to strip of leading and trailing chars
- * @param chars the array of chars to check
+ * @param chars the array of chars to check. If empty or NULL, SUTIL_WHITESPACE is used as chars
  * @return a newly allocated copy of the string with leading and trailing characters removed.
  */
 char * sutil_strip(const char *str, const char *chars);
@@ -172,7 +198,7 @@ char * sutil_strip(const char *str, const char *chars);
  * The chars argument is a string specifying the set of characters to be removed. If empty or NULL, the chars argument
  * defaults to removing whitespace as specified in SUTIL_WHITESPACE.
  * @param str input string to strip of leading chars
- * @param chars the array of chars to check
+ * @param chars the array of chars to check. If empty or NULL, SUTIL_WHITESPACE is used as chars
  * @return a newly allocated copy of the string with leading characters removed.
  */
 char * sutil_strip_left(const char *str, const char *chars);
@@ -182,7 +208,7 @@ char * sutil_strip_left(const char *str, const char *chars);
  * The chars argument is a string specifying the set of characters to be removed. If empty or NULL, the chars argument
  * defaults to removing whitespace as specified in SUTIL_WHITESPACE.
  * @param str input string to strip of trailing chars
- * @param chars the array of chars to check
+ * @param chars the array of chars to check. If empty or NULL, SUTIL_WHITESPACE is used as chars
  * @return a newly allocated copy of the string with trailing characters removed.
  */
 char * sutil_strip_right(const char *str, const char *chars);
