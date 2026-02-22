@@ -10,6 +10,13 @@
 #include <stdbool.h>
 #include <setjmp.h>
 
+// ----------------------------
+// HELPER MACROS
+// ----------------------------
+
+#define STATEMENT(S) do{ S }while(0)
+
+
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 #  define PUNIT_NO_RETURN _Noreturn
 #elif defined(__GNUC__)
@@ -17,6 +24,20 @@
 #else
 #  define PUNIT_NO_RETURN
 #endif
+
+// -------------------------------------------------------
+// PUNIT_TAG: test metadata annotation for tooling
+// -------------------------------------------------------
+#if defined(__clang__)
+  #define PUNIT_TAG(payload) __attribute__((annotate("" payload "")))
+#elif defined(__GNUC__)
+  #define PUNIT_TAG(payload) __attribute__((annotate("" payload "")))
+#else
+  // Fallback for non-attribute compilers; parser can read this comment.
+  #define PUNIT_TAG(payload) /* PUNIT_TAG "" payload "" */
+#endif
+
+
 
 #if defined(__GNUC__) || defined(__INTEL_COMPILER) || defined(__SUNPRO_CC) || defined(__IBMCPP__)
 #  define PUNIT_THREAD_LOCAL __thread
@@ -88,20 +109,19 @@ void punit_errorf_ex(const char* filename, int line, const char* func, const cha
 // assertTrue
 // -----------
 
-
 #define assertTrue_1(expr) \
-do { \
-    if (!(expr)) { \
-        punit_error("assertion failed: " #expr " is not true."); \
-    } \
-} while (0)
+    STATEMENT(          \
+        if (!(expr)) {  \
+            punit_error("assertion failed: " #expr " is not true."); \
+        }               \
+    )
 
 #define assertTrue_2(expr, msg) \
-do { \
-    if (!(expr)) { \
-        punit_errorf("assertion failed: " #expr " is not true. %s", (msg)); \
-    } \
-} while (0)
+    STATEMENT(\
+        if (!(expr)) { \
+            punit_errorf("assertion failed: " #expr " is not true. %s", (msg)); \
+        } \
+    )
 
 #define assertTrue_SELECT(_1, _2, NAME, ...) NAME
 #define assertTrue(...) assertTrue_SELECT(__VA_ARGS__, assertTrue_2, assertTrue_1)(__VA_ARGS__)
@@ -110,15 +130,24 @@ do { \
 // assertFalse
 // -----------
 
-// ------------------------
-// assertEqual
-// ------------------------
-#define PUNIT_ASSERT_EQUAL_BODY(a, b, fail_call) \
-    do { \
-        if (!( a == b )) { \
-            fail_call; \
+#define assertFalse_1(expr) \
+STATEMENT( \
+        if ( (expr) ) { \
+            punit_error("assertion failed: " #expr " is not false."); \
         } \
-    } while (0) \
+    )
+
+#define assertFalse_2(expr, msg) \
+    STATEMENT( \
+            if ( (expr) ) { \
+                punit_errorf("assertion failed: " #expr " is not false. %s", (msg)); \
+            } \
+    )
+
+#define assertFalse_SELECT(_1, _2, NAME, ...) NAME
+#define assertFalse(...) assertFalse_SELECT(__VA_ARGS__, assertFalse_2, assertFalse_1)(__VA_ARGS__)
+
+
 
 // Helper to select format specifier based on type (C11)
 #define PUNIT_FMT(expr, ...) _Generic( (expr), \
@@ -138,25 +167,63 @@ do { \
     long double       : "%Lf"   \
 )
 
-#define punit_fmt_error_msg(msg, ...) \
+// ------------------------
+// assertEqual
+// ------------------------
 
+#define PUNIT_ASSERT_EQUAL_BODY(a, b, fail_call) \
+    STATEMENT( \
+            if (!( a == b )) { \
+                fail_call; \
+            } \
+    )
 
 
 #define punit_assertEqual_1(a, b) \
 PUNIT_ASSERT_EQUAL_BODY((a), (b), \
     punit_errorf( \
-    insert_conversion_specifiers("assertion failed.\nExpected: %s \nActual  : %s", \
-        PUNIT_FMT(a), PUNIT_FMT(b) ), (a), (b)))
+        insert_conversion_specifiers("assertion failed.\nExpected: %s \nActual  : %s", \
+            PUNIT_FMT(a), PUNIT_FMT(b) ), (a), (b)))
 
 #define punit_assertEqual_2(a, b, msg) \
 PUNIT_ASSERT_EQUAL_BODY((a), (b), \
     punit_errorf(\
-    insert_conversion_specifiers("assertion failed: %s\nExpected: %s\nActual  : %s", \
-        "%s", PUNIT_FMT(a), PUNIT_FMT(b) ), (msg), (a), (b)))
+        insert_conversion_specifiers("assertion failed: %s\nExpected: %s\nActual  : %s", \
+            "%s", PUNIT_FMT(a), PUNIT_FMT(b) ), (msg), (a), (b)))
 
 #define punit_assertEqual_SELECT(_1, _2, _3, NAME, ...) NAME
 #define assertEqual(...) \
     punit_assertEqual_SELECT(__VA_ARGS__, punit_assertEqual_2, punit_assertEqual_1)(__VA_ARGS__)
+
+
+
+// ------------------------
+// assertNotEqual
+// ------------------------
+
+#define PUNIT_ASSERT_NOT_EQUAL_BODY(a, b, fail_call) \
+    STATEMENT( \
+            if (!( a != b )) { \
+                fail_call; \
+            } \
+    )
+
+
+#define punit_assertNotEqual_1(a, b) \
+    PUNIT_ASSERT_NOT_EQUAL_BODY((a), (b), \
+        punit_errorf( \
+            insert_conversion_specifiers("assertion failed.\nExpected: %s \nActual  : %s", \
+                PUNIT_FMT(a), PUNIT_FMT(b) ), (a), (b) ) )
+
+#define punit_assertNotEqual_2(a, b, msg) \
+    PUNIT_ASSERT_NOT_EQUAL_BODY((a), (b), \
+        punit_errorf(\
+            insert_conversion_specifiers("assertion failed: %s\nExpected: %s\nActual  : %s", \
+                "%s", PUNIT_FMT(a), PUNIT_FMT(b) ), (msg), (a), (b) ) )
+
+#define punit_assertNotEqual_SELECT(_1, _2, _3, NAME, ...) NAME
+#define assertNotEqual(...) \
+    punit_assertNotEqual_SELECT(__VA_ARGS__, punit_assertNotEqual_2, punit_assertNotEqual_1)(__VA_ARGS__)
 
 // -------------------------------------------------------
 // tests

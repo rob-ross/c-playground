@@ -69,6 +69,18 @@ PUNIT_ASSERT_EQUAL_BODY((a), (b), punit_errorf("assertion failed: %s\nExpected=%
 #define punit_assertEqual(...) punit_assertEqual_SELECT(__VA_ARGS__, punit_assertEqual_2, punit_assertEqual_1)(__VA_ARGS__)
 
 
+// ------------------------
+// assertNotEqual
+// ------------------------
+#define PUNIT_ASSERT_NOT_EQUAL_BODY(a, b, fail_call) \
+do { \
+if (!PUNIT_LIKELY( a != b )) { \
+fail_call; \
+} \
+PUNIT_PUSH_DISABLE_MSVC_C4127_ \
+} while (0) \
+PUNIT_POP_DISABLE_MSVC_C4127_
+
 // AI add code below here:
 
 

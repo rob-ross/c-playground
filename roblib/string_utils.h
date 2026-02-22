@@ -10,12 +10,7 @@
 
 
 
-// expands to printf( fmt, ...)  but adds a newline to the end of fmt.
-#define println(fmt, ...)               \
-    do {                                \
-        printf((fmt), ##__VA_ARGS__);   \
-        putchar('\n');                  \
-    } while (0)
+
 
 
 
@@ -26,9 +21,8 @@ static const char  * const SUTIL_WHITESPACE = " \t\n\r\v\f";
 
 typedef enum case_e { CASE_INSENSITIVE, CASE_SENSITIVE } Case;
 
-/**
- *
-* const char const *whitespace = " \t\n\r\v\f";
+/*
+const char const *whitespace = " \t\n\r\v\f";
 ascii_lowercase = 'abcdefghijklmnopqrstuvwxyz'
 ascii_uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 ascii_letters = ascii_lowercase + ascii_uppercase
@@ -37,9 +31,7 @@ hexdigits = digits + 'abcdef' + 'ABCDEF'
 octdigits = '01234567'
 punctuation = r"""!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~"""
 printable = digits + ascii_letters + punctuation + whitespace
- *
- *
- */
+*/
 
 
 /**
