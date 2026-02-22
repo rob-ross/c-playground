@@ -178,7 +178,7 @@
  * @param x scalar value, pointer, or expression. Not tested for arrays, structs, unions, or enums
  */
 #define PV(x) STATEMENT( \
-    printf(" %s = (%s)", #x, TYPE_STR(x)); \
+    printf(" %s == (%s)", #x, TYPE_STR(x)); \
     if ( IS_BOOL(x) ){ \
         printf( (x) == 0 ? "false" : "true");\
     } else {    \
@@ -192,3 +192,9 @@
  * @param x scalar value, pointer, or expression. Not tested for arrays, structs, unions, or enums
  */
 #define PVL(x) STATEMENT( PV(x); printf("\n"); )
+
+/**
+ * Prints the argument string with a newline
+ * @param s string value
+ */
+#define PS(s) STATEMENT( printf("%s == \"%s\"\n", #s, (s) ); )
