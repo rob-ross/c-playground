@@ -53,7 +53,7 @@ vec_err_t vector_init (vector_t *out, const size_t initial_capacity) {
     return VEC_OK;
 }
 
-vec_err_t _ensure_capacity(vector_t *v) {
+static vec_err_t vector_ensure_capacity(vector_t *v) {
     if (v->length >= v->capacity) {
         // must grow buffer
         size_t new_capacity = v->capacity ? v->capacity * 2 : 1;
@@ -74,11 +74,40 @@ vec_err_t vector_append(vector_t *v, const int i) {
     if (!v) {
         return VEC_ERR_NULL_ARG;
     }
-    const int result = _ensure_capacity(v);
+    const int result = vector_ensure_capacity(v);
     if (result  != VEC_OK) {
         return result;
     }
     v->v[v->length++] = i;
+    return VEC_OK;
+}
+
+vec_err_t vector_get(vector_t *v, int *out, const size_t index) {
+    if (!v) {
+        return VEC_ERR_NULL_ARG;
+    }
+    if (v->length == 0 ) {
+        return VEC_ERR_EMPTY;
+    }
+    if (  v->length - 1 < index ) {
+        return VEC_ERR_INDEX_OUT_OF_RANGE;
+    }
+    *out = v->v[index];
+    return VEC_OK;
+}
+
+vec_err_t vector_get_or(vector_t *v, int *out, size_t index, const int fallback) {
+    if (!v) {
+        return VEC_ERR_NULL_ARG;
+    }
+    if (v->length == 0 ) {
+        return VEC_ERR_EMPTY;
+    }
+    if (  v->length - 1 < index ) {
+        *out = fallback;
+        return VEC_OK;
+    }
+    *out = v->v[index];
     return VEC_OK;
 }
 
@@ -87,7 +116,7 @@ vec_err_t vector_insert(vector_t *v, const int i, const size_t index) {
     if (!v) {
         return VEC_ERR_NULL_ARG;
     }
-    const int result = _ensure_capacity(v);
+    const int result = vector_ensure_capacity(v);
     if (result  != VEC_OK) {
         return result;
     }
