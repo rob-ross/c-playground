@@ -103,13 +103,33 @@ void test_pv(void) {
     PVL(void_const_ptr);
 }
 
+void test_arrays(void) {
+    int array[10];
+    MEM_ZERO_ARRAY(array);
+    PVL(array);
+    PVL(sizeof(array));
+}
+
+void test_structs(void) {
+    struct s {
+        int x;
+        int y;
+    };
+    struct s foo_s = { };
+    PVL(sizeof(foo_s));
+    PVL(&foo_s);
+    PVL(foo_s.x);
+}
 //make:
 // clang -std=c23 -o base_test.out base_test.c
 int main(void) {
-    test_pv();
+    // test_pv();
 
     char *str = "Now is the time for all good men to order a pizza from Pizza Hut!";
     PS(str);
+
+    test_arrays();
+    test_structs();
 
     return 0;
 }
