@@ -2,7 +2,7 @@
 // Created by Rob Ross on 2/2/26.
 //
 
-#include "../object.h"
+#include "object.h"
 
 #include <stdbool.h>
 #include <stdio.h>
