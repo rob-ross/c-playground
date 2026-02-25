@@ -1,4 +1,6 @@
 //
+//  dev_utils.h
+//
 // Created by Rob Ross on 2/20/26.
 //
 
@@ -14,5 +16,5 @@
     } while (0)
 
 
-void repr_array_int(size_t const n, const int array[static n]);
+void repr_array_int(size_t n, const int array[static n], char const *prefix);
 void du_repr_array_int_2D(size_t const rows, size_t const cols, int const array[static rows][ cols]);

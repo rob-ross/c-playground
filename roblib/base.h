@@ -37,8 +37,9 @@
 #define STATEMENT(S) do{ S }while(0)
 #define STRINGIFY_(S) #S
 #define STRINGIFY(S) STRINGIFY_(S)
-#define GLUE_(A, B) A##B
-#define GLUE(A, B) GLUE_(A, B)
+#define CAT_(A, B) A##B
+#define CAT(A, B) CAT_(A, B)
+#define CAT3(A,B,C) CAT(CAT(A,B), C)
 #define ARRAY_COUNT(a) (sizeof(a)/sizeof(*(a)))
 #define INT_FROM_PTR(p) (unsigned long long)((char*)p - (char*)0)
 #define PTR_FROM_INT(i) (void*)((char*)0 + (i))

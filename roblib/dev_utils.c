@@ -10,6 +10,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "dev_utils.h"
+
 
 char const *create_string(char const *fmt, ...) {
 
