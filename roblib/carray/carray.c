@@ -33,7 +33,6 @@ const char *carray_err_str(const CArrayError err) {
 }
 
 CArrayError carray_get_int(const size_t n, const int array[static n], const size_t index, int *out) {
-    *out = (int)(-1ULL);  // error condition
     if (!array) {
         return CARRAY_ERR_NULL_ARG;
     }
@@ -44,6 +43,16 @@ CArrayError carray_get_int(const size_t n, const int array[static n], const size
         return CARRAY_ERR_INDEX_OUT_OF_RANGE;
     }
     *out = array[index];
+    return CARRAY_OK;
+}
+
+// ReSharper disable once CppDFAConstantFunctionResult
+CArrayError carray_get_or_int(const size_t n, const int array[static n], const size_t index, int *out, const int fallback) {
+    CArrayError error = carray_get_int(n, array, index, out);
+    if (!error) {
+        return CARRAY_OK;
+    }
+    *out = fallback;
     return CARRAY_OK;
 }
 
@@ -68,7 +77,7 @@ void carray_repr_int(const size_t n, const int array[static n], char const *mess
     printf(" }");
 }
 
-CArrayError carray_set_int(const size_t n, int array[static n], const size_t index, int value) {
+CArrayError carray_set_int(const size_t n, int array[static n], const size_t index, const int value) {
     if (!array) {
         return CARRAY_ERR_NULL_ARG;
     }

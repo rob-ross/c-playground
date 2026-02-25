@@ -21,8 +21,9 @@ const char *carray_err_str(const CArrayError err) {
         default:
             return "unknown error";
     }
-
 }
+
+
 
 #if !defined(CARRAY_IMPLEMENTATION)
 #   define CARRAY_IMPLEMENTATION

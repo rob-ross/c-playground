@@ -61,6 +61,21 @@ CArrayError CARRAY_FN(_get)(const size_t n, CARRAY_T const array[static n], cons
 }
 #endif
 
+
+#if !defined(CARRAY_IMPLEMENTATION)
+CArrayError CARRAY_FN(_get_or)(size_t n, CARRAY_T const array[static n], size_t index, CARRAY_T out[static 1], CARRAY_T fallback) ;
+#else
+CArrayError CARRAY_FN(_get_or)(const size_t n, CARRAY_T const array[static n], const size_t index, CARRAY_T out[static 1], CARRAY_T  fallback ) {
+    CArrayError error = CARRAY_FN(_get)(n, array, index, out);
+    if (!error) {
+        return CARRAY_OK;
+    }
+    *out = fallback;
+    return CARRAY_OK;
+}
+#endif
+
+
 #if !defined(CARRAY_IMPLEMENTATION)
 /**
  * Prints a representation of the array via printf, on the current line. Does not print a newline.
@@ -98,9 +113,17 @@ void CARRAY_FN(_repr)(const size_t n, CARRAY_T const array[static n], char const
 #endif
 
 #if !defined(CARRAY_IMPLEMENTATION)
+/**
+ *  Sets the value of array[index] to the `value` argument.
+ * @param n number of elements in the array
+ * @param array the array for which to set the value
+ * @param index the index position of the array. If greater than n-1, returns CARRAY_ERR_INDEX_OUT_OF_RANGE
+ * @param value the value to set at array[index]
+ * @return CARRAY_OK on success, or error code on failure.
+ */
 CArrayError CARRAY_FN(_set)( size_t n, CARRAY_T array[static n], size_t index, CARRAY_T value) ;
 #else
-CArrayError CARRAY_FN(_set)(const size_t n, CARRAY_T array[static n], const size_t index, CARRAY_T value) {
+CArrayError CARRAY_FN(_set)(const size_t n, CARRAY_T array[static n], const size_t index, CARRAY_T const value) {
     if (!array) {
         return CARRAY_ERR_NULL_ARG;
     }
