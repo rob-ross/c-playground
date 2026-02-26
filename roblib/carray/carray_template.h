@@ -9,12 +9,13 @@
 #include "../base.h"
 
 
-typedef enum CArrayError {
+typedef enum CArrayError: unsigned char {
     CARRAY_OK = 0,
     CARRAY_ERR_NULL_ARG,
     CARRAY_ERR_OUT_OF_MEM,
     CARRAY_ERR_EMPTY,
     CARRAY_ERR_INDEX_OUT_OF_RANGE,
+    CARRAY_ERR_UNNOWN_ERR,
 } CArrayError;
 
 typedef enum CTypeEnum: unsigned char {
