@@ -4,10 +4,10 @@
 
 #include <stdio.h>
 
-#include "carray_template.inc"
-#include "../dev_utils.h"
+#include "../carray_template.inc"
+#include "../../dev_utils.h"
 
-#import "carray_types.h"
+#import "../carray_types.h"
 
 
 void show_error(CArrayError error) {
@@ -139,8 +139,9 @@ void t5(void) {
 // make;
 // clang -std=c23 -Wall -Werror -o ./out/carray_test.out carray_test.c carray_types.c --save-temps
 
-// clang -std=c23 -Wall -Werror -o ./out/carray_test.out carray_test.c carray_types.c ../dev_utils.c
+// clang -std=c23 -Wall -Werror -o ../out/carray_test.out carray_test.c ../carray_types.c ../../dev_utils.c
 int main(int argc, char *argv[]) {
+    printf("STARTING carray_test.c");
     t1();
     t2();
     t3();
