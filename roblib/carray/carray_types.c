@@ -18,6 +18,7 @@ const char *carray_err_str(const CArrayError err) {
             return "empty array";
         case CARRAY_ERR_INDEX_OUT_OF_RANGE:
             return "index out of range";
+        case CARRAY_ERR_UNNOWN_ERR:
         default:
             return "unknown error";
     }
