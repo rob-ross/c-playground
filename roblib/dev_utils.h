@@ -7,14 +7,14 @@
 #pragma once
 #include <stddef.h>
 
-
+#if !defined(print)
 // expands to printf( fmt, ...)  but adds a newline to the end of fmt.
 #define print(fmt, ...)                 \
     do {                                \
         printf((fmt), ##__VA_ARGS__);   \
         putchar('\n');                  \
     } while (0)
-
+#endif
 
 void repr_array_int(size_t n, const int array[static n], char const *prefix);
-void du_repr_array_int_2D(size_t const rows, size_t const cols, int const array[static rows][ cols]);
+void du_repr_array_int_2D(size_t rows, size_t cols, int const array[static rows][ cols]);

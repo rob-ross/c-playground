@@ -199,3 +199,12 @@
  * @param s string value
  */
 #define PS(s) STATEMENT( printf("%s == \"%s\"\n", #s, (s) ); )
+
+
+// expands to printf( fmt, ...)  but adds a newline to the end of fmt.
+#define print(fmt, ...)                 \
+    do {                                \
+        printf((fmt), ##__VA_ARGS__);   \
+        putchar('\n');                  \
+    } while (0)
+

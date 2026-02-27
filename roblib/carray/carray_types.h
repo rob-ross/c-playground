@@ -351,7 +351,7 @@
 
 
 // ---------------
-// repr dispatcher
+// method dispatcher
 // ---------------
 #define CARRAY__GET_CASE(T, SUFFIX)     T: CAT(carray_get, SUFFIX),
 #define CARRAY__GET_OR_CASE(T, SUFFIX)  T: CAT(carray_get_or, SUFFIX),

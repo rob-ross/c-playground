@@ -4,13 +4,12 @@
 // Created by Rob Ross on 2/25/26.
 //
 
-#include "../../munit/munit.h"
+#include "../../testing_utils.h"
 #include "../carray_types.h"
 
 // munit formats error messages as expected, actual
 
 typedef struct UCharStr { unsigned char err; const char *expected;} UCharStr;
-const UCharStr NULL_ENUM_STR = {0, NULL};  //sentinel null value object
 
 
 
@@ -67,7 +66,7 @@ MunitResult test_carray_err_str(const MunitParameter params[], void* fixture) {
 
     // we can use a struct to contain these two datums
     const UCharStr *ptr = fixture;
-    while (ptr->expected != NULL) {
+    while (ptr->expected != nullptr) {
         munit_assert_string_equal(ptr->expected, carray_err_str(ptr->err));
         ptr++;
     }
@@ -159,7 +158,7 @@ void * test_ctype_repr_str_setup(const MunitParameter params[], void* user_data)
 
 MunitResult test_ctype_repr_str(const MunitParameter params[], void* fixture) {
     const UCharStr *ptr = fixture;
-    while (ptr->expected != NULL) {
+    while (ptr->expected != nullptr) {
         munit_assert_string_equal(ptr->expected, ctype_repr_str(ptr->err));
         ptr++;
     }
@@ -173,21 +172,21 @@ MunitResult test_ctype_repr_str(const MunitParameter params[], void* fixture) {
 MunitTest tests[] = {
     {
         .name="/test_carray_err_str", .test=test_carray_err_str, .setup=test_carray_err_str_setup,
-        .tear_down=free_tear_down, .options=MUNIT_TEST_OPTION_NONE, .parameters=NULL
+        .tear_down=free_tear_down, .options=MUNIT_TEST_OPTION_NONE, .parameters=nullptr
       },
     {
         .name="/test_ctype_repr_str", .test=test_ctype_repr_str, .setup=test_ctype_repr_str_setup,
-        .tear_down=free_tear_down, .options=MUNIT_TEST_OPTION_NONE, .parameters=NULL
+        .tear_down=free_tear_down, .options=MUNIT_TEST_OPTION_NONE, .parameters=nullptr
       },
       /* Mark the end of the array with an entry where the test
-       * function is NULL */
-      { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
+       * function is nullptr */
+      { nullptr, nullptr, nullptr, nullptr, MUNIT_TEST_OPTION_NONE, nullptr }
 };
 
 static const MunitSuite suite = {
     "/carray", /* name */
     tests, /* tests */
-    NULL, /* suites */
+    nullptr, /* suites */
     1, /* iterations */
     MUNIT_SUITE_OPTION_NONE /* options */
   };
@@ -202,7 +201,7 @@ test_carray_types.c ../carray_types.c -Wno-conversion -Wno-sign-conversion  ../.
 */
 
 int main (int argc, char* argv[argc + 1]) {
-        return munit_suite_main(&suite, NULL, argc, argv);
+        return munit_suite_main(&suite, nullptr, argc, argv);
     }
 
 /*

@@ -4,8 +4,18 @@ project(CS50x C)
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+# Helpful for debugging (CLion usually does this in Debug, but explicit is fine)
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g -fno-omit-frame-pointer")
+
 # 1. Explicitly define your library/shared code
 add_executable(string_buffer roblib/string_buffer.c roblib/string_buffer.h)
+
+# Explicit target matching your manual clang command:
+add_executable(test_hashmap
+        roblib/map/test_hashmap.c
+        roblib/map/hashmap.c
+        roblib/munit/munit.c
+)
 
 # 2. AUTOMATION: Find all other .c files and make them executables
 # This is great for "learning" repos where every file has a main()
