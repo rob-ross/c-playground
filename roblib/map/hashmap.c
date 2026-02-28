@@ -253,8 +253,6 @@ static void resize_map(HashMap *map) {
         return; // Allocation failed, keep old map
     }
 
-    repr_HashMap(map, false);
-
     // Rehash all existing nodes
     for (size_t i = 0; i < map->num_buckets; i++) {
         Node *current = map->buckets[i];
@@ -277,8 +275,6 @@ static void resize_map(HashMap *map) {
     map->num_buckets = new_num_buckets;
     map->fill_capacity = (size_t)(new_num_buckets * (long double)map->fill_factor);
     recalc_load(map);
-
-    repr_HashMap(map, false);
 }
 
 static void set_value(Node *node, const void *value, const MapTypeEnum value_type) {
@@ -589,4 +585,62 @@ void repr_HashMap(const HashMap *map, bool verbose) {
         }
     }
 
+}
+
+// -----------------------------------------
+// Generic map_put implementation
+// -----------------------------------------
+
+MapValue value_for_long(const long v) {
+    return (MapValue){.vlong = v, .value_type = MAP_TYPE_LONG};
+}
+
+MapValue value_for_double(const double v) {
+    return (MapValue){.vdouble = v, .value_type = MAP_TYPE_DOUBLE};
+}
+
+MapValue value_for_string(const char * v) {
+    return (MapValue){.vstring = (char*)v, .value_type = MAP_TYPE_STRING};
+}
+
+MapValue value_for_void_ptr(const void * v) {
+    return (MapValue){.vvoid_ptr = (void*)v, .value_type = MAP_TYPE_VOID_PTR};
+}
+
+MapKey key_for_long(const long v) {
+    return (MapKey){.klong = v, .key_type = MAP_TYPE_LONG};
+}
+
+MapKey key_for_double(const double v) {
+    return (MapKey){.kdouble = v, .key_type = MAP_TYPE_DOUBLE};
+}
+
+MapKey key_for_string(const char * v) {
+    return (MapKey){.kstring = (char*)v, .key_type = MAP_TYPE_STRING};
+}
+
+MapKey key_for_void_ptr(const void * v) {
+    return (MapKey){.kvoid_ptr = (void*)v, .key_type = MAP_TYPE_VOID_PTR};
+}
+
+void (map_put)(HashMap *map, MapKey k, MapValue v) {
+    const void *key_ptr;
+    switch (k.key_type) {
+        case MAP_TYPE_LONG:    key_ptr = &k.klong;    break;
+        case MAP_TYPE_DOUBLE:  key_ptr = &k.kdouble;  break;
+        case MAP_TYPE_STRING:  key_ptr = k.kstring;   break;
+        case MAP_TYPE_VOID_PTR:key_ptr = k.kvoid_ptr; break;
+        default: return; // Or handle error
+    }
+
+    const void *value_ptr;
+    switch (v.value_type) {
+        case MAP_TYPE_LONG:    value_ptr = &v.vlong;    break;
+        case MAP_TYPE_DOUBLE:  value_ptr = &v.vdouble;  break;
+        case MAP_TYPE_STRING:  value_ptr = v.vstring;   break;
+        case MAP_TYPE_VOID_PTR:value_ptr = v.vvoid_ptr; break;
+        default: return; // Or handle error
+    }
+
+    put(map, key_ptr, value_ptr, k.key_type, v.value_type);
 }

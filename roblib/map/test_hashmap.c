@@ -152,76 +152,30 @@ MunitResult test_klong_vstring(const MunitParameter params[], void* fixture) {
         snprintf(search_string,10, "hello%d",i+1);
 
         const char* value = map_get_klong_vstring(map, i );
-        // print("search string = %s, value = %s", search_string, value);
 
         munit_assert_string_equal( search_string, value);
     }
-
-    print("");
-    repr_HashMap(map, false);
 
     free_map(map);
 
     return MUNIT_OK;
 }
 
-MapValue value_for_long(const long v) {
-    return (MapValue){.vlong = v, .value_type = MAP_TYPE_LONG};
-}
-
-MapValue value_for_double(const double v) {
-    return (MapValue){.vdouble = v, .value_type = MAP_TYPE_DOUBLE};
-}
-
-MapValue value_for_string(char * v) {
-    return (MapValue){.vstring = v, .value_type = MAP_TYPE_STRING};
-}
-
-MapValue value_for_void_ptr(void * v) {
-    return (MapValue){.vvoid_ptr = v, .value_type = MAP_TYPE_VOID_PTR};
-}
-
-MapKey key_for_long(const long v) {
-    return (MapKey){.klong = v, .key_type = MAP_TYPE_LONG};
-}
-
-MapKey key_for_double(const double v) {
-    return (MapKey){.kdouble = v, .key_type = MAP_TYPE_DOUBLE};
-}
-
-MapKey key_for_string(char * v) {
-    return (MapKey){.kstring = v, .key_type = MAP_TYPE_STRING};
-}
-
-MapKey key_for_void_ptr(void * v) {
-    return (MapKey){.kvoid_ptr = v, .key_type = MAP_TYPE_VOID_PTR};
-}
-
-#define MAP_KEY(K) _Generic( (K),                                   \
-    long: key_for_long(K), const long: key_for_long(K),             \
-    double: key_for_double(K), const double: key_for_double(K),     \
-    char *: key_for_string(K), const char *: key_for_string(K),     \
-    void *: key_for_void_ptr(K), const void *: key_for_void_ptr(K)  \
-    )
-
-#define MAP_VALUE(V) _Generic( (V),                                       \
-    long: value_for_long(V), const long: value_for_long(V),             \
-    double: value_for_double(V), const double: value_for_double(V),     \
-    char *: value_for_string(V), const char *: value_for_string(V),     \
-    void *: value_for_void_ptr(V), const void *: value_for_void_ptr(V)  \
-    )
-
-void map_put(HashMap *map, MapKey k, MapValue v);
-
-#define map_put_( M, K, V ) map_put( (M), (K), (V) )
-#define map_put(M, K, V) map_put_( (M), MAP_KEY(K), MAP_VALUE(V) )
-
-
-void test_arg_macros(void){
-    HashMap *map = create_map(0, free);
-
+MunitResult test_generic_put(const MunitParameter params[], void* fixture) {
+    HashMap *map = create_map(10, free);
     map_put(map, 42, "foo");
-        
+    map_put(map, "bar", 123);
+    map_put(map, (short)67, "short!");
+    map_put(map, (float)67.767, "float!");
+
+    char *retrieved_str = map_get_klong_vstring(map, 42);
+    munit_assert_string_equal(retrieved_str, "foo");
+
+    long *retrieved_long = map_get_kstring_vlong(map, "bar");
+    munit_assert_long(*retrieved_long, ==, 123);
+
+    free_map(map);
+    return MUNIT_OK;
 }
 
 
@@ -229,7 +183,6 @@ void test_arg_macros(void){
 // clang -std=c23 -o ./out/test_hashmap.out test_hashmap.c hashmap.c ../munit/munit.c
 int main(int argc, char *argv[argc + 1]) {
     setlocale(LC_NUMERIC, "");   // use user's system locale
-    printf("%'d\n", 1'000'000);
 
     MunitTest tests[] = {
         { .name="/test_create_and_free", .test=test_create_and_free, },
@@ -239,7 +192,8 @@ int main(int argc, char *argv[argc + 1]) {
         { .name="/test_delete_key", .test=test_delete_key,  },
         { .name="/test_put_and_get_str_key", .test=test_put_and_get_str_key,  },
         { .name="/test_put_and_get_bool_values", .test=test_put_and_get_bool_values,  },
-        {.name="/test_klong_vstring", .test=test_klong_vstring },
+        { .name="/test_klong_vstring", .test=test_klong_vstring },
+        { .name="/test_generic_put", .test=test_generic_put },
         NULL_TEST,
     };
 
@@ -252,10 +206,10 @@ int main(int argc, char *argv[argc + 1]) {
         MUNIT_SUITE_OPTION_NONE /* options */
       };
 
-    test_10K_inserts(nullptr, nullptr);
+    // test_10K_inserts(nullptr, nullptr);
 
     int result = {};
-    // result = munit_suite_main(&suite, nullptr, argc, argv);
+    result = munit_suite_main(&suite, nullptr, argc, argv);
     return result;
 
 }

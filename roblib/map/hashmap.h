@@ -4,6 +4,7 @@
 
 #include <stddef.h> // For size_t
 #include <stdint.h> // For uint8_t
+#include <stdbool.h> // For bool
 
 // Define a Node for the linked list within each bucket
 
@@ -106,6 +107,46 @@ void put(HashMap *map, const void *key, const void *value, MapTypeEnum key_type,
 void repr_HashMap(const HashMap *map, bool verbose);
 // Returns the number of key-value mappings in this map.
 size_t size(void);
+
+// -----------------------------------------
+// Generic map_put
+// -----------------------------------------
+
+// Helpers for macros
+MapKey key_for_long(long v);
+MapKey key_for_double(double v);
+MapKey key_for_string(const char *v);
+MapKey key_for_void_ptr(const void *v);
+
+MapValue value_for_long(long v);
+MapValue value_for_double(double v);
+MapValue value_for_string(const char *v);
+MapValue value_for_void_ptr(const void *v);
+
+// Main API method
+void map_put(HashMap *map, MapKey k, MapValue v);
+
+// Macros for type-generic map_put
+#define MAP_KEY(K) ( _Generic( (K), \
+    float: key_for_double, \
+    double: key_for_double, \
+    long double: key_for_double, \
+    char *: key_for_string,     const char *: key_for_string, \
+    void *: key_for_void_ptr,   const void *: key_for_void_ptr, \
+    default: key_for_long \
+) (K) )
+
+#define MAP_VALUE(V) ( _Generic( (V), \
+    float: value_for_double, \
+    double: value_for_double, \
+    long double: value_for_double, \
+    char *: value_for_string,     const char *: value_for_string, \
+    void *: value_for_void_ptr,   const void *: value_for_void_ptr, \
+    default: value_for_long \
+) (V) )
+
+#define map_put_( M, K, V ) map_put( (M), (K), (V) )
+#define map_put(M, K, V) map_put_( (M), MAP_KEY(K), MAP_VALUE(V) )
 
 
 // Wrappers (type-safe-ish at compile time)
