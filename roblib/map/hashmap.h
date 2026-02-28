@@ -87,11 +87,26 @@ typedef struct HashMap {
 
 // Function prototypes
 HashMap *create_map(size_t num_buckets, void (*free_value_func)(void *));
+//Removes all of the mappings from this map
+void clear(void);
+//  Returns true if this map contains a mapping for the specified key.
+bool contains_key(void *key);
+//  Returns true if this map contains a mapping for the specified key.
+bool contains_value(void *value);
+//Removes the mapping for a key from this map if it is present
+// Returns the value to which this map previously associated the key, or null if the map contained no mapping for the key.
 void delete_key(HashMap *map, void *key, MapTypeEnum key_type);
 void free_map(HashMap *map);
 void *get(HashMap *map, const void *key, MapTypeEnum key_type, MapTypeEnum value_type) ;
+// Returns the value to which the specified key is mapped, or fallback if this map contains no mapping for the key.
+void *get_or(HashMap *map, const void *key, MapTypeEnum key_type, MapTypeEnum value_type, const void *fallback) ;
+// Returns true if this map contains no key-value mappings.
+bool is_empty(void);
 void put(HashMap *map, const void *key, const void *value, MapTypeEnum key_type, MapTypeEnum value_type) ;
 void repr_HashMap(const HashMap *map, bool verbose);
+// Returns the number of key-value mappings in this map.
+size_t size(void);
+
 
 // Wrappers (type-safe-ish at compile time)
 
