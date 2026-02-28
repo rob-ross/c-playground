@@ -165,10 +165,70 @@ MunitResult test_klong_vstring(const MunitParameter params[], void* fixture) {
     return MUNIT_OK;
 }
 
+MapValue value_for_long(const long v) {
+    return (MapValue){.vlong = v, .value_type = MAP_TYPE_LONG};
+}
+
+MapValue value_for_double(const double v) {
+    return (MapValue){.vdouble = v, .value_type = MAP_TYPE_DOUBLE};
+}
+
+MapValue value_for_string(char * v) {
+    return (MapValue){.vstring = v, .value_type = MAP_TYPE_STRING};
+}
+
+MapValue value_for_void_ptr(void * v) {
+    return (MapValue){.vvoid_ptr = v, .value_type = MAP_TYPE_VOID_PTR};
+}
+
+MapKey key_for_long(const long v) {
+    return (MapKey){.klong = v, .key_type = MAP_TYPE_LONG};
+}
+
+MapKey key_for_double(const double v) {
+    return (MapKey){.kdouble = v, .key_type = MAP_TYPE_DOUBLE};
+}
+
+MapKey key_for_string(char * v) {
+    return (MapKey){.kstring = v, .key_type = MAP_TYPE_STRING};
+}
+
+MapKey key_for_void_ptr(void * v) {
+    return (MapKey){.kvoid_ptr = v, .key_type = MAP_TYPE_VOID_PTR};
+}
+
+#define MAP_KEY(K) _Generic( (K),                                   \
+    long: key_for_long(K), const long: key_for_long(K),             \
+    double: key_for_double(K), const double: key_for_double(K),     \
+    char *: key_for_string(K), const char *: key_for_string(K),     \
+    void *: key_for_void_ptr(K), const void *: key_for_void_ptr(K)  \
+    )
+
+#define MAP_VALUE(V) _Generic( (V),                                       \
+    long: value_for_long(V), const long: value_for_long(V),             \
+    double: value_for_double(V), const double: value_for_double(V),     \
+    char *: value_for_string(V), const char *: value_for_string(V),     \
+    void *: value_for_void_ptr(V), const void *: value_for_void_ptr(V)  \
+    )
+
+void map_put(HashMap *map, MapKey k, MapValue v);
+
+#define map_put_( M, K, V ) map_put( (M), (K), (V) )
+#define map_put(M, K, V) map_put_( (M), MAP_KEY(K), MAP_VALUE(V) )
+
+
+void test_arg_macros(void){
+    HashMap *map = create_map(0, free);
+
+    map_put(map, 42, "foo");
+        
+}
+
+
 // make
 // clang -std=c23 -o ./out/test_hashmap.out test_hashmap.c hashmap.c ../munit/munit.c
 int main(int argc, char *argv[argc + 1]) {
-    setlocale(LC_NUMERIC, "en_US.UTF-8");   // use user's system locale
+    setlocale(LC_NUMERIC, "");   // use user's system locale
     printf("%'d\n", 1'000'000);
 
     MunitTest tests[] = {
