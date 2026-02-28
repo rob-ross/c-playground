@@ -1,3 +1,4 @@
+#include <locale.h>
 #include <stdio.h>
 
 #include "../testing_utils.h"
@@ -106,6 +107,36 @@ void test_repr(void) {
     free_map(map);
 }
 
+MunitResult test_10K_inserts(const MunitParameter params[], void* fixture) {
+    HashMap *map ;
+    const size_t N = 10'000;
+    map = create_map(0, free);
+    size_t buffer_size = 20;  // max 9 chars for value of i, plus 5 for 'hello', plus terminator
+    for (int i = 0; i < N; ++i) {
+        char search_string[buffer_size] = {};
+        snprintf(search_string, buffer_size, "hello%d",i+1);
+        map_put_klong_vstring(map, i, search_string );
+    }
+    for (int i=0; i< N; ++i) {
+        char search_string[buffer_size] = {}; // max 4 chars for value of i, plus 5 for 'hello', plus terminator
+        snprintf(search_string,buffer_size, "hello%d",i+1);
+
+        const char* value = map_get_klong_vstring(map, i );
+        // print("search string = %s, value = %s", search_string, value);
+
+        munit_assert_string_equal( search_string, value);
+    }
+
+    print("");
+
+    printf("finished adding %zu items to map.\n", N);
+    repr_HashMap(map, false);
+
+    free_map(map);
+
+    return MUNIT_OK;
+}
+
 
 MunitResult test_klong_vstring(const MunitParameter params[], void* fixture) {
     HashMap *map ;
@@ -121,13 +152,13 @@ MunitResult test_klong_vstring(const MunitParameter params[], void* fixture) {
         snprintf(search_string,10, "hello%d",i+1);
 
         const char* value = map_get_klong_vstring(map, i );
-
         // print("search string = %s, value = %s", search_string, value);
+
         munit_assert_string_equal( search_string, value);
     }
 
     print("");
-    repr_HashMap(map, true);
+    repr_HashMap(map, false);
 
     free_map(map);
 
@@ -137,6 +168,9 @@ MunitResult test_klong_vstring(const MunitParameter params[], void* fixture) {
 // make
 // clang -std=c23 -o ./out/test_hashmap.out test_hashmap.c hashmap.c ../munit/munit.c
 int main(int argc, char *argv[argc + 1]) {
+    setlocale(LC_NUMERIC, "en_US.UTF-8");   // use user's system locale
+    printf("%'d\n", 1'000'000);
+
     MunitTest tests[] = {
         { .name="/test_create_and_free", .test=test_create_and_free, },
         { .name="/test_put_and_get_int", .test=test_put_and_get_int,  },
@@ -158,7 +192,7 @@ int main(int argc, char *argv[argc + 1]) {
         MUNIT_SUITE_OPTION_NONE /* options */
       };
 
-    test_klong_vstring(nullptr, nullptr);
+    test_10K_inserts(nullptr, nullptr);
 
     int result = {};
     // result = munit_suite_main(&suite, nullptr, argc, argv);

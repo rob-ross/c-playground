@@ -8,6 +8,7 @@
 static bool doubles_are_equal(double a, double b);
 static size_t hash_string(const char *str);
 static size_t hash_mix64(size_t x);
+static void resize_map(HashMap *map);
 
 // ---------------------------
 // static methods
@@ -148,7 +149,11 @@ static size_t hash_function(const void *key, const MapTypeEnum key_type) {
     size_t raw_hash;
     switch (key_type) {
         case MAP_TYPE_LONG: {
-            raw_hash =  (size_t)(*(long *)key);
+            // For integer keys, especially sequential ones, we multiply by a large
+            // prime to spread the bits out across the 64-bit range. This ensures
+            // the subsequent mixer works effectively. 0x9e3779b97f4a7c15 is a
+            // common choice related to the golden ratio.
+            raw_hash =  (*(long *)key) * 0x9e3779b97f4a7c15ULL;
             break;
         }
         case MAP_TYPE_DOUBLE: {
@@ -235,6 +240,45 @@ static size_t next_power_of_two(size_t n) {
 
 static void recalc_load(HashMap *map) {
     map->load =  (double) ((long double)map->size / map->num_buckets);
+}
+
+static void resize_map(HashMap *map) {
+    size_t new_num_buckets = map->num_buckets * 2;
+    if (new_num_buckets > MAX_POW2) {
+        return; // Can't grow anymore
+    }
+
+    Node **new_buckets = (Node **)calloc(new_num_buckets, sizeof(Node *));
+    if (new_buckets == nullptr) {
+        return; // Allocation failed, keep old map
+    }
+
+    repr_HashMap(map, false);
+
+    // Rehash all existing nodes
+    for (size_t i = 0; i < map->num_buckets; i++) {
+        Node *current = map->buckets[i];
+        while (current != nullptr) {
+            Node *next = current->next; // Save next pointer
+
+            // Calculate new index
+            size_t new_index = calc_bucket_index(current->hash, new_num_buckets);
+
+            // Insert into new bucket (at head)
+            current->next = new_buckets[new_index];
+            new_buckets[new_index] = current;
+
+            current = next;
+        }
+    }
+
+    free(map->buckets);
+    map->buckets = new_buckets;
+    map->num_buckets = new_num_buckets;
+    map->fill_capacity = (size_t)(new_num_buckets * (long double)map->fill_factor);
+    recalc_load(map);
+
+    repr_HashMap(map, false);
 }
 
 static void set_value(Node *node, const void *value, const MapTypeEnum value_type) {
@@ -363,6 +407,10 @@ void * get(HashMap *map, const void *key, const MapTypeEnum key_type, const MapT
 // if key or value are strings, they are copied so the map can be free them independently of the original arguments.
 void put(HashMap *map, const void *key, const void *value, const MapTypeEnum key_type, const MapTypeEnum value_type) {
     if (map == nullptr) return;
+
+    if (map->size >= map->fill_capacity) {
+        resize_map(map);
+    }
 
     const size_t hashcode = hash_function(key, key_type);
     const size_t bucket_index = calc_bucket_index(hashcode, map->num_buckets);
@@ -496,27 +544,30 @@ void repr_HashMap(const HashMap *map, bool verbose) {
         printf("(HashMap)nullptr");
         return;
     }
-    printf( "(HashMap){ .size=%zu, .fill_capacity=%zu, .load=%g, .num_buckets=%zu, .fill_factor=%g, .free_func=%p }",
+    printf( "(HashMap){ .size=%'zu, .fill_capacity=%'zu, .load=%'g, .num_buckets=%'zu, .fill_factor=%g, .free_func=%p }",
         map->size, map->fill_capacity, map->load, map->num_buckets, map->fill_factor, map->free_func);
 
     // we might want a special Bucket struct to be the head of each bucket, so we can keep statistics on the bucket
     // contents
     // For now we'll do it the hard way and generate stats on the fly by visiting every Node in the HashMap
     printf("\n");
-
-    printf("bucket sizes: ");
-    for (size_t i=0; i < map->num_buckets; ++i) {
-        const Node *current = map->buckets[i];
-        size_t node_count = 0;
-        while (current != nullptr) {
-            node_count++;
-            current = current->next;
-        }
-        printf("[%zu]=%zu, ", i, node_count);
-    }
-    printf("\n");
-
     if (verbose) {
+        size_t total_bucket_items = 0;
+        printf("bucket sizes: ");
+        for (size_t i=0; i < map->num_buckets; ++i) {
+            const Node *current = map->buckets[i];
+            size_t node_count = 0;
+            while (current != nullptr) {
+                node_count++;
+                current = current->next;
+            }
+            total_bucket_items += node_count;
+            printf("[%zu]=%zu, ", i, node_count);
+        }
+        printf("\n");
+        printf("total bucket items: %zu\n\n", total_bucket_items);
+
+
         // for each bucket, display name/value pairs.
         for (size_t i=0; i < map->num_buckets; ++i) {
             const Node *current = map->buckets[i];
