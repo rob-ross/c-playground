@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../carray/carray_types.h"
+
 
 MunitResult test_create_and_free(const MunitParameter params[], void* fixture) {
     HashMap *map = create_map(10, nullptr);
@@ -84,6 +86,54 @@ MunitResult test_put_and_get_bool_values(const MunitParameter params[], void* fi
     return MUNIT_OK;
 }
 
+void test_repr(void) {
+    HashMap *map ;
+
+    map = create_map(0, free);
+    repr_HashMap(map, true); print("");
+    free_map(map);
+
+    map = create_map(10, free);
+    repr_HashMap(map, true); print("");
+    free_map(map);
+
+    map = create_map(16, free);
+    repr_HashMap(map, true); print("");
+    free_map(map);
+
+    map = create_map(17, free);
+
+    free_map(map);
+}
+
+
+MunitResult test_klong_vstring(const MunitParameter params[], void* fixture) {
+    HashMap *map ;
+
+    map = create_map(0, free);
+    for (int i = 0; i < 100; ++i) {
+        char search_string[10]; // max 4 chars for value of i, plus 5 for 'hello', plus terminator
+        snprintf(search_string, 10, "hello%d",i+1);
+        map_put_klong_vstring(map, i, search_string );
+    }
+    for (int i=0; i< 100; ++i) {
+        char search_string[10]; // max 4 chars for value of i, plus 5 for 'hello', plus terminator
+        snprintf(search_string,10, "hello%d",i+1);
+
+        const char* value = map_get_klong_vstring(map, i );
+
+        // print("search string = %s, value = %s", search_string, value);
+        munit_assert_string_equal( search_string, value);
+    }
+
+    print("");
+    repr_HashMap(map, true);
+
+    free_map(map);
+
+    return MUNIT_OK;
+}
+
 // make
 // clang -std=c23 -o ./out/test_hashmap.out test_hashmap.c hashmap.c ../munit/munit.c
 int main(int argc, char *argv[argc + 1]) {
@@ -95,9 +145,10 @@ int main(int argc, char *argv[argc + 1]) {
         { .name="/test_delete_key", .test=test_delete_key,  },
         { .name="/test_put_and_get_str_key", .test=test_put_and_get_str_key,  },
         { .name="/test_put_and_get_bool_values", .test=test_put_and_get_bool_values,  },
-
+        {.name="/test_klong_vstring", .test=test_klong_vstring },
         NULL_TEST,
     };
+
 
      MunitSuite suite = {
         "/hashmap", /* name */
@@ -107,10 +158,10 @@ int main(int argc, char *argv[argc + 1]) {
         MUNIT_SUITE_OPTION_NONE /* options */
       };
 
-    // test_put_and_get_bool_values(nullptr, nullptr);
+    test_klong_vstring(nullptr, nullptr);
 
     int result = {};
-    result = munit_suite_main(&suite, nullptr, argc, argv);
+    // result = munit_suite_main(&suite, nullptr, argc, argv);
     return result;
 
 }

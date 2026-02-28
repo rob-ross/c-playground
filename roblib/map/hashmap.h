@@ -19,38 +19,7 @@
 // in phase 3 we'll optimize memory by allocating in chunks so we can keep our buckets and linked lists in the same
 // memory chunk.
 
-// see https://db.in.tum.de/~neumann/primes.hpp for list of primes and algorithm for efficient modulo operation
 
-/*
-53
-97
-193
-389
-769
-1543
-3079
-6151
-12289
-24593
-49157
-98317
-196613
-393241
-786433
-1572869
-3145739
-6291469
-12582917
-25165843
-50331653
-100663319
-201326611
-402653189
-805306457
-1610612741
-
-
-*/
 
 typedef enum MapTypeEnum: unsigned char {
     MAP_TYPE_NONE,
@@ -101,22 +70,28 @@ typedef struct Node {
 } Node;
 
 static const Node NULL_NODE = { };
+static constexpr double DEFAULT_FILL_FACTOR = 0.75;
 
 // Define the HashMap structure
 typedef struct HashMap {
-    Node **buckets;
-    size_t num_buckets;
-    size_t size; // Number of key-value pairs currently in the map
-    void (*free_value)(void *); // Function pointer to free allocated values
-    uint8_t prime_index;
+    Node **buckets;       // each bucket is a linked list
+    size_t size;          // Number of key-value pairs currently in the map
+    size_t fill_capacity; // holds the max ideal size for the current number of buckets. Increases when buckets increase
+    double load;          // current load = size / num_buckets
+    size_t num_buckets;   // must always be a power of 2
+    double fill_factor;   // desired load
+    void (*free_func)(void *); // Function pointer to free allocated values
+    uint64_t flags; // future use
 } HashMap;
+
 
 // Function prototypes
 HashMap *create_map(size_t num_buckets, void (*free_value_func)(void *));
-void put(HashMap *map, const void *key, const void *value, MapTypeEnum key_type, MapTypeEnum value_type) ;
-void *get(HashMap *map, const void *key, MapTypeEnum key_type) ;
 void delete_key(HashMap *map, void *key, MapTypeEnum key_type);
 void free_map(HashMap *map);
+void *get(HashMap *map, const void *key, MapTypeEnum key_type, MapTypeEnum value_type) ;
+void put(HashMap *map, const void *key, const void *value, MapTypeEnum key_type, MapTypeEnum value_type) ;
+void repr_HashMap(const HashMap *map, bool verbose);
 
 // Wrappers (type-safe-ish at compile time)
 
@@ -185,42 +160,42 @@ static inline void map_put_kstring_vstring(HashMap *m, char* k, char *v) {
 // long key
 
 static inline void *map_get_klong_vlong(HashMap *m, long k) {
-    return get(m, &k, MAP_TYPE_LONG);
+    return get(m, &k, MAP_TYPE_LONG, MAP_TYPE_LONG);
 }
 
 static inline void *map_get_klong_vdouble(HashMap *m, long k) {
-    return get(m, &k, MAP_TYPE_LONG);
+    return get(m, &k, MAP_TYPE_LONG, MAP_TYPE_DOUBLE);
 }
 
 static inline void *map_get_klong_vstring(HashMap *m, long k) {
-    return get(m, &k, MAP_TYPE_LONG);
+    return get(m, &k, MAP_TYPE_LONG, MAP_TYPE_STRING);
 }
 
 
 // double key
 static inline void *map_get_kdouble_vlong(HashMap *m, double k) {
-    return get(m, &k, MAP_TYPE_DOUBLE);
+    return get(m, &k, MAP_TYPE_DOUBLE,MAP_TYPE_LONG);
 }
 
 static inline void *map_get_kdouble_vdouble(HashMap *m, double k) {
-    return get(m, &k, MAP_TYPE_DOUBLE);
+    return get(m, &k, MAP_TYPE_DOUBLE, MAP_TYPE_DOUBLE);
 }
 
 static inline void *map_get_kdouble_vstring(HashMap *m, double k) {
-    return get(m, &k, MAP_TYPE_DOUBLE);
+    return get(m, &k, MAP_TYPE_DOUBLE,MAP_TYPE_STRING);
 }
 
 // string key
 static inline long * map_get_kstring_vlong(HashMap *m, char *k) {
-    return get(m, k, MAP_TYPE_STRING);
+    return get(m, k, MAP_TYPE_STRING,MAP_TYPE_LONG);
 }
 
 static inline const char *map_get_kstring_vdouble(HashMap *m, char *k) {
-    return get(m, k, MAP_TYPE_STRING);
+    return get(m, k, MAP_TYPE_STRING, MAP_TYPE_DOUBLE);
 }
 
 static inline const char *map_get_kstring_vstring(HashMap *m, char *k) {
-    return get(m, k, MAP_TYPE_STRING);
+    return get(m, k, MAP_TYPE_STRING,MAP_TYPE_STRING);
 }
 
 
