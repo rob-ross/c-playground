@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h> // Required for memcpy
 
+// forward references
 static bool doubles_are_equal(double a, double b);
 static size_t hash_string(const char *str);
 static size_t hash_mix64(size_t x);
@@ -14,48 +15,27 @@ static void resize_map(HashMap *map);
 // static methods
 // ---------------------------
 
-static void * address_of_map_value(Node *node) {
-    if (node->value.value_type == MAP_TYPE_STRING) {
-        return node->value.vstring;
-    }
-    if (node->value.value_type == MAP_TYPE_VOID_PTR) {
-        return node->value.vvoid_ptr;
-    }
-    if (node->value.value_type == MAP_TYPE_LONG) {
-        return &node->value.vlong;
-    }
-    if (node->value.value_type == MAP_TYPE_DOUBLE) {
-        return &node->value.vdouble;
-    }
-    return nullptr;
-}
 
-// Compare the arguments for equality. Assumes o1 and o2 are of the same type.
-static bool are_equal(const void *o1, const void *o2, const MapTypeEnum key_type) {
-    switch (key_type) {
+// Compare the arguments for equality. Assumes k1 and k2 are of the same type.
+static bool are_equal(const MapKey k1, const MapKey k2) {
+
+    if (k1.key_type != k2.key_type) return false;
+
+    switch (k1.key_type) {
         case MAP_TYPE_NONE:
             return false;
-        case MAP_TYPE_LONG: {
-            const long long1 = *(long *)o1;
-            const long long2 = *(long *)o2;
-            return long1 == long2;
-        }
-
-        case MAP_TYPE_DOUBLE: {
-            const double d1 = *(double*)o1;
-            const double d2 = *(double*)o2;
-            return doubles_are_equal(d1, d2);
-        }
-
-        case MAP_TYPE_STRING: {
-            const char* str1 = (char*)o1;
-            const char* str2 = (char*)o2;
-            return strcmp(str1, str2) == 0;
-        }
-
+        case MAP_TYPE_LONG:
+            return k1.klong == k2.klong;
+        case MAP_TYPE_DOUBLE:
+            return doubles_are_equal(k1.kdouble, k2.kdouble);
+        case MAP_TYPE_STRING:
+            return strcmp(k1.kstring, k2.kstring) == 0;
         case MAP_TYPE_VOID_PTR:
             // this requires the caller to have defined an equal function for this blob.
-            return false; // todo implement
+            // todo implement
+            return k1.kvoid_ptr == k2.kvoid_ptr;
+        case MAP_TYPE_NULL:
+            return true; // both key_types are null
         default:
             return false;
     }
@@ -65,7 +45,7 @@ static inline size_t calc_bucket_index(const size_t hashcode, const size_t num_b
     return hashcode & (num_buckets - 1);  // works because num_buckets is a power of 2
 }
 
-static Node * create_node(const size_t hashcode, const void *key, const MapTypeEnum key_type ) {
+static Node * create_node(const size_t hashcode, const MapKey key) {
     // hash and key are const, so we can't write to them after object is created. So we first create a temp Node
     // with the immutable values, then we set the mutable values, and finally we copy the temp to the final Node object.
     // for strings we make a copy and store that, since we will free it when the Node is removed or the map is
@@ -74,23 +54,21 @@ static Node * create_node(const size_t hashcode, const void *key, const MapTypeE
     // datatype, e.g. struct BasicObject, that has a pointer, a size, and a type. For flexibility type will probably
     // be a small string array of fixed size. Maybe the BasicObject will use a flexible array for the bytes. We can
     // use flags to indicate ownership? Do we free or not? And if so we'll need a funct ptr for a free function.
-
-    //
     Node *temp_node;
-    switch (key_type) {
+    switch (key.key_type) {
         case MAP_TYPE_LONG:
-            temp_node = &(Node){ .hash = hashcode, .key.klong   = *(long *)key,   .key.key_type = MAP_TYPE_LONG };
+            temp_node = &(Node){ .hash = hashcode, .key.klong = key.klong, .key.key_type = MAP_TYPE_LONG };
             break;
         case MAP_TYPE_DOUBLE:
-            temp_node = &(Node){ .hash = hashcode, .key.kdouble = *(double *)key, .key.key_type = MAP_TYPE_DOUBLE };
+            temp_node = &(Node){ .hash = hashcode, .key.kdouble = key.kdouble, .key.key_type = MAP_TYPE_DOUBLE };
             break;
         case MAP_TYPE_STRING: {
-            char *string_copy = strdup((char *)key);
-            temp_node = &(Node){ .hash = hashcode, .key.kstring = string_copy,    .key.key_type = MAP_TYPE_STRING };
+            char *string_copy = strdup(key.kstring);
+            temp_node = &(Node){ .hash = hashcode, .key.kstring = string_copy, .key.key_type = MAP_TYPE_STRING };
             break;
         }
         case MAP_TYPE_VOID_PTR:
-            temp_node = &(Node){ .hash = hashcode, .key.kvoid_ptr = (void *)key,    .key.key_type = MAP_TYPE_VOID_PTR };
+            temp_node = &(Node){ .hash = hashcode, .key.kvoid_ptr = key.kvoid_ptr, .key.key_type = MAP_TYPE_VOID_PTR };
             break;
         case MAP_TYPE_NONE:
         default:
@@ -132,52 +110,41 @@ static void free_if(const Node *node_ptr, const HashMap *map) {
     }
 }
 
-static const void * get_mapkey_member_ptr(const MapKey *mp, const MapTypeEnum key_type) {
-    const void *node_key_ptr;
-    switch (key_type) {
-        case MAP_TYPE_LONG:    node_key_ptr = &mp->klong;    break;
-        case MAP_TYPE_DOUBLE:  node_key_ptr = &mp->kdouble;  break;
-        case MAP_TYPE_STRING:  node_key_ptr = mp->kstring;   break; // note: string key is already a pointer
-        case MAP_TYPE_VOID_PTR:node_key_ptr = mp->kvoid_ptr; break; // also a pointer
-        default:               node_key_ptr = nullptr;       break;
-    }
-    return node_key_ptr;
-}
-
-// Simple hash function for long keys
-static size_t hash_function(const void *key, const MapTypeEnum key_type) {
+static size_t hash_function(const MapKey key) {
     size_t raw_hash;
-    switch (key_type) {
+    switch (key.key_type) {
         case MAP_TYPE_LONG: {
             // For integer keys, especially sequential ones, we multiply by a large
             // prime to spread the bits out across the 64-bit range. This ensures
             // the subsequent mixer works effectively. 0x9e3779b97f4a7c15 is a
             // common choice related to the golden ratio.
-            raw_hash =  (*(long *)key) * 0x9e3779b97f4a7c15ULL;
+            raw_hash =  key.klong * 0x9e3779b97f4a7c15ULL;
             break;
         }
         case MAP_TYPE_DOUBLE: {
-            double d = *(double *)key;
+            double d = key.kdouble;
             // Normalize -0.0 to 0.0 so they hash to the same bucket
             if (d == 0.0) d = 0.0;
             size_t hash = 0;
             if (sizeof(size_t) >= sizeof(double)) {
                 memcpy(&hash, &d, sizeof(double));
             } else {
+                // ReSharper disable once CppDFAUnreachableCode
                 unsigned long long bits;
                 memcpy(&bits, &d, sizeof(double));
+                // ReSharper disable once CppDFAUnreachableCode
                 hash = (size_t)(bits ^ (bits >> 32));
             }
             raw_hash = hash;
             break;
         }
         case MAP_TYPE_STRING: {
-            raw_hash = hash_string((char*)key);
+            raw_hash = hash_string((char*)key.kstring);
             break;
         }
         case MAP_TYPE_VOID_PTR: {
             // this requires the caller to have defined a hash function for this blob.
-            raw_hash = (unsigned long)key;
+            raw_hash = (unsigned long)key.kvoid_ptr;
             break;
         }
         case MAP_TYPE_NONE:
@@ -243,13 +210,13 @@ static void recalc_load(HashMap *map) {
 }
 
 static void resize_map(HashMap *map) {
-    size_t new_num_buckets = map->num_buckets * 2;
+    const size_t new_num_buckets = map->num_buckets * 2;
     if (new_num_buckets > MAX_POW2) {
         return; // Can't grow anymore
     }
 
     Node **new_buckets = (Node **)calloc(new_num_buckets, sizeof(Node *));
-    if (new_buckets == nullptr) {
+    if (!new_buckets) {
         return; // Allocation failed, keep old map
     }
 
@@ -277,25 +244,28 @@ static void resize_map(HashMap *map) {
     recalc_load(map);
 }
 
-static void set_value(Node *node, const void *value, const MapTypeEnum value_type) {
-    switch (value_type) {
-        case MAP_TYPE_NONE:
-            node->value.vvoid_ptr = nullptr;
-            break;
-        case MAP_TYPE_STRING:
-            node->value.vstring = strdup((char*)value);
-            break;
-        case MAP_TYPE_VOID_PTR:
-            node->value.vvoid_ptr = (void*)value;
+
+static void set_value(Node *node, const MapValue value) {
+    switch (value.value_type) {
+        case MAP_TYPE_LONG:
+            node->value.vlong = value.vlong;
             break;
         case MAP_TYPE_DOUBLE:
-            node->value.vdouble = *((double *)value);
+            node->value.vdouble = value.vdouble;
             break;
-        case MAP_TYPE_LONG:
-            node->value.vlong = *((long *)value);
+        case MAP_TYPE_STRING:
+            node->value.vstring = strdup(value.vstring);
+            break;
+        case MAP_TYPE_VOID_PTR:
+            node->value.vvoid_ptr = value.vvoid_ptr;
+            break;
+        case MAP_TYPE_NONE:
+        case MAP_TYPE_NULL:
+        default:
+            node->value.vvoid_ptr = nullptr;
             break;
     }
-    node->value.value_type = value_type;
+    node->value.value_type = value.value_type;
 }
 
 
@@ -337,36 +307,54 @@ HashMap *create_map(size_t num_buckets, void (*free_value_func)(void *)) {
     return map;
 }
 
-void delete_key(HashMap *map, void *key, const MapTypeEnum key_type) {
-    if (map == nullptr) return;
+// deletes all entries and frees them, but does not reduce bucket size or free allocated bucket memory.
+// todo some kind of resize method to realloc to a smaller memory footprint?
+void map_clear(HashMap map[static 1]) {
+    for (size_t i = 0; i < map->num_buckets; i++) {
+        Node *current = map->buckets[i];
+        while (current != nullptr) {
+            Node *temp = current;
+            current = current->next;
+            free_if(temp, map);
+            free(temp);
+        }
+    }
+    map->load = 0;
+    map->size = 0;
+}
+bool (map_contains_key)(HashMap map[static 1], const MapKey key) {
+    MapValue unused;
+    return map_try_get(map, key, &unused);
+}
+void (map_remove)(HashMap map[static 1], const MapKey key) {
+    if (!map) return;
 
-    const size_t hashcode = hash_function(key, key_type);
+    const size_t hashcode = hash_function(key);
     const size_t index = calc_bucket_index(hashcode, map->num_buckets);
 
     Node *current = map->buckets[index];
     Node *prev = nullptr;
 
-    while (current != nullptr) {
-        if ( current->key.key_type == key_type) {
-            if ( are_equal(key, get_mapkey_member_ptr(&current->key, current->key.key_type), current->key.key_type) ) {
-                if (prev == nullptr) {
-                    map->buckets[index] = current->next;
-                } else {
-                    prev->next = current->next;
-                }
-                free_if(current, map);
-                free(current);
-                map->size--;
-                recalc_load(map);
-                return;
+    while (current) {
+        if ( are_equal(key, current->key ) ){
+            if (!prev) {
+                map->buckets[index] = current->next;
+            } else {
+                prev->next = current->next;
             }
-            prev = current;
-            current = current->next;
+            free_if(current, map);
+            free(current);
+            map->size--;
+            recalc_load(map);
+            return;
         }
+        prev = current;
+        current = current->next;
+
     }
 }
 
-void free_map(HashMap *map) {
+void free_map(HashMap map[static 1]) {
     if (map == nullptr) return;
 
     for (size_t i = 0; i < map->num_buckets; i++) {
@@ -383,86 +371,104 @@ void free_map(HashMap *map) {
     free(map);
 }
 
-void * get(HashMap *map, const void *key, const MapTypeEnum key_type, const MapTypeEnum value_type) {
-    if (map == nullptr) return nullptr;
-    const size_t index = calc_bucket_index(hash_function(key, key_type), map->num_buckets);
 
-    Node *current = map->buckets[index];
+MapValue (map_get)(const HashMap map[static 1], const MapKey key) {
+    if (map == nullptr) return NULL_MAP_VALUE;
+    const size_t index = calc_bucket_index(hash_function(key), map->num_buckets);
+
+    Node const *current = map->buckets[index];
 
     while (current != nullptr) {
-        if ( current->key.key_type == key_type) {
-            if ( are_equal(key, get_mapkey_member_ptr(&current->key, current->key.key_type), current->key.key_type) ) {
-                return address_of_map_value(current);
-            }
+        if ( are_equal(key, current->key) ) {
+            return current->value;
         }
         current = current->next;
     }
-    return nullptr; // Key not found
+    return NULL_MAP_VALUE; // Key not found
+}
+
+MapValue (map_get_or)(const HashMap map[static 1], const MapKey key, const MapValue fallback) {
+    const MapValue value = (map_get)(map, key);
+    if (value.value_type == MAP_TYPE_NULL) {
+        return fallback;
+    }
+    return value;
+}
+
+bool map_try_get(const HashMap map[static 1], const MapKey key, MapValue *out) {
+    const MapValue value = (map_get)(map, key);
+    if (value.value_type == MAP_TYPE_NULL) {
+        *out = NULL_MAP_VALUE;
+        return false;
+    }
+    *out = value;
+    return true;
+}
+
+bool map_is_empty(const HashMap map[static 1]) {
+    return map->size == 0;
 }
 
 // if key or value are strings, they are copied so the map can be free them independently of the original arguments.
-void put(HashMap *map, const void *key, const void *value, const MapTypeEnum key_type, const MapTypeEnum value_type) {
+void (map_put)(HashMap map[static 1], const MapKey key, const MapValue value) {
     if (map == nullptr) return;
 
     if (map->size >= map->fill_capacity) {
         resize_map(map);
     }
 
-    const size_t hashcode = hash_function(key, key_type);
+    const size_t hashcode = hash_function(key);
     const size_t bucket_index = calc_bucket_index(hashcode, map->num_buckets);
     Node *current = map->buckets[bucket_index];
 
     // Check if key already exists and update value
     while (current != nullptr) {
-        // First, check if the key types even match. If not, they can't be equal.
-        if ( current->key.key_type == key_type) {
-            if ( are_equal(key, get_mapkey_member_ptr(&current->key, current->key.key_type), current->key.key_type) ) {
-                free_if(current, map);
-                set_value(current, value, value_type);
-                return;
-            }
+        if ( are_equal(key, current->key) ) {
+            free_if(current, map);
+            set_value(current, value);
+            return;
         }
         current = current->next;
     }
     // Key not found, insert new node at the beginning of the list
-    Node *new_node = create_node(hashcode, key, key_type);
+    Node *new_node = create_node(hashcode, key);
     if (new_node == nullptr) {
         // Handle allocation failure (in a real app, maybe return status)
         return;
     }
     new_node->next =  map->buckets[bucket_index];  // inserts this Node at the head of the bucket
-    set_value(new_node, value, value_type);
+    set_value(new_node, value);
     map->buckets[bucket_index] = new_node;
     map->size++;
     recalc_load(map);
+
 }
 
-void repr_MapValue(const MapValue *map_value, const bool verbose) {
-    if (!map_value) {
-        printf("(MapValue)nullptr");
-        return;
-    }
-    if (map_value->value_type == MAP_TYPE_NONE) {
+
+void map_repr_MapValue(const MapValue map_value, const bool verbose) {
+    if (map_value.value_type == MAP_TYPE_NONE) {
         printf("(MapValue){ MAP_TYPE_NONE }");
         return;
     }
-
+    if (map_value.value_type == MAP_TYPE_NULL) {
+        printf("(MapValue){ MAP_TYPE_NULL }");
+        return;
+    }
     if (verbose) {
         printf("(MapValue){ ");
     }
-
-    switch (map_value->value_type) {
+    switch (map_value.value_type) {
         case MAP_TYPE_LONG:
-            printf(".vlong=%5lu", map_value->vlong);
+            printf(".vlong=%5lu", map_value.vlong);
             break;
         case MAP_TYPE_DOUBLE:
-            printf(".vdouble=%5g", map_value->vdouble);
+            printf(".vdouble=%5g", map_value.vdouble);
             break;
         case MAP_TYPE_STRING:
-            printf(".vstring='%5s'", map_value->vstring);
+            printf(".vstring='%5s'", map_value.vstring);
             break;
         case MAP_TYPE_VOID_PTR:
-            printf(".vvoid_ptr=%14p", map_value->vvoid_ptr);
+            printf(".vvoid_ptr=%14p", map_value.vvoid_ptr);
             break;
         default:
             if (verbose) {
@@ -470,42 +476,37 @@ void repr_MapValue(const MapValue *map_value, const bool verbose) {
             } else {
                 printf("(MapValue){ unknown }");
             }
-
-
     }
-
     if (verbose) {
         printf(" }");
     }
 }
 
-void repr_MapKey(const MapKey *map_key, bool verbose) {
-    if (!map_key) {
-        printf("(MapKey)nullptr");
-        return;
-    }
+void map_repr_MapKey(const MapKey map_key, bool verbose) {
 
-    if (map_key->key_type == MAP_TYPE_NONE) {
+    if (map_key.key_type == MAP_TYPE_NONE) {
         printf("(MapKey){ MAP_TYPE_NONE }");
         return;
     }
-
+    if (map_key.key_type == MAP_TYPE_NULL) {
+        printf("(MapKey){ MAP_TYPE_NULL }");
+        return;
+    }
     if (verbose) {
         printf("(MapKey){ ");
     }
-
-    switch (map_key->key_type) {
+    switch (map_key.key_type) {
         case MAP_TYPE_LONG:
-            printf(".klong=%5lu", map_key->klong);
+            printf(".klong=%5lu", map_key.klong);
             break;
         case MAP_TYPE_DOUBLE:
-            printf(".kdouble=%5g", map_key->kdouble);
+            printf(".kdouble=%5g", map_key.kdouble);
             break;
         case MAP_TYPE_STRING:
-            printf(".kstring='%5s'", map_key->kstring);
+            printf(".kstring='%5s'", map_key.kstring);
             break;
         case MAP_TYPE_VOID_PTR:
-            printf(".kvoid_ptr=%14p", map_key->kvoid_ptr);
+            printf(".kvoid_ptr=%14p", map_key.kvoid_ptr);
             break;
         default:
             if (verbose) {
@@ -514,35 +515,38 @@ void repr_MapKey(const MapKey *map_key, bool verbose) {
                 printf("(MapKey){ unknown }");
             }
     }
-
     if (verbose) {
         printf(" }");
     }
 }
 
-void repr_node(const Node *node) {
+void map_repr_Node(const Node node[static 1]) {
     if (!node) {
         printf("(Node)nullptr");
         return;
     }
     printf("(Node){ ");
-    printf(".hash=%20zu", node->hash);
+    printf(".hash=0x%-16lX", node->hash);
     printf(", .this=%14p, .next=%14p, ", node, node->next);
-    repr_MapKey(&node->key, false);
+    map_repr_MapKey(node->key, false);
     printf(", ");
-    repr_MapValue(&node->value, false);
+    map_repr_MapValue(node->value, false);
     printf(" }\n");
 }
 
 //display info about the HashMap via println
-void repr_HashMap(const HashMap *map, bool verbose) {
+void map_repr_HashMap(const HashMap map[static 1], bool verbose) {
     if (!map) {
         printf("(HashMap)nullptr");
         return;
     }
-    printf( "(HashMap){ .size=%'zu, .fill_capacity=%'zu, .load=%'g, .num_buckets=%'zu, .fill_factor=%g, .free_func=%p }",
-        map->size, map->fill_capacity, map->load, map->num_buckets, map->fill_factor, map->free_func);
 
+    // ReSharper disable CppPrintfBadFormat
+    // ReSharper disable CppPrintfExtraArg
+    printf( "(HashMap){ .size=%'zu, .fill_capacity=%'zu, .load=%'g, .num_buckets=%'zu, .fill_factor=%g, .free_func=%p }",
+            map->size, map->fill_capacity, map->load, map->num_buckets, map->fill_factor, map->free_func);
+
+    const int max_buckets_displayed = 16;
     // we might want a special Bucket struct to be the head of each bucket, so we can keep statistics on the bucket
     // contents
     // For now we'll do it the hard way and generate stats on the fly by visiting every Node in the HashMap
@@ -553,19 +557,24 @@ void repr_HashMap(const HashMap *map, bool verbose) {
         for (size_t i=0; i < map->num_buckets; ++i) {
             const Node *current = map->buckets[i];
             size_t node_count = 0;
-            while (current != nullptr) {
+            while (current) {
                 node_count++;
                 current = current->next;
             }
             total_bucket_items += node_count;
-            printf("[%zu]=%zu, ", i, node_count);
+            if ( i < max_buckets_displayed) {
+                printf("[%zu]=%'zu, ", i, node_count);
+            }
+        }
+        if ( map->num_buckets > max_buckets_displayed) {
+            printf(" ...");
         }
         printf("\n");
-        printf("total bucket items: %zu\n\n", total_bucket_items);
+        printf("total bucket items: %'zu\n\n", total_bucket_items);
 
 
         // for each bucket, display name/value pairs.
-        for (size_t i=0; i < map->num_buckets; ++i) {
+        for (size_t i=0; i < max_buckets_displayed && i < map->num_buckets; ++i) {
             const Node *current = map->buckets[i];
             printf("bucket[%zu]:",i);
             if (!current) {
@@ -574,9 +583,11 @@ void repr_HashMap(const HashMap *map, bool verbose) {
                 printf("\n");
             }
             size_t node_count = 0;
-            while (current != nullptr) {
+            while ( current) {
                 node_count++;
-                repr_node(current);
+                if ( node_count < max_buckets_displayed) {
+                    map_repr_Node(current);
+                }
                 current = current->next;
             }
             printf("---------------------------------------------------------------------------------------------------------------------\n");
@@ -587,9 +598,10 @@ void repr_HashMap(const HashMap *map, bool verbose) {
 
 }
 
-// -----------------------------------------
-// Generic map_put implementation
-// -----------------------------------------
+// ---------------------------------------------------
+// Converters for generic map function arguments
+//  these convert expressions to a MapKey or MapValue
+// ---------------------------------------------------
 
 MapValue value_for_long(const long v) {
     return (MapValue){.vlong = v, .value_type = MAP_TYPE_LONG};
@@ -621,26 +633,4 @@ MapKey key_for_string(const char * v) {
 
 MapKey key_for_void_ptr(const void * v) {
     return (MapKey){.kvoid_ptr = (void*)v, .key_type = MAP_TYPE_VOID_PTR};
-}
-
-void (map_put)(HashMap *map, MapKey k, MapValue v) {
-    const void *key_ptr;
-    switch (k.key_type) {
-        case MAP_TYPE_LONG:    key_ptr = &k.klong;    break;
-        case MAP_TYPE_DOUBLE:  key_ptr = &k.kdouble;  break;
-        case MAP_TYPE_STRING:  key_ptr = k.kstring;   break;
-        case MAP_TYPE_VOID_PTR:key_ptr = k.kvoid_ptr; break;
-        default: return; // Or handle error
-    }
-
-    const void *value_ptr;
-    switch (v.value_type) {
-        case MAP_TYPE_LONG:    value_ptr = &v.vlong;    break;
-        case MAP_TYPE_DOUBLE:  value_ptr = &v.vdouble;  break;
-        case MAP_TYPE_STRING:  value_ptr = v.vstring;   break;
-        case MAP_TYPE_VOID_PTR:value_ptr = v.vvoid_ptr; break;
-        default: return; // Or handle error
-    }
-
-    put(map, key_ptr, value_ptr, k.key_type, v.value_type);
 }

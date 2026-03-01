@@ -4,21 +4,14 @@
 
 #include <stddef.h> // For size_t
 #include <stdint.h> // For uint8_t
-#include <stdbool.h> // For bool
 
-// Define a Node for the linked list within each bucket
 
-//we will start by supporting scalar keys. For int values we'll support signed/unsigned int and long.
-// for floats we'll support double.
-// we get char via int
-// we also support string keys
 // we can support arbitrary objects via a void* key, but we'll save that for later
 // for values we should support all the the scalar types, which we can do via int/long and double.
 // for values we will also support char* specifically for strings, and void* for arbitrary data.
 
-// in phase 2 we'll want to be able to expand the size of the hashmap as the contents grow
-// in phase 3 we'll optimize memory by allocating in chunks so we can keep our buckets and linked lists in the same
-// memory chunk.
+// in phase 3 we'll optimize memory by allocating in chunks so we can keep our buckets
+// and linked lists in the same memory chunk.
 
 
 
@@ -28,6 +21,7 @@ typedef enum MapTypeEnum: unsigned char {
     MAP_TYPE_DOUBLE,
     MAP_TYPE_STRING,
     MAP_TYPE_VOID_PTR,
+    MAP_TYPE_NULL
 } MapTypeEnum;
 
 typedef struct BasicBlob {
@@ -42,6 +36,7 @@ typedef struct BasicBlob {
 //      if the caller is transfering ownership, we won't need to copy it.
 // 4. hash function and is_equal method. Perhaps a compare as well.
 // for now we won't support void* as a map key. We copy all strings and free the copies when we're done with them.
+// 16 bytes
 typedef struct MapKey {
     union {
         long klong;
@@ -52,6 +47,7 @@ typedef struct MapKey {
     MapTypeEnum  key_type;
 } MapKey;
 
+// 16 bytes
 typedef struct MapValue {
     union {
         long   vlong;
@@ -62,7 +58,9 @@ typedef struct MapValue {
     MapTypeEnum  value_type;
 } MapValue;
 
+constexpr MapValue NULL_MAP_VALUE = (MapValue){ .value_type = MAP_TYPE_NULL, .vvoid_ptr = nullptr };
 
+// 48
 typedef struct Node {
     const MapKey key;
     MapValue     value;
@@ -70,10 +68,10 @@ typedef struct Node {
     struct Node  *next;
 } Node;
 
-static const Node NULL_NODE = { };
 static constexpr double DEFAULT_FILL_FACTOR = 0.75;
 
 // Define the HashMap structure
+// 64 bytes
 typedef struct HashMap {
     Node **buckets;       // each bucket is a linked list
     size_t size;          // Number of key-value pairs currently in the map
@@ -85,34 +83,52 @@ typedef struct HashMap {
     uint64_t flags; // future use
 } HashMap;
 
+// ---------------------------
+// API methods
+// ---------------------------
 
-// Function prototypes
 HashMap *create_map(size_t num_buckets, void (*free_value_func)(void *));
-//Removes all of the mappings from this map
-void clear(void);
+//Removes all of the mappings from this map. Keeps existing buckets. After call size == 0.
+void map_clear(HashMap map[static 1]);
 //  Returns true if this map contains a mapping for the specified key.
-bool contains_key(void *key);
+// if you intend to use the key's value immediately if it exists, consider using map_try_get instead, for efficiency.
+bool map_contains_key(HashMap map[static 1], MapKey key) ;
 //  Returns true if this map contains a mapping for the specified key.
-bool contains_value(void *value);
+bool contains_value(HashMap map[static 1], MapValue value);
 //Removes the mapping for a key from this map if it is present
 // Returns the value to which this map previously associated the key, or null if the map contained no mapping for the key.
-void delete_key(HashMap *map, void *key, MapTypeEnum key_type);
-void free_map(HashMap *map);
-void *get(HashMap *map, const void *key, MapTypeEnum key_type, MapTypeEnum value_type) ;
+void (map_remove)(HashMap map[static 1], MapKey key);
+void free_map(HashMap map[static 1]);
+
+// Returns the value for the given key.
+// If no value found for the key, MapValue.value_type === MAP_TYPE_NULL and MapValue.vvoidptr == nullptr
+MapValue (map_get)(const HashMap map[static 1], const MapKey key);
 // Returns the value to which the specified key is mapped, or fallback if this map contains no mapping for the key.
-void *get_or(HashMap *map, const void *key, MapTypeEnum key_type, MapTypeEnum value_type, const void *fallback) ;
+MapValue (map_get_or)(const HashMap map[static 1], const MapKey key, const MapValue fallback) ;
+// if key exists, copies the value into out and returns true. If key does not exist, writes
+bool map_try_get(const HashMap map[static 1], MapKey key, MapValue *out);
+
 // Returns true if this map contains no key-value mappings.
-bool is_empty(void);
-void put(HashMap *map, const void *key, const void *value, MapTypeEnum key_type, MapTypeEnum value_type) ;
-void repr_HashMap(const HashMap *map, bool verbose);
+bool map_is_empty(const HashMap map[static 1]);
+
+
+//associates value with key in the map. If key did not previously exist in the map, this
+// function adds it. If the key already exists, the value is replaced with the argument value.
+// If the key previously existed, the old value is returned. If the key is being added, returns
+//NULL_MAP_VALUE.
+void map_put(HashMap map[static 1], MapKey key, MapValue value) ;
+
+void map_repr_HashMap(const HashMap map[static 1], bool verbose);
+void map_repr_MapKey(MapKey map_key, bool verbose);
+void map_repr_MapValue(MapValue map_value, bool verbose);
+void map_repr_Node(const Node node[static 1]);
 // Returns the number of key-value mappings in this map.
 size_t size(void);
 
-// -----------------------------------------
-// Generic map_put
-// -----------------------------------------
-
-// Helpers for macros
+// ---------------------------------------------------
+// Converters for generic map function arguments
+//  these convert expressions to a MapKey or MapValue
+// ---------------------------------------------------
 MapKey key_for_long(long v);
 MapKey key_for_double(double v);
 MapKey key_for_string(const char *v);
@@ -123,10 +139,7 @@ MapValue value_for_double(double v);
 MapValue value_for_string(const char *v);
 MapValue value_for_void_ptr(const void *v);
 
-// Main API method
-void map_put(HashMap *map, MapKey k, MapValue v);
-
-// Macros for type-generic map_put
+// Macros for type-generic map functions
 #define MAP_KEY(K) ( _Generic( (K), \
     float: key_for_double, \
     double: key_for_double, \
@@ -145,129 +158,10 @@ void map_put(HashMap *map, MapKey k, MapValue v);
     default: value_for_long \
 ) (V) )
 
-#define map_put_( M, K, V ) map_put( (M), (K), (V) )
-#define map_put(M, K, V) map_put_( (M), MAP_KEY(K), MAP_VALUE(V) )
 
 
-// Wrappers (type-safe-ish at compile time)
-
-// -----------------------------------------
-// put methods
-// -----------------------------------------
-
-// long key
-
-static inline void map_put_klong_vlong(HashMap *m, long k, long v) {
-    put(m, &k, &v, MAP_TYPE_LONG, MAP_TYPE_LONG);
-}
-
-static inline void map_put_klong_vdouble(HashMap *m, long k, double v) {
-    put(m, &k, &v, MAP_TYPE_LONG, MAP_TYPE_DOUBLE);
-}
-
-static inline void map_put_klong_vstring(HashMap *m, long k, char *v) {
-    put(m, &k, v, MAP_TYPE_LONG, MAP_TYPE_STRING);
-}
-
-
-// double key
-
-static inline void map_put_kdouble_vlong(HashMap *m, double k, long v) {
-    put(m, &k, &v, MAP_TYPE_DOUBLE, MAP_TYPE_LONG);
-}
-
-static inline void map_put_kdouble_vdouble(HashMap *m, double k, double v) {
-    put(m, &k, &v, MAP_TYPE_DOUBLE, MAP_TYPE_DOUBLE);
-}
-
-static inline void map_put_kdouble_vstring(HashMap *m, double k, char *v) {
-    put(m, &k, v, MAP_TYPE_DOUBLE, MAP_TYPE_STRING);
-}
-
-// string key
-static inline void map_put_kstring_vlong(HashMap *m, char* k, long v) {
-    put(m, k, &v, MAP_TYPE_STRING, MAP_TYPE_LONG);
-}
-
-static inline void map_put_kstring_vdouble(HashMap *m, char* k, double v) {
-    put(m, k, &v, MAP_TYPE_STRING, MAP_TYPE_DOUBLE);
-}
-
-static inline void map_put_kstring_vstring(HashMap *m, char* k, char *v) {
-    put(m, k, v, MAP_TYPE_STRING, MAP_TYPE_STRING);
-}
-
-
-// -----------------------------------------
-// get methods : return nullptr if not found, else a pointer to the value. you must dereference it!
-// -----------------------------------------
-
-// these are problematic. The user must know what the type of the value is for the key ahead of time.
-// this feels unrealistic. This is probably why most generic maps are homogenious
-// todo refactor this DS. We'll evolve this version to accomodate multiple key types and values at the cost of
-// some more work for the user. We'll have to return a struct with the value type and  the
-// user will have to cast it. Actually, we can return a MapValue. We'll have to refactor it into a struct
-// with the same union as a member, but with the type information as well, so it's a discriminated union.
-// we'll pass a copy to the caller so they can't clobber the data.
-
-
-
-
-// long key
-
-static inline void *map_get_klong_vlong(HashMap *m, long k) {
-    return get(m, &k, MAP_TYPE_LONG, MAP_TYPE_LONG);
-}
-
-static inline void *map_get_klong_vdouble(HashMap *m, long k) {
-    return get(m, &k, MAP_TYPE_LONG, MAP_TYPE_DOUBLE);
-}
-
-static inline void *map_get_klong_vstring(HashMap *m, long k) {
-    return get(m, &k, MAP_TYPE_LONG, MAP_TYPE_STRING);
-}
-
-
-// double key
-static inline void *map_get_kdouble_vlong(HashMap *m, double k) {
-    return get(m, &k, MAP_TYPE_DOUBLE,MAP_TYPE_LONG);
-}
-
-static inline void *map_get_kdouble_vdouble(HashMap *m, double k) {
-    return get(m, &k, MAP_TYPE_DOUBLE, MAP_TYPE_DOUBLE);
-}
-
-static inline void *map_get_kdouble_vstring(HashMap *m, double k) {
-    return get(m, &k, MAP_TYPE_DOUBLE,MAP_TYPE_STRING);
-}
-
-// string key
-static inline long * map_get_kstring_vlong(HashMap *m, char *k) {
-    return get(m, k, MAP_TYPE_STRING,MAP_TYPE_LONG);
-}
-
-static inline const char *map_get_kstring_vdouble(HashMap *m, char *k) {
-    return get(m, k, MAP_TYPE_STRING, MAP_TYPE_DOUBLE);
-}
-
-static inline const char *map_get_kstring_vstring(HashMap *m, char *k) {
-    return get(m, k, MAP_TYPE_STRING,MAP_TYPE_STRING);
-}
-
-
-
-// -----------------------------------------
-// delete methods
-// -----------------------------------------
-
-static inline void map_delete_klong(HashMap *m, long k) {
-    delete_key(m, &k, MAP_TYPE_LONG);
-}
-
-static inline void map_delete_kdouble(HashMap *m, double k) {
-    delete_key(m, &k, MAP_TYPE_DOUBLE);
-}
-
-static inline void map_delete_kstring(HashMap *m, char *k) {
-    delete_key(m, k, MAP_TYPE_STRING);
-}
+#define map_contains_key(M, K) map_contains_key( (M), MAP_KEY(K))
+#define map_get(M, K) map_get( (M), MAP_KEY(K) )
+#define map_get_or(M, K, V) map_get_or( (M), MAP_KEY(K), MAP_VALUE(V) )
+#define map_put(M, K, V) map_put( (M), MAP_KEY(K), MAP_VALUE(V) )
+#define map_remove( M, K) map_remove( (M), MAP_KEY(K)  )
