@@ -173,6 +173,10 @@
     default                   : "unknown"                      \
 )
 
+/**
+ * Prints a single new line
+ */
+#define PL printf("\n")
 
 /**
  * Prints value of argument with no newline
