@@ -101,11 +101,9 @@ void map_clear(HashMap map[static 1]);
 // if you intend to use the key's value immediately if it exists, consider using map_try_get instead, for efficiency.
 bool map_contains_key(HashMap map[static 1], MapKey key) ;
 //  Returns true if this map contains a mapping for the specified key.
-bool contains_value(HashMap map[static 1], MapValue value);
-//Removes the mapping for a key from this map if it is present
-// Returns the value to which this map previously associated the key, or null if the map contained no mapping for the key.
-void (map_remove)(HashMap map[static 1], MapKey key);
-void free_map(HashMap map[static 1]);
+bool map_contains_value(HashMap map[static 1], MapValue value);
+
+void map_free(HashMap map[static 1]);
 
 // Returns the value for the given key.
 // If no value found for the key, MapValue.value_type === MAP_TYPE_NULL and MapValue.vvoidptr == nullptr
@@ -124,6 +122,10 @@ bool map_is_empty(const HashMap map[static 1]);
 // If the key previously existed, the old value is returned. If the key is being added, returns
 //NULL_MAP_VALUE.
 void map_put(HashMap map[static 1], MapKey key, MapValue value) ;
+
+//Removes the mapping for a key from this map if it is present
+// Returns the value to which this map previously associated the key, or null if the map contained no mapping for the key.
+void (map_remove)(HashMap map[static 1], MapKey key);
 
 //// ---------------------------------------------
 ////  repr methods

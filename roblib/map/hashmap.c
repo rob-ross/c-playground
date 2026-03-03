@@ -6,7 +6,7 @@
 #include <string.h> // Required for memcpy
 
 // forward references
-static bool doubles_are_equal(double a, double b);
+static bool are_equal_doubles(double d1, double d2);
 static void free_node(HashMap map[static 1], Node *node);
 static void free_value_if(const HashMap *map, const Node *node_ptr);
 static size_t hash_string(const char *str);
@@ -22,9 +22,22 @@ static constexpr size_t MAX_POW2 = (SIZE_MAX >> 1) + 1;
 // static methods
 // ---------------------------
 
+static bool are_equal_doubles(double d1, double d2) {
+    // Optional policy: NaNs are not equal to anything (including NaN)
+    if (isnan(d1) || isnan(d2)) return false;
+
+    // Make -0.0 and +0.0 compare equal (matches common hashing policies)
+    if (d1 == 0.0) d1 = 0.0;
+    if (d2 == 0.0) d2 = 0.0;
+
+    uint64_t ua, ub;
+    memcpy(&ua, &d1, sizeof ua);
+    memcpy(&ub, &d2, sizeof ub);
+    return ua == ub;
+}
 
 // Compare the arguments for equality. Assumes k1 and k2 are of the same type.
-static bool are_equal(const MapKey k1, const MapKey k2) {
+static bool keys_are_equal(const MapKey k1, const MapKey k2) {
 
     if (k1.key_type != k2.key_type) return false;
 
@@ -34,7 +47,7 @@ static bool are_equal(const MapKey k1, const MapKey k2) {
         case MAP_TYPE_LONG:
             return k1.klong == k2.klong;
         case MAP_TYPE_DOUBLE:
-            return doubles_are_equal(k1.kdouble, k2.kdouble);
+            return are_equal_doubles(k1.kdouble, k2.kdouble);
         case MAP_TYPE_STRING:
             return strcmp(k1.kstring, k2.kstring) == 0;
         case MAP_TYPE_VOID_PTR:
@@ -46,6 +59,30 @@ static bool are_equal(const MapKey k1, const MapKey k2) {
         default:
             return false;
     }
+}
+
+static bool values_are_equal(const MapValue v1, const MapValue v2) {
+
+    if (v1.value_type != v2.value_type) return false;
+
+    switch (v1.value_type) {
+        case MAP_TYPE_NONE:
+            return false;
+        case MAP_TYPE_LONG:
+            return v1.vlong == v2.vlong;
+        case MAP_TYPE_DOUBLE:
+            return are_equal_doubles(v1.vdouble, v2.vdouble);
+        case MAP_TYPE_STRING:
+            return strcmp(v1.vstring, v2.vstring) == 0;
+        case MAP_TYPE_VOID_PTR:
+            // this requires the caller to have defined an equal function for this blob.
+            // todo implement
+            return v1.vvoid_ptr == v2.vvoid_ptr;
+        case MAP_TYPE_NULL:
+            return true; // both value_types are null
+        default:
+            return false;
+    }    
 }
 
 static inline size_t calc_bucket_index(const size_t hashcode, const size_t num_buckets) {
@@ -94,19 +131,7 @@ static Node * create_node(const size_t hashcode, const MapKey key) {
 
 }
 
-static bool doubles_are_equal(double a, double b) {
-    // Optional policy: NaNs are not equal to anything (including NaN)
-    if (isnan(a) || isnan(b)) return false;
 
-    // Make -0.0 and +0.0 compare equal (matches common hashing policies)
-    if (a == 0.0) a = 0.0;
-    if (b == 0.0) b = 0.0;
-
-    uint64_t ua, ub;
-    memcpy(&ua, &a, sizeof ua);
-    memcpy(&ub, &b, sizeof ub);
-    return ua == ub;
-}
 
 //specialized free method that works with just the intern_strings HashMap
 static void free_intern_strings(HashMap map[static 1]) {
@@ -272,7 +297,7 @@ static const Node * node_for(HashMap *map, MapKey key) {
     Node const *current = map->buckets[index];
 
     while (current != nullptr) {
-        if ( are_equal(key, current->key) ) {
+        if ( keys_are_equal(key, current->key) ) {
             return current;
         }
         current = current->next;
@@ -441,35 +466,25 @@ bool (map_contains_key)(HashMap map[static 1], const MapKey key) {
     MapValue unused;
     return map_try_get(map, key, &unused);
 }
-void (map_remove)(HashMap map[static 1], const MapKey key) {
-    if (!map) return;
 
-    const size_t hashcode = hash_function(key);
-    const size_t index = calc_bucket_index(hashcode, map->num_buckets);
 
-    Node *current = map->buckets[index];
-    Node *prev = nullptr;
-
-    while (current) {
-        if ( are_equal(key, current->key ) ){
-            if (!prev) {
-                map->buckets[index] = current->next;
-            } else {
-                prev->next = current->next;
+// initial implementation is O(N)
+bool map_contains_value(HashMap map[static 1], const MapValue value) {
+    const size_t num_buckets = map->num_buckets;
+    for ( size_t index = 0; index < num_buckets; ++index ) {
+        const Node *current = map->buckets[index];
+        while (current) {
+            if ( values_are_equal(value, current->value) ) {
+                return current;
             }
-            free_value_if(map, current );
-            free(current);
-            map->size--;
-            recalc_load(map);
-            return;
+            current = current->next;
         }
-        prev = current;
-        current = current->next;
-
     }
+    return false;
 }
 
-void free_map(HashMap map[static 1]) {
+
+void map_free(HashMap map[static 1]) {
     if (map == nullptr) return;
 
     free_intern_strings(map->intern_strings);
@@ -496,7 +511,7 @@ MapValue (map_get)(const HashMap map[static 1], const MapKey key) {
     Node const *current = map->buckets[index];
 
     while (current != nullptr) {
-        if ( are_equal(key, current->key) ) {
+        if ( keys_are_equal(key, current->key) ) {
             return current->value;
         }
         current = current->next;
@@ -540,7 +555,7 @@ void (map_put)(HashMap map[static 1], const MapKey key, const MapValue value) {
 
     // Check if key already exists and update value
     while (current != nullptr) {
-        if ( are_equal(key, current->key) ) {
+        if ( keys_are_equal(key, current->key) ) {
             free_value_if(map, current);
             set_value(current, value, map);
             return;
@@ -561,6 +576,33 @@ void (map_put)(HashMap map[static 1], const MapKey key, const MapValue value) {
 
 }
 
+void (map_remove)(HashMap map[static 1], const MapKey key) {
+    if (!map) return;
+
+    const size_t hashcode = hash_function(key);
+    const size_t index = calc_bucket_index(hashcode, map->num_buckets);
+
+    Node *current = map->buckets[index];
+    Node *prev = nullptr;
+
+    while (current) {
+        if ( keys_are_equal(key, current->key ) ){
+            if (!prev) {
+                map->buckets[index] = current->next;
+            } else {
+                prev->next = current->next;
+            }
+            free_value_if(map, current );
+            free(current);
+            map->size--;
+            recalc_load(map);
+            return;
+        }
+        prev = current;
+        current = current->next;
+
+    }
+}
 
 //// ---------------------------------------------
 ////  repr methods
