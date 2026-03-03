@@ -1,3 +1,9 @@
+// test_hashmap.c
+//
+// Copyright (c) Rob Ross 2026.
+//
+//
+
 #include <locale.h>
 #include <stdio.h>
 
@@ -247,6 +253,22 @@ MunitResult test_try_get(const MunitParameter params[], void* fixture) {
     return MUNIT_OK;
 }
 
+MunitResult test_size(const MunitParameter params[], void* fixture) {
+    HashMap *map = fixture;
+
+    constexpr size_t n = 20;
+    for (size_t index = 0; index < n; ++index ) {
+        map_put(map, index, index);
+        munit_assert_int(index + 1, ==, map_size(map));
+    }
+
+    return MUNIT_OK;
+}
+
+// ------------------------------------
+// end test cases
+// ------------------------------------
+
 MunitResult test_10K_inserts(const MunitParameter params[], void* fixture) ;
 MunitResult test_10K_string_inserts(const MunitParameter params[], void* fixture) ;
 
@@ -282,6 +304,7 @@ int main(int argc, char *argv[argc + 1]) {
         munit_test(test_contains_value),
         munit_test(test_get_or),
         munit_test(test_try_get),
+        munit_test(test_size),
 
         MUNIT_NULL_TEST,
     };

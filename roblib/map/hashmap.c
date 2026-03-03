@@ -1,3 +1,9 @@
+// hashmap.c
+//
+// Copyright (c) Rob Ross 2026.
+//
+//
+
 #include "hashmap.h"
 
 #include <math.h>
@@ -761,6 +767,10 @@ void map_repr_Node(const Node node[static 1]) {
     printf(", ");
     map_repr_MapValue(node->value, false);
     printf(" }\n");
+}
+
+size_t map_size(const HashMap *map) {
+    return map->size;
 }
 
 

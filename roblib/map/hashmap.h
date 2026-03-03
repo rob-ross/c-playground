@@ -1,4 +1,8 @@
-
+// hashmap.h
+//
+// Copyright (c) Rob Ross 2026.
+//
+//
 
 #pragma once
 
@@ -136,7 +140,7 @@ void map_repr_MapValue(MapValue map_value, bool verbose);
 void map_repr_Node(const Node node[static 1]);
 
 // Returns the number of key-value mappings in this map.
-size_t size(void);
+size_t map_size(const HashMap *map);
 
 // ---------------------------------------------------
 // Converters for generic map function arguments
