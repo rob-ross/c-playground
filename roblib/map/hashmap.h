@@ -111,7 +111,7 @@ MapValue (map_get)(const HashMap map[static 1], const MapKey key);
 // Returns the value to which the specified key is mapped, or fallback if this map contains no mapping for the key.
 MapValue (map_get_or)(const HashMap map[static 1], const MapKey key, const MapValue fallback) ;
 // if key exists, copies the value into out and returns true. If key does not exist, writes
-bool map_try_get(const HashMap map[static 1], MapKey key, MapValue *out);
+bool (map_try_get)(const HashMap map[static 1], MapKey key, MapValue *out);
 
 // Returns true if this map contains no key-value mappings.
 bool map_is_empty(const HashMap map[static 1]);
@@ -174,7 +174,9 @@ MapValue value_for_void_ptr(const void *v);
 
 
 #define map_contains_key(M, K) map_contains_key( (M), MAP_KEY(K))
+#define map_contains_value(M, V) map_contains_value( (M), MAP_VALUE(V))
 #define map_get(M, K) map_get( (M), MAP_KEY(K) )
 #define map_get_or(M, K, V) map_get_or( (M), MAP_KEY(K), MAP_VALUE(V) )
+#define map_try_get( M, K, V ) map_try_get( (M), MAP_KEY(K), V )
 #define map_put(M, K, V) map_put( (M), MAP_KEY(K), MAP_VALUE(V) )
 #define map_remove( M, K) map_remove( (M), MAP_KEY(K)  )

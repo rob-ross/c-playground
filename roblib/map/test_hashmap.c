@@ -173,6 +173,79 @@ MunitResult test_contains_key(const MunitParameter params[], void* fixture) {
 
 }
 
+MunitResult test_contains_value(const MunitParameter params[], void* fixture) {
+    HashMap *map = fixture;
+
+    map_put(map, 1, 1);
+    map_put(map, 2.0, 2.0);
+    map_put(map, "wolf", "big bad");
+    int int1 = 42;
+    void * vptr = (void *)&int1;
+    map_put(map, vptr, vptr );
+
+    munit_assert_true(map_contains_value(map, 1));
+    munit_assert_true(map_contains_value(map, 2.0));
+    munit_assert_true(map_contains_value(map, "big bad"));
+    munit_assert_true(map_contains_value(map, vptr));
+
+    return MUNIT_OK;
+}
+
+MunitResult test_get_or(const MunitParameter params[], void* fixture) {
+    HashMap *map = fixture;
+
+    map_put(map, 1, 1);
+    map_put(map, 2.0, 2.0);
+    map_put(map, "three", "three");
+    int int1 = 42;
+    void * vptr = (void *)&int1;
+    map_put(map, vptr, vptr );
+
+    MapValue result = map_get_or(map, 76, 67);
+
+    munit_assert_int(67, ==, result.vlong );
+    result = map_get_or(map, 7.6, 6.7);
+    munit_assert_double(6.7, ==, result.vdouble );
+    result = map_get_or(map, "four", "forty two");
+    munit_assert_string_equal("forty two", result.vstring);
+
+    const short short1 = (const short)99;
+    void * sptr = (void*) &short1;
+
+    void * missing_key = &"not here";
+
+    result = map_get_or(map, missing_key, sptr);
+    munit_assert_int(99, ==, *(const short*)result.vvoid_ptr );
+
+    return MUNIT_OK;
+}
+
+MunitResult test_try_get(const MunitParameter params[], void* fixture) {
+    HashMap *map = fixture;
+
+    map_put(map, 1, 1);
+    map_put(map, 2.0, 2.0);
+    map_put(map, "wolf", "big bad");
+    int int1 = 42;
+    void * vptr = (void *)&int1;
+    map_put(map, vptr, vptr );
+
+    MapValue mv = {};
+    bool result;;
+    munit_assert_true(map_try_get(map, 1, &mv));
+    munit_assert_int(1, ==, mv.vlong);
+    munit_assert_true(map_try_get(map, 2.0, &mv));
+    munit_assert_int(2.0, ==, mv.vdouble);
+    munit_assert_true(map_try_get(map, "wolf", &mv));
+    munit_assert_string_equal("big bad", mv.vstring);
+    munit_assert_true(map_try_get(map, vptr, &mv));
+    munit_assert_int(42, ==, *(int*)mv.vvoid_ptr);
+
+    munit_assert_false(map_try_get(map, 22, &mv));
+    munit_assert_int(MAP_TYPE_NULL, ==, mv.value_type);
+
+    return MUNIT_OK;
+}
 
 MunitResult test_10K_inserts(const MunitParameter params[], void* fixture) ;
 MunitResult test_10K_string_inserts(const MunitParameter params[], void* fixture) ;
@@ -206,6 +279,9 @@ int main(int argc, char *argv[argc + 1]) {
         munit_test(test_generic_put),
         munit_test(test_clear),
         munit_test(test_contains_key),
+        munit_test(test_contains_value),
+        munit_test(test_get_or),
+        munit_test(test_try_get),
 
         MUNIT_NULL_TEST,
     };

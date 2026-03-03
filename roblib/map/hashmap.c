@@ -464,12 +464,12 @@ void map_clear(HashMap map[static 1]) {
 }
 bool (map_contains_key)(HashMap map[static 1], const MapKey key) {
     MapValue unused;
-    return map_try_get(map, key, &unused);
+    return (map_try_get)(map, key, &unused);
 }
 
 
 // initial implementation is O(N)
-bool map_contains_value(HashMap map[static 1], const MapValue value) {
+bool (map_contains_value)(HashMap map[static 1], const MapValue value) {
     const size_t num_buckets = map->num_buckets;
     for ( size_t index = 0; index < num_buckets; ++index ) {
         const Node *current = map->buckets[index];
@@ -527,7 +527,7 @@ MapValue (map_get_or)(const HashMap map[static 1], const MapKey key, const MapVa
     return value;
 }
 
-bool map_try_get(const HashMap map[static 1], const MapKey key, MapValue *out) {
+bool (map_try_get)(const HashMap map[static 1], const MapKey key, MapValue *out) {
     const MapValue value = (map_get)(map, key);
     if (value.value_type == MAP_TYPE_NULL) {
         *out = NULL_MAP_VALUE;
