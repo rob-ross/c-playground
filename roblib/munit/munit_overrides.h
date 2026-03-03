@@ -10,100 +10,6 @@
 #include "munit.h"
 
 
-#ifdef munit_assert_float
-#undef munit_assert_float
-#define munit_assert_float(a, op, b, c) \
-    munit_assert_type(float, "f", a, op, b)
-#endif
-
-#ifdef munit_assert_int
-#undef munit_assert_int
-// added third parameter, unused by macro
-#define munit_assert_int(a, op, b, c) \
-    munit_assert_type(int, "d", a, op, b)
-#endif
-
-
-#define munit_assert_int_equal(a, b, c) \
-    munit_assert_int(a, ==, b, c)
-
-#ifdef munit_assert_string_equal
-#undef munit_assert_string_equal
-#endif
-
-// added third parameter, unused by macro
-#define munit_assert_string_equal(a, b, c) \
-    do { \
-        const char* munit_tmp_a_ = a; \
-        const char* munit_tmp_b_ = b; \
-        if (MUNIT_UNLIKELY(strcmp(munit_tmp_a_, munit_tmp_b_) != 0)) { \
-        munit_errorf("assertion failed: string %s == %s (\"%s\" == \"%s\")", \
-        #a, #b, munit_tmp_a_, munit_tmp_b_); \
-        } \
-        MUNIT_PUSH_DISABLE_MSVC_C4127_ \
-    } while (0) \
-    MUNIT_POP_DISABLE_MSVC_C4127_
-
-#ifdef munit_assert_ptr_equal
-#undef munit_assert_ptr_equal
-#define munit_assert_ptr_equal(a, b, c) \
-    munit_assert_ptr(a, ==, b)
-#endif
-
-#ifdef munit_assert_ptr_not_equal
-#undef munit_assert_ptr_not_equal
-#define munit_assert_ptr_not_equal(a, b, c) \
-    munit_assert_ptr(a, !=, b)
-#endif
-
-#ifdef munit_assert_ptr_not_null
-#undef munit_assert_ptr_not_null
-#define munit_assert_ptr_not_null(ptr, a) \
-    munit_assert_ptr(ptr, !=, NULL)
-#endif
-
-#ifdef munit_assert_ptr_null
-#undef munit_assert_ptr_null
-#define munit_assert_ptr_null(ptr, c) \
-    munit_assert_ptr(ptr, ==, NULL)
-#endif
-
-#ifdef munit_assert_null
-#undef munit_assert_null
-#define munit_assert_null(ptr, a) munit_assert_ptr(ptr, ==, NULL)
-#endif
-
-#ifdef munit_assert_not_null
-#undef munit_assert_not_null
-#define munit_assert_not_null(ptr, a) munit_assert_ptr(ptr, !=, NULL)
-
-#endif
-
-#ifdef munit_assert_size
-#undef munit_assert_size
-#define munit_assert_size(a, op, b, c) \
-    munit_assert_type(size_t, MUNIT_SIZE_MODIFIER "u", a, op, b)
-#endif
-
-#ifdef munit_assert_uint8
-#undef munit_assert_uint8
-#define munit_assert_uint8(a, op, b, c) \
-    munit_assert_type(munit_uint8_t, PRIu8, a, op, b)
-#endif
-
-#ifdef munit_assert_uint16
-#undef munit_assert_uint16
-#define munit_assert_uint16(a, op, b, c) \
-    munit_assert_type(munit_uint16_t, PRIu16, a, op, b)
-#endif
-
-#ifdef munit_assert_uint32
-#undef munit_assert_uint32
-#define munit_assert_uint32(a, op, b, c) \
-    munit_assert_type(munit_uint32_t, PRIu32, a, op, b)
-#endif
-
-
 
 #define munit_case(a, b, ...) \
 MunitResult b(const MunitParameter params[], void* user_data_or_fixture) {\
@@ -113,8 +19,20 @@ MunitResult b(const MunitParameter params[], void* user_data_or_fixture) {\
     return MUNIT_OK;    \
 }
 
-#define munit_test(a, b) \
-(MunitTest){ .name=a, .test=b, .setup=NULL, .tear_down=NULL, .options=MUNIT_TEST_OPTION_NONE, .parameters=NULL }
+
+
+// allows argument overloading of munit_test entries in MunitTest tests[] initializers
+
+#define munit_test_1(n)                 (MunitTest){ .name= "/"#n, .test=(n) }
+#define munit_test_2(n, t)              (MunitTest){ .name=n, .test=t }
+#define munit_test_3(n, t, s)           (MunitTest){ .name=n, .test=t, .setup=s}
+#define munit_test_4(n, t, s, td)       (MunitTest){ .name=n, .test=t, .setup=s, .tear_down=td}
+#define munit_test_5(n, t, s, td, o)    (MunitTest){ .name=n, .test=t, .setup=s, .tear_down=td, .options=o}
+#define munit_test_6(n, t, s, td, o, p) (MunitTest){ .name=n, .test=t, .setup=s, .tear_down=td, .options=o, .parameters=p}
+#define munit_test_select(_1, _2, _3, _4, _5, _6, NAME, ... ) NAME
+#define munit_test(...) \
+    munit_test_select(__VA_ARGS__, munit_test_6, munit_test_5, \
+        munit_test_4, munit_test_3, munit_test_2, munit_test_1 )(__VA_ARGS__)
 
 #define munit_null_test { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 
