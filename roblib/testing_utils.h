@@ -5,12 +5,13 @@
 #pragma once
 
 #include "./munit/munit.h"
+#include "./munit/munit_overrides.h"
 
 typedef struct UCharStr { unsigned char err; const char *expected;} UCharStr;
 
 static const UCharStr NULL_ENUM_STR = {0, nullptr};  //sentinel null value object
 
-static const MunitTest NULL_TEST = { nullptr, nullptr, nullptr, nullptr,
+static constexpr MunitTest MUNIT_NULL_TEST = { nullptr, nullptr, nullptr, nullptr,
     MUNIT_TEST_OPTION_NONE, nullptr };
 
 #if !defined(print)

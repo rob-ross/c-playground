@@ -180,26 +180,40 @@ MunitResult test_contains_key(const MunitParameter params[], void* fixture) {
 
 MunitResult test_10K_inserts(const MunitParameter params[], void* fixture) ;
 
+
+void apply_fixture(MunitTest tests[static 1], MunitTestSetup setup, MunitTestTearDown tear_down) {
+    size_t test_index = 0;
+    do {
+        MunitTest *test = &tests[test_index++];
+        printf("name=%s\n", test->name);
+        test->setup = setup;
+        test->tear_down = tear_down;
+    } while ( tests[test_index].name != nullptr );
+
+
+}
 // make
 // clang -std=c23 -o ./out/test_hashmap.out test_hashmap.c hashmap.c ../munit/munit.c
 int main(int argc, char *argv[argc + 1]) {
     setlocale(LC_NUMERIC, "en_US.UTF-8");   // use user's system locale
 
     MunitTest tests[] = {
-        { .name="/test_create_and_free", .test=test_create_and_free, },
-        { .name="/test_put_and_get_int", .test=test_put_and_get_int, .setup = hashmap_fixture, .tear_down = hashmap_free },
-        { .name="/test_put_and_get_string", .test=test_put_and_get_string, .setup = hashmap_fixture, .tear_down = hashmap_free },
-        { .name="/test_update_value", .test=test_update_value, .setup = hashmap_fixture, .tear_down = hashmap_free },
-        { .name="/test_remove_key", .test=test_remove_key, .setup = hashmap_fixture, .tear_down = hashmap_free },
-        { .name="/test_put_and_get_str_key", .test=test_put_and_get_str_key, .setup = hashmap_fixture, .tear_down = hashmap_free },
-        { .name="/test_put_and_get_bool_values", .test=test_put_and_get_bool_values, .setup = hashmap_fixture, .tear_down = hashmap_free },
-        { .name="/test_klong_vstring", .test=test_klong_vstring, .setup = hashmap_fixture, .tear_down = hashmap_free },
-        { .name="/test_generic_put", .test=test_generic_put, .setup = hashmap_fixture, .tear_down = hashmap_free },
-        { .name="/test_clear", .test=test_clear, .setup = hashmap_fixture, .tear_down = hashmap_free },
-        { .name="/test_contains_key", .test=test_contains_key, .setup = hashmap_fixture, .tear_down = hashmap_free },
+        munit_test(test_create_and_free),
+        munit_test("/test_put_and_get_int", test_put_and_get_int),
+        munit_test(test_put_and_get_string),
+        munit_test(test_update_value),
+        munit_test(test_remove_key),
+        munit_test(test_put_and_get_str_key),
+        munit_test(test_put_and_get_bool_values),
+        munit_test(test_klong_vstring),
+        munit_test(test_generic_put),
+        munit_test(test_clear),
+        munit_test(test_contains_key),
 
-        NULL_TEST,
+        MUNIT_NULL_TEST,
     };
+
+    apply_fixture(tests, hashmap_fixture, hashmap_free);
 
 
      MunitSuite suite = {
