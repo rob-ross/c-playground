@@ -7,9 +7,16 @@
 
 // forward references
 static bool doubles_are_equal(double a, double b);
+static void free_node(HashMap map[static 1], Node *node);
+static void free_value_if(const HashMap *map, const Node *node_ptr);
 static size_t hash_string(const char *str);
 static size_t hash_mix64(size_t x);
+static const Node * node_for(HashMap *map, MapKey key);
 static void resize_map(HashMap *map);
+
+
+static constexpr size_t MIN_CAP  = 16;
+static constexpr size_t MAX_POW2 = (SIZE_MAX >> 1) + 1;
 
 // ---------------------------
 // static methods
@@ -101,14 +108,53 @@ static bool doubles_are_equal(double a, double b) {
     return ua == ub;
 }
 
-static void free_if(const Node *node_ptr, const HashMap *map) {
-    if ( node_ptr->value.value_type == MAP_TYPE_STRING) {
-        map->free_func(node_ptr->value.vstring);
+//specialized free method that works with just the intern_strings HashMap
+static void free_intern_strings(HashMap map[static 1]) {
+    if (!map->intern_strings) {
+        return;
     }
-    else if ( node_ptr->value.value_type == MAP_TYPE_VOID_PTR) {
+    const size_t num_buckets = map->intern_strings->num_buckets;
+    for (size_t i = 0; i < num_buckets; ++i) {
+        Node *current = map->intern_strings->buckets[i];
+        while (current) {
+            Node *temp = current;
+            current = current->next;
+            free_node(map->intern_strings, temp);
+        }
+    }
+    // all string objects (char *) have been freed. Now free the intern string map
+    free(map->intern_strings->buckets);
+    free(map->intern_strings);
+    map->intern_strings = nullptr;
+}
+
+static void free_node(HashMap map[static 1], Node *node) {
+    if (node->key.key_type == MAP_TYPE_STRING) {
+        // this is safe, since we always make a copy of a string key and we own it
+        free(node->key.kstring);
+    }
+    free_value_if(map, node);
+    free(node);
+}
+
+static void free_value_if(const HashMap *map, const Node *node_ptr) {
+    if ( map->intern_strings && node_ptr->value.value_type == MAP_TYPE_STRING) {
+        char * string =  node_ptr->value.vstring;
+        MapValue vrefcount = map_get(map->intern_strings, string);
+        size_t refcount = vrefcount.vlong - 1;
+        if (!refcount) {
+            //refcount is zero, we can free this string
+            map_remove(map->intern_strings, string);
+        } else {
+            // update with new refcount
+            map_put(map->intern_strings, string, refcount);
+        }
+    }
+    else if ( node_ptr->value.value_type == MAP_TYPE_VOID_PTR && map->free_func) {
         map->free_func(node_ptr->value.vvoid_ptr);
     }
 }
+
 
 static size_t hash_function(const MapKey key) {
     size_t raw_hash;
@@ -178,8 +224,22 @@ static size_t hash_string(const char *str) {
     return (size_t)hash;
 }
 
-static constexpr size_t MIN_CAP  = 16;
-static constexpr size_t MAX_POW2 = (SIZE_MAX >> 1) + 1;
+static  char* intern(HashMap *intern_strings, char string[static 1]) {
+    MapKey key = (MapKey){.kstring = string, .key_type = MAP_TYPE_STRING};
+
+    const Node * node = node_for(intern_strings, key);
+    if (node == &NULL_NODE) {
+        // first time string is encountered
+        char * dupe = strdup(string);
+        map_put( intern_strings, dupe, 1) ;
+        return dupe;
+    }
+    // string exists in intern string pool
+    map_put(intern_strings, string, node->value.vlong + 1 );
+    return node->key.kstring;
+}
+
+
 
 static size_t next_power_of_two(size_t n) {
     // Clamp lower bound
@@ -203,6 +263,21 @@ static size_t next_power_of_two(size_t n) {
     n |= n >> 32;
 #endif
     return n + 1;
+}
+
+static const Node * node_for(HashMap *map, MapKey key) {
+    if (map == nullptr) return &NULL_NODE;
+    const size_t index = calc_bucket_index(hash_function(key), map->num_buckets);
+
+    Node const *current = map->buckets[index];
+
+    while (current != nullptr) {
+        if ( are_equal(key, current->key) ) {
+            return current;
+        }
+        current = current->next;
+    }
+    return &NULL_NODE; // Key not found
 }
 
 static void recalc_load(HashMap *map) {
@@ -244,8 +319,7 @@ static void resize_map(HashMap *map) {
     recalc_load(map);
 }
 
-
-static void set_value(Node *node, const MapValue value) {
+static void set_value(Node *node, const MapValue value, HashMap *top_map) {
     switch (value.value_type) {
         case MAP_TYPE_LONG:
             node->value.vlong = value.vlong;
@@ -254,7 +328,13 @@ static void set_value(Node *node, const MapValue value) {
             node->value.vdouble = value.vdouble;
             break;
         case MAP_TYPE_STRING:
-            node->value.vstring = strdup(value.vstring);
+            if (top_map->intern_strings) {
+                //get string from intern string pool
+                node->value.vstring = intern(top_map->intern_strings, value.vstring);
+            } else {
+                // adding to the intern pool hash map
+                node->value.vstring = value.vstring; // intern called us with a dupe
+            }
             break;
         case MAP_TYPE_VOID_PTR:
             node->value.vvoid_ptr = value.vvoid_ptr;
@@ -269,7 +349,27 @@ static void set_value(Node *node, const MapValue value) {
 }
 
 
+static HashMap *create_intern_string_map() {
 
+    HashMap *map = (HashMap *)calloc(1, sizeof(HashMap));
+    if (map == nullptr) {
+        return nullptr;
+    }
+
+    Node **buckets = (Node **)calloc(MIN_CAP, sizeof(Node *));
+    if (buckets == nullptr) {
+        free(map);
+        return nullptr;
+    }
+
+    map->buckets = buckets;
+    map->size = 0;
+    map->fill_capacity =(size_t)( MIN_CAP * (long double)DEFAULT_FILL_FACTOR );
+    map->load = 0;
+    map->num_buckets = MIN_CAP;
+    map->fill_factor = DEFAULT_FILL_FACTOR;
+    return map;
+}
 
 // ---------------------------
 // API methods
@@ -279,30 +379,45 @@ static void set_value(Node *node, const MapValue value) {
 // num_buckets is clamped to smalles power of two > num_buckets.
 // buckets double when fill capacity is reached (75% full). 16 buckets provides adequate sizing for 12 items before
 // doubling.
-HashMap *create_map(size_t num_buckets, void (*free_value_func)(void *)) {
+HashMap *map_create(size_t num_buckets, void (*free_value_func)(void *)) {
+
     HashMap *map = (HashMap *)malloc(sizeof(HashMap));
     if (map == nullptr) {
         return nullptr;
     }
     if (!num_buckets) {
-        num_buckets = 16;
+        num_buckets = MIN_CAP;
     } else if ( num_buckets > (SIZE_MAX >> 1) + 1) {
        num_buckets = (SIZE_MAX >> 1) + 1;
     } else {
         num_buckets = next_power_of_two(num_buckets);
     }
-    map->buckets = (Node **)calloc(num_buckets, sizeof(Node *));
-    if (map->buckets == nullptr) {
+
+    Node **buckets = (Node **)calloc(num_buckets, sizeof(Node *));
+    if (!buckets) {
         free(map);
         return nullptr;
     }
 
-    map->num_buckets = num_buckets;
-    map->size = 0;
-    map->fill_factor = DEFAULT_FILL_FACTOR;
-    map->load = 0;
-    map->free_func = free_value_func;
-    map->fill_capacity = (size_t)( num_buckets * (long double)map->fill_factor );
+    HashMap *intern_strings = create_intern_string_map();
+    if (!intern_strings) {
+        free(map);
+        free(buckets);
+        return nullptr;
+    }
+
+    HashMap prototype = (HashMap){
+        .buckets = buckets,
+        .size = 0,
+        .fill_capacity = (size_t)( MIN_CAP * (long double)DEFAULT_FILL_FACTOR ),
+        .load = 0,
+        .num_buckets = num_buckets,
+        .fill_factor = DEFAULT_FILL_FACTOR,
+        .intern_strings = intern_strings,
+        .free_func = nullptr, //todo still working out reference object ownership
+        .flags = 0 };
+
+    memcpy(map, &prototype, sizeof(HashMap));
 
     return map;
 }
@@ -315,7 +430,7 @@ void map_clear(HashMap map[static 1]) {
         while (current != nullptr) {
             Node *temp = current;
             current = current->next;
-            free_if(temp, map);
+            free_value_if(map, temp);
             free(temp);
         }
     }
@@ -342,7 +457,7 @@ void (map_remove)(HashMap map[static 1], const MapKey key) {
             } else {
                 prev->next = current->next;
             }
-            free_if(current, map);
+            free_value_if(map, current );
             free(current);
             map->size--;
             recalc_load(map);
@@ -357,13 +472,15 @@ void (map_remove)(HashMap map[static 1], const MapKey key) {
 void free_map(HashMap map[static 1]) {
     if (map == nullptr) return;
 
-    for (size_t i = 0; i < map->num_buckets; i++) {
+    free_intern_strings(map->intern_strings);
+    const size_t num_buckets = map->num_buckets;
+
+    for (size_t i = 0; i < num_buckets; i++) {
         Node *current = map->buckets[i];
         while (current != nullptr) {
             Node *temp = current;
             current = current->next;
-            free_if(temp, map);
-            free(temp);
+            free_node(map, temp);
         }
     }
 
@@ -424,8 +541,8 @@ void (map_put)(HashMap map[static 1], const MapKey key, const MapValue value) {
     // Check if key already exists and update value
     while (current != nullptr) {
         if ( are_equal(key, current->key) ) {
-            free_if(current, map);
-            set_value(current, value);
+            free_value_if(map, current);
+            set_value(current, value, map);
             return;
         }
         current = current->next;
@@ -437,7 +554,7 @@ void (map_put)(HashMap map[static 1], const MapKey key, const MapValue value) {
         return;
     }
     new_node->next =  map->buckets[bucket_index];  // inserts this Node at the head of the bucket
-    set_value(new_node, value);
+    set_value(new_node, value, map);
     map->buckets[bucket_index] = new_node;
     map->size++;
     recalc_load(map);
@@ -445,96 +562,10 @@ void (map_put)(HashMap map[static 1], const MapKey key, const MapValue value) {
 }
 
 
-void map_repr_MapValue(const MapValue map_value, const bool verbose) {
-    if (map_value.value_type == MAP_TYPE_NONE) {
-        printf("(MapValue){ MAP_TYPE_NONE }");
-        return;
-    }
-    if (map_value.value_type == MAP_TYPE_NULL) {
-        printf("(MapValue){ MAP_TYPE_NULL }");
-        return;
-    }
-    if (verbose) {
-        printf("(MapValue){ ");
-    }
-    switch (map_value.value_type) {
-        case MAP_TYPE_LONG:
-            printf(".vlong=%5lu", map_value.vlong);
-            break;
-        case MAP_TYPE_DOUBLE:
-            printf(".vdouble=%5g", map_value.vdouble);
-            break;
-        case MAP_TYPE_STRING:
-            printf(".vstring='%5s'", map_value.vstring);
-            break;
-        case MAP_TYPE_VOID_PTR:
-            printf(".vvoid_ptr=%14p", map_value.vvoid_ptr);
-            break;
-        default:
-            if (verbose) {
-                printf("unknown");
-            } else {
-                printf("(MapValue){ unknown }");
-            }
-    }
-    if (verbose) {
-        printf(" }");
-    }
-}
+//// ---------------------------------------------
+////  repr methods
+//// ---------------------------------------------
 
-void map_repr_MapKey(const MapKey map_key, bool verbose) {
-
-    if (map_key.key_type == MAP_TYPE_NONE) {
-        printf("(MapKey){ MAP_TYPE_NONE }");
-        return;
-    }
-    if (map_key.key_type == MAP_TYPE_NULL) {
-        printf("(MapKey){ MAP_TYPE_NULL }");
-        return;
-    }
-    if (verbose) {
-        printf("(MapKey){ ");
-    }
-    switch (map_key.key_type) {
-        case MAP_TYPE_LONG:
-            printf(".klong=%5lu", map_key.klong);
-            break;
-        case MAP_TYPE_DOUBLE:
-            printf(".kdouble=%5g", map_key.kdouble);
-            break;
-        case MAP_TYPE_STRING:
-            printf(".kstring='%5s'", map_key.kstring);
-            break;
-        case MAP_TYPE_VOID_PTR:
-            printf(".kvoid_ptr=%14p", map_key.kvoid_ptr);
-            break;
-        default:
-            if (verbose) {
-                printf("unknown");
-            } else {
-                printf("(MapKey){ unknown }");
-            }
-    }
-    if (verbose) {
-        printf(" }");
-    }
-}
-
-void map_repr_Node(const Node node[static 1]) {
-    if (!node) {
-        printf("(Node)nullptr");
-        return;
-    }
-    printf("(Node){ ");
-    printf(".hash=0x%-16lX", node->hash);
-    printf(", .this=%14p, .next=%14p, ", node, node->next);
-    map_repr_MapKey(node->key, false);
-    printf(", ");
-    map_repr_MapValue(node->value, false);
-    printf(" }\n");
-}
-
-//display info about the HashMap via println
 void map_repr_HashMap(const HashMap map[static 1], bool verbose) {
     if (!map) {
         printf("(HashMap)nullptr");
@@ -543,8 +574,11 @@ void map_repr_HashMap(const HashMap map[static 1], bool verbose) {
 
     // ReSharper disable CppPrintfBadFormat
     // ReSharper disable CppPrintfExtraArg
-    printf( "(HashMap){ .size=%'zu, .fill_capacity=%'zu, .load=%'g, .num_buckets=%'zu, .fill_factor=%g, .free_func=%p }",
-            map->size, map->fill_capacity, map->load, map->num_buckets, map->fill_factor, map->free_func);
+    size_t intern_strings_size = map->intern_strings ? map->intern_strings->size : 0;
+    printf( "(HashMap){ .size=%'zu, .fill_capacity=%'zu, .load=%'g, .num_buckets=%'zu, .fill_factor=%g, "
+            ".intern_strings.size=%zu,.free_func=%p }",
+            map->size, map->fill_capacity, map->load, map->num_buckets, map->fill_factor, intern_strings_size,
+            map->free_func);
 
     const int max_buckets_displayed = 16;
     // we might want a special Bucket struct to be the head of each bucket, so we can keep statistics on the bucket
@@ -598,10 +632,101 @@ void map_repr_HashMap(const HashMap map[static 1], bool verbose) {
 
 }
 
-// ---------------------------------------------------
-// Converters for generic map function arguments
-//  these convert expressions to a MapKey or MapValue
-// ---------------------------------------------------
+void map_repr_MapKey(const MapKey map_key, bool verbose) {
+
+    if (map_key.key_type == MAP_TYPE_NONE) {
+        printf("(MapKey){ MAP_TYPE_NONE }");
+        return;
+    }
+    if (map_key.key_type == MAP_TYPE_NULL) {
+        printf("(MapKey){ MAP_TYPE_NULL }");
+        return;
+    }
+    if (verbose) {
+        printf("(MapKey){ ");
+    }
+    switch (map_key.key_type) {
+        case MAP_TYPE_LONG:
+            printf(".klong=%5lu", map_key.klong);
+            break;
+        case MAP_TYPE_DOUBLE:
+            printf(".kdouble=%5g", map_key.kdouble);
+            break;
+        case MAP_TYPE_STRING:
+            printf(".kstring='%5s'", map_key.kstring);
+            break;
+        case MAP_TYPE_VOID_PTR:
+            printf(".kvoid_ptr=%14p", map_key.kvoid_ptr);
+            break;
+        default:
+            if (verbose) {
+                printf("unknown");
+            } else {
+                printf("(MapKey){ unknown }");
+            }
+    }
+    if (verbose) {
+        printf(" }");
+    }
+}
+
+void map_repr_MapValue(const MapValue map_value, const bool verbose) {
+    if (map_value.value_type == MAP_TYPE_NONE) {
+        printf("(MapValue){ MAP_TYPE_NONE }");
+        return;
+    }
+    if (map_value.value_type == MAP_TYPE_NULL) {
+        printf("(MapValue){ MAP_TYPE_NULL }");
+        return;
+    }
+    if (verbose) {
+        printf("(MapValue){ ");
+    }
+    switch (map_value.value_type) {
+        case MAP_TYPE_LONG:
+            printf(".vlong=%5lu", map_value.vlong);
+            break;
+        case MAP_TYPE_DOUBLE:
+            printf(".vdouble=%5g", map_value.vdouble);
+            break;
+        case MAP_TYPE_STRING:
+            printf(".vstring='%5s'", map_value.vstring);
+            break;
+        case MAP_TYPE_VOID_PTR:
+            printf(".vvoid_ptr=%14p", map_value.vvoid_ptr);
+            break;
+        default:
+            if (verbose) {
+                printf("unknown");
+            } else {
+                printf("(MapValue){ unknown }");
+            }
+    }
+    if (verbose) {
+        printf(" }");
+    }
+}
+
+void map_repr_Node(const Node node[static 1]) {
+    if (!node) {
+        printf("(Node)nullptr");
+        return;
+    }
+    printf("(Node){ ");
+    printf(".hash=0x%-16lX", node->hash);
+    printf(", .this=%14p, .next=%14p, ", node, node->next);
+    map_repr_MapKey(node->key, false);
+    printf(", ");
+    map_repr_MapValue(node->value, false);
+    printf(" }\n");
+}
+
+
+
+//// ---------------------------------------------------
+//// Converters for generic map function arguments
+////  these convert expressions to a MapKey or MapValue
+//// ---------------------------------------------------
 
 MapValue value_for_long(const long v) {
     return (MapValue){.vlong = v, .value_type = MAP_TYPE_LONG};

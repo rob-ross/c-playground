@@ -58,7 +58,6 @@ typedef struct MapValue {
     MapTypeEnum  value_type;
 } MapValue;
 
-constexpr MapValue NULL_MAP_VALUE = (MapValue){ .value_type = MAP_TYPE_NULL, .vvoid_ptr = nullptr };
 
 // 48
 typedef struct Node {
@@ -68,26 +67,34 @@ typedef struct Node {
     struct Node  *next;
 } Node;
 
-static constexpr double DEFAULT_FILL_FACTOR = 0.75;
 
+struct HashMap;
 // Define the HashMap structure
 // 64 bytes
 typedef struct HashMap {
-    Node **buckets;       // each bucket is a linked list
-    size_t size;          // Number of key-value pairs currently in the map
-    size_t fill_capacity; // holds the max ideal size for the current number of buckets. Increases when buckets increase
-    double load;          // current load = size / num_buckets
-    size_t num_buckets;   // must always be a power of 2
-    double fill_factor;   // desired load
+    Node **buckets;               // each bucket is a linked list
+    size_t size;                  // Number of key-value pairs currently in the map
+    size_t fill_capacity;         // holds the max ideal size for the current number of buckets. Increases when buckets increase
+    double load;                  // current load = size / num_buckets
+    size_t num_buckets;           // must always be a power of 2
+    double fill_factor;           // desired load
+
+    struct HashMap * intern_strings;
     void (*free_func)(void *); // Function pointer to free allocated values
     uint64_t flags; // future use
 } HashMap;
+
+constexpr MapKey   NULL_MAP_KEY   = (MapKey){  .kvoid_ptr = nullptr, .key_type   = MAP_TYPE_NULL};
+constexpr MapValue NULL_MAP_VALUE = (MapValue){.vvoid_ptr = nullptr, .value_type = MAP_TYPE_NULL};
+
+static constexpr Node NULL_NODE = (Node){ .key = NULL_MAP_KEY, .value = NULL_MAP_VALUE, .hash = 0, .next = nullptr};
+static constexpr double DEFAULT_FILL_FACTOR = 0.75;
 
 // ---------------------------
 // API methods
 // ---------------------------
 
-HashMap *create_map(size_t num_buckets, void (*free_value_func)(void *));
+HashMap *map_create(size_t num_buckets, void (*free_value_func)(void *));
 //Removes all of the mappings from this map. Keeps existing buckets. After call size == 0.
 void map_clear(HashMap map[static 1]);
 //  Returns true if this map contains a mapping for the specified key.
@@ -118,10 +125,14 @@ bool map_is_empty(const HashMap map[static 1]);
 //NULL_MAP_VALUE.
 void map_put(HashMap map[static 1], MapKey key, MapValue value) ;
 
+//// ---------------------------------------------
+////  repr methods
+//// ---------------------------------------------
 void map_repr_HashMap(const HashMap map[static 1], bool verbose);
 void map_repr_MapKey(MapKey map_key, bool verbose);
 void map_repr_MapValue(MapValue map_value, bool verbose);
 void map_repr_Node(const Node node[static 1]);
+
 // Returns the number of key-value mappings in this map.
 size_t size(void);
 

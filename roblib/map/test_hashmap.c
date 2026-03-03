@@ -13,7 +13,7 @@
 // ----------------------------------------------
 // create a HashMap for use in test cases
 void *  hashmap_fixture(const MunitParameter params[], void* user_data) {
-    HashMap *map = create_map(10, free);
+    HashMap *map = map_create(10, free);
     munit_assert_not_null(map);
     return map;
 }
@@ -28,7 +28,7 @@ void hashmap_free(void * fixture) {
 // -------------------------------------------------
 
 MunitResult test_create_and_free(const MunitParameter params[], void* fixture) {
-    HashMap *map = create_map(10, nullptr);
+    HashMap *map = map_create(10, nullptr);
     munit_assert_ptr_not_null(map);
     free_map(map);
     return MUNIT_OK;
@@ -69,7 +69,7 @@ MunitResult test_update_value(const MunitParameter params[], void* fixture) {
 
 MunitResult test_remove_key(const MunitParameter params[], void* fixture) {
     HashMap *map = fixture;
-    map_put(map, 1, "hello");    map_put(map, 1, "hello");
+    map_put(map, 1, "hello");
     map_remove(map, 1);
     MapValue retrieved = map_get(map, 1);
     munit_assert_int(retrieved.value_type, ==, MAP_TYPE_NULL);
@@ -110,7 +110,7 @@ MunitResult test_put_and_get_bool_values(const MunitParameter params[], void* fi
 MunitResult test_klong_vstring(const MunitParameter params[], void* fixture) {
     HashMap *map ;
 
-    map = create_map(0, free);
+    map = map_create(0, free);
     for (int i = 0; i < 100; ++i) {
         char search_string[10]; // max 4 chars for value of i, plus 5 for 'hello', plus terminator
         snprintf(search_string, 10, "hello%d",i+1);
@@ -179,13 +179,13 @@ MunitResult test_contains_key(const MunitParameter params[], void* fixture) {
 
 
 MunitResult test_10K_inserts(const MunitParameter params[], void* fixture) ;
+MunitResult test_10K_string_inserts(const MunitParameter params[], void* fixture) ;
 
 
 void apply_fixture(MunitTest tests[static 1], MunitTestSetup setup, MunitTestTearDown tear_down) {
     size_t test_index = 0;
     do {
         MunitTest *test = &tests[test_index++];
-        printf("name=%s\n", test->name);
         test->setup = setup;
         test->tear_down = tear_down;
     } while ( tests[test_index].name != nullptr );
@@ -224,11 +224,15 @@ int main(int argc, char *argv[argc + 1]) {
         MUNIT_SUITE_OPTION_NONE /* options */
       };
 
-    // test_10K_inserts(nullptr, nullptr);
+
 
 
     int result = {};
     result = munit_suite_main(&suite, nullptr, argc, argv);
+
+
+    test_10K_inserts(nullptr, nullptr);
+    test_10K_string_inserts(nullptr, nullptr);
     return result;
 
 }
@@ -240,27 +244,28 @@ int main(int argc, char *argv[argc + 1]) {
 void test_repr(void) {
     HashMap *map ;
 
-    map = create_map(0, free);
+    map = map_create(0, free);
     map_repr_HashMap(map, true); print("");
     free_map(map);
 
-    map = create_map(10, free);
+    map = map_create(10, free);
     map_repr_HashMap(map, true); print("");
     free_map(map);
 
-    map = create_map(16, free);
+    map = map_create(16, free);
     map_repr_HashMap(map, true); print("");
     free_map(map);
 
-    map = create_map(17, free);
+    map = map_create(17, free);
 
     free_map(map);
 }
 
 MunitResult test_10K_inserts(const MunitParameter params[], void* fixture) {
+    print("test_10K_inserts");
     HashMap *map ;
-    const size_t N = 10'000;
-    map = create_map(0, free);
+    const size_t N = 10'0;
+    map = map_create(0, free);
     size_t buffer_size = 20;  // max 9 chars for value of i, plus 5 for 'hello', plus terminator
     for (int i = 0; i < N; ++i) {
         char search_string[buffer_size] = {};
@@ -270,7 +275,6 @@ MunitResult test_10K_inserts(const MunitParameter params[], void* fixture) {
     for (int i=0; i< N; ++i) {
         char search_string[buffer_size] = {}; // max 4 chars for value of i, plus 5 for 'hello', plus terminator
         snprintf(search_string,buffer_size, "hello%d",i+1);
-
         MapValue value = map_get(map, i );
         // print("search string = %s, value = %s", search_string, value);
 
@@ -280,8 +284,60 @@ MunitResult test_10K_inserts(const MunitParameter params[], void* fixture) {
     print("");
 
     printf("finished adding %zu items to map.\n", N);
-    map_repr_HashMap(map, true);
+    map_repr_HashMap(map, false);
 
+
+    fflush(stdout);
+    printf("about to call free_map:\n");
+    fflush(stdout);
+
+    free_map(map);
+
+    return MUNIT_OK;
+}
+
+
+MunitResult test_10K_string_inserts(const MunitParameter params[], void* fixture) {
+    print("test_10K_string_inserts");
+    HashMap *map ;
+    const size_t N = 10;
+    map = map_create(0, free);
+
+    char * value_str = "hello world";
+    for (int i = 0; i < N; ++i) {
+        map_put(map, i, value_str );
+    }
+    for (int i=0; i< N; ++i) {
+        MapValue value = map_get(map, i );
+        munit_assert_string_equal( value_str, value.vstring);
+    }
+
+    print("");
+
+    printf("finished adding %zu items to map.\n", N);
+    map_repr_HashMap(map, false);
+
+    MapValue count = map_get(map->intern_strings, "hello world");
+    printf("'hello reference world' count = %ld\n", count.vlong);
+    map_repr_HashMap(map->intern_strings, false);
+
+    print("\n");
+
+    //try removing keys, the reference count should reduce by 1 each time
+    for (int i=0; i< N; ++i) {
+        print("\nremoving #%d", i);
+        map_remove(map, i );
+        munit_assert_int( N-i - 1, ==, map->size);
+        count = map_get(map->intern_strings, "hello world");
+        printf("   count MapValue value_type: %d\n", count.value_type);
+        printf("'hello reference world' count = %ld\n", count.vlong);
+        map_repr_HashMap(map->intern_strings, false);
+        munit_assert_int( N-i - 1, ==, count.vlong);
+    }
+
+    fflush(stdout);
+    printf("about to call free_map:\n");
+    fflush(stdout);
     free_map(map);
 
     return MUNIT_OK;
