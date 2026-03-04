@@ -194,10 +194,10 @@ size_t map_size(const HashMap *map);
 // Converters for generic map function arguments
 //  these convert expressions to a MapKey or MapValue
 // ---------------------------------------------------
-MapKey key_for_long(long v);
-MapKey key_for_double(double v);
-MapKey key_for_string(const char *v);
-MapKey key_for_void_ptr(const void *v);
+MapKey key_for_long(long k);
+MapKey key_for_double(double k);
+MapKey key_for_string(const char *k);
+MapKey key_for_void_ptr(const void *k);
 
 MapValue value_for_long(long v);
 MapValue value_for_double(double v);

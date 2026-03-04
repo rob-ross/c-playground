@@ -58,6 +58,9 @@ void intstr_put(InternStringMap ismap[static 1], const char* strkey) {
     map_recalc_load(map);
 }
 
-MapValue (intstr_get)(const InternStringMap map[static 1], const char* key) {
-
+MapValue (intstr_get)(const InternStringMap ismap[static 1], const char* key) {
+    if (!ismap) {
+        return NULL_MAP_VALUE;
+    }
+    return (map_get)(ismap->map, key_for_string(key));
 }

@@ -787,6 +787,22 @@ size_t map_size(const HashMap *map) {
 ////  these convert expressions to a MapKey or MapValue
 //// ---------------------------------------------------
 
+MapKey key_for_long(const long k) {
+    return (MapKey){.klong = k, .key_type = MAP_TYPE_LONG};
+}
+
+MapKey key_for_double(const double k) {
+    return (MapKey){.kdouble = k, .key_type = MAP_TYPE_DOUBLE};
+}
+
+MapKey key_for_string(const char * k) {
+    return (MapKey){.kstring = (char*)k, .key_type = MAP_TYPE_STRING};
+}
+
+MapKey key_for_void_ptr(const void * k) {
+    return (MapKey){.kvoid_ptr = (void*)k, .key_type = MAP_TYPE_VOID_PTR};
+}
+
 MapValue value_for_long(const long v) {
     return (MapValue){.vlong = v, .value_type = MAP_TYPE_LONG};
 }
@@ -801,20 +817,4 @@ MapValue value_for_string(const char * v) {
 
 MapValue value_for_void_ptr(const void * v) {
     return (MapValue){.vvoid_ptr = (void*)v, .value_type = MAP_TYPE_VOID_PTR};
-}
-
-MapKey key_for_long(const long v) {
-    return (MapKey){.klong = v, .key_type = MAP_TYPE_LONG};
-}
-
-MapKey key_for_double(const double v) {
-    return (MapKey){.kdouble = v, .key_type = MAP_TYPE_DOUBLE};
-}
-
-MapKey key_for_string(const char * v) {
-    return (MapKey){.kstring = (char*)v, .key_type = MAP_TYPE_STRING};
-}
-
-MapKey key_for_void_ptr(const void * v) {
-    return (MapKey){.kvoid_ptr = (void*)v, .key_type = MAP_TYPE_VOID_PTR};
 }
