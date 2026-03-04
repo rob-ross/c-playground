@@ -149,10 +149,7 @@ void map_clear(HashMap map[static 1]);
 bool map_contains_key(HashMap map[static 1], MapKey key) ;
 //  Returns true if this map contains a mapping for the specified key. Currently O(N)
 bool map_contains_value(HashMap map[static 1], MapValue value);
-
-
-
-void map_free(HashMap map[static 1]);
+void map_destroy(HashMap map[static 1]);
 
 // Returns the value for the given key.
 // If no value found for the key, MapValue.value_type === MAP_TYPE_NULL and MapValue.vvoidptr == nullptr

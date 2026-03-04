@@ -16,9 +16,9 @@ Set set_create(const size_t num_buckets) {
     return set;
 }
 
-void set_free(Set *set) {
+void set_destroy(Set *set) {
     if (set && set->map) {
-        map_free(set->map);
+        map_destroy(set->map);
         set->map = nullptr;
     }
 }

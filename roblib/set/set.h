@@ -31,7 +31,7 @@ static const MapValue DUMMY_VALUE = (MapValue){ .vlong = 0, .value_type = MAP_TY
 Set set_create(size_t num_buckets);
 
 // Frees all memory used by the set.
-void set_free(Set *set);
+void set_destroy(Set *set);
 
 // Adds an item to the set. If the item is already present, the set is unchanged.
 void set_add(const Set *set, SetItem item);

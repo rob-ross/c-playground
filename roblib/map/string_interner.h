@@ -13,15 +13,26 @@ typedef struct InternStringMap {
     HashMap *map;
 } InternStringMap;
 
-typedef struct StringValue {
-    char  *vstring;
-} StringValue;
 
-InternStringMap intstr_create();
-void intstr_destroy(InternStringMap ismap);
-MapValue (intstr_get)(InternStringMap ismap, const char* key);
 
-void intstr_put(InternStringMap ismap, const char* key) ;
+
+
+// ---------------------------
+// Public API methods
+// ---------------------------
+
+InternStringMap instr_create();
+void instr_clear(InternStringMap ismap);
+bool instr_contains_key(InternStringMap ismap, const char* strkey);
+void instr_destroy(InternStringMap ismap);
+
+MapValue instr_get_count(InternStringMap ismap, const char* key);
+
+bool instr_is_empty(InternStringMap ismap);
+void instr_put(InternStringMap ismap, const char* key) ;
+
+void instr_remove(InternStringMap ismap, const char* strkey);
+size_t instr_size(InternStringMap ismap);
 
 /*
 // In your application code...

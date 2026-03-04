@@ -469,9 +469,11 @@ void map_clear(HashMap map[static 1]) {
         while (current != nullptr) {
             MapNode *temp = current;
             current = current->next;
+            // todo we need to free string keys here
             free_value_if(map, temp);
             free(temp);
         }
+        map->buckets[i] =  nullptr;
     }
     map->load = 0;
     map->size = 0;
@@ -498,7 +500,7 @@ bool (map_contains_value)(HashMap map[static 1], const MapValue value) {
     return false;
 }
 
-void map_free(HashMap map[static 1]) {
+void map_destroy(HashMap map[static 1]) {
     if (map == nullptr) return;
 
     free_intern_strings(map->intern_strings);
@@ -776,7 +778,7 @@ void map_repr_Node(const MapNode node[static 1]) {
     printf(" }\n");
 }
 
-size_t map_size(const HashMap *map) {
+size_t map_size(const HashMap map[static 1]) {
     return map->size;
 }
 

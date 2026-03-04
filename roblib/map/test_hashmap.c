@@ -35,7 +35,7 @@ void hashmap_free(void * fixture) {
 MunitResult test_create_and_free(const MunitParameter params[], void* fixture) {
     HashMap *map = map_create(10);
     munit_assert_ptr_not_null(map);
-    map_free(map);
+    map_destroy(map);
     return MUNIT_OK;
 }
 
@@ -307,7 +307,7 @@ int main(int argc, char *argv[argc + 1]) {
         MUNIT_NULL_TEST,
     };
 
-    apply_fixture(tests, hashmap_fixture, hashmap_free);
+    apply_fixture(tests, intstr_fixture, hashmap_free);
 
 
      MunitSuite suite = {
@@ -335,19 +335,19 @@ int main(int argc, char *argv[argc + 1]) {
 void test_repr(void) {
     HashMap *map = map_create(0);
     map_repr_HashMap(map, true); print("");
-    map_free(map);
+    map_destroy(map);
 
     map_create(0);
     map_repr_HashMap(map, true); print("");
-    map_free(map);
+    map_destroy(map);
 
     map = map_create(16);
     map_repr_HashMap(map, true); print("");
-    map_free(map);
+    map_destroy(map);
 
     map = map_create(17);
 
-    map_free(map);
+    map_destroy(map);
 }
 
 MunitResult test_10K_inserts(const MunitParameter params[], void* fixture) {
@@ -376,10 +376,10 @@ MunitResult test_10K_inserts(const MunitParameter params[], void* fixture) {
 
 
     fflush(stdout);
-    // printf("about to call map_free:\n");
+    // printf("about to call map_destroy:\n");
     fflush(stdout);
 
-    map_free(map);
+    map_destroy(map);
 
     return MUNIT_OK;
 }
@@ -423,9 +423,9 @@ MunitResult test_10K_string_inserts(const MunitParameter params[], void* fixture
     }
 
     fflush(stdout);
-    // printf("about to call map_free:\n");
+    // printf("about to call map_destroy:\n");
     fflush(stdout);
-    map_free(map);
+    map_destroy(map);
 
     return MUNIT_OK;
 }

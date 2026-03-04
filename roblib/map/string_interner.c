@@ -11,18 +11,59 @@
 
 #include "string_interner.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 
 #include "hashmap_private.h"
 
-InternStringMap intstr_create() {
+// -------------------------------------
+// Static/private/internal methods
+// ------------------------------------
+
+static void instr_destroy_node(MapNode *node) {
+    // this is safe, since we always make a copy of a string key and we own it
+    free(node->key.kstring);
+    free(node);
+}
+
+
+
+// ---------------------------
+// Public API methods
+// ---------------------------
+
+InternStringMap instr_create() {
     HashMap *map = map_create(0);
 
     return (InternStringMap){.map = map};
 
 }
 
-void intstr_destroy(InternStringMap ismap) {
+// deletes all entries and frees them, but does not reduce bucket size or free allocated bucket memory.
+void instr_clear(InternStringMap ismap) {
+    if (!ismap.map) {
+        return;
+    }
+    HashMap *map = ismap.map;
+    for (size_t i = 0; i < map->num_buckets; i++) {
+        MapNode *current = map->buckets[i];
+        while (current) {
+            MapNode *temp = current;
+            current = current->next;
+            instr_destroy_node(temp);
+        }
+        map->buckets[i] =  nullptr;
+    }
+    map->load = 0;
+    map->size = 0;
+}
+
+bool instr_contains_key(InternStringMap ismap, const char* strkey) {
+    if (!ismap.map) return false;
+    return (map_contains_key)(ismap.map, key_for_string(strkey));
+}
+
+void instr_destroy(InternStringMap ismap) {
     if (!ismap.map) {
         return;
     }
@@ -34,9 +75,9 @@ void intstr_destroy(InternStringMap ismap) {
         while (current) {
             MapNode *temp = current;
             current = current->next;
-            free(temp->key.kstring);
-            free(temp);
+            instr_destroy_node(temp);
         }
+        map->buckets[i] =  nullptr;
     }
     // all string keys and MapNodes have been freed.
     free(map->buckets);
@@ -45,16 +86,20 @@ void intstr_destroy(InternStringMap ismap) {
     ismap.map = nullptr;
 }
 
-
 // we are re-implementing map_put so we don't have to do to a get then put value+1 when string is already present
-MapValue (intstr_get)(const InternStringMap ismap, const char* key) {
+MapValue (instr_get_count)(const InternStringMap ismap, const char* key) {
     if (!ismap.map) {
         return NULL_MAP_VALUE;
     }
     return (map_get)(ismap.map, key_for_string(key));
 }
 
-void intstr_put(InternStringMap ismap, const char* strkey) {
+
+bool instr_is_empty(InternStringMap ismap) {
+    return map_is_empty(ismap.map);
+}
+
+void instr_put(InternStringMap ismap, const char* strkey) {
     if ( !ismap.map ) return;
 
     HashMap *map = ismap.map;
@@ -93,7 +138,7 @@ void intstr_put(InternStringMap ismap, const char* strkey) {
 
 
 //reduce key refcount by 1. When refcount == 0, removes the key from the map
-void (intstr_remove)(InternStringMap ismap, const char* strkey) {
+void (instr_remove)(InternStringMap ismap, const char* strkey) {
     if (!ismap.map) return;
 
     HashMap *map = ismap.map;
@@ -115,7 +160,7 @@ void (intstr_remove)(InternStringMap ismap, const char* strkey) {
                 } else {
                     prev->next = current->next;
                 }
-                free(current->key.kstring);
+                instr_destroy_node(current);
                 map->size--;
                 map_recalc_load(map);
             } else {
@@ -127,4 +172,8 @@ void (intstr_remove)(InternStringMap ismap, const char* strkey) {
         current = current->next;
 
     }
+}
+
+size_t instr_size(InternStringMap ismap) {
+    return map_size(ismap.map);
 }
