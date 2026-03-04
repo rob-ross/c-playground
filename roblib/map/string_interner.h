@@ -18,8 +18,10 @@ typedef struct StringValue {
 } StringValue;
 
 InternStringMap intstr_create();
-void intstr_put(InternStringMap map[static 1], const char* key) ;
-MapValue (intstr_get)(const InternStringMap map[static 1], const char* key);
+void intstr_destroy(InternStringMap ismap);
+MapValue (intstr_get)(InternStringMap ismap, const char* key);
+
+void intstr_put(InternStringMap ismap, const char* key) ;
 
 /*
 // In your application code...
