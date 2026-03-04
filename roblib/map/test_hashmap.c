@@ -12,14 +12,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../carray/carray_types.h"
 
 // -----------------------------------------------
 // setup and teardown fixtures
 // ----------------------------------------------
 // create a HashMap for use in test cases
 void *  hashmap_fixture(const MunitParameter params[], void* user_data) {
-    HashMap *map = map_create(10, free);
+    HashMap *map = map_create(10);
     munit_assert_not_null(map);
     return map;
 }
@@ -34,7 +33,7 @@ void hashmap_free(void * fixture) {
 // -------------------------------------------------
 
 MunitResult test_create_and_free(const MunitParameter params[], void* fixture) {
-    HashMap *map = map_create(10, nullptr);
+    HashMap *map = map_create(10);
     munit_assert_ptr_not_null(map);
     map_free(map);
     return MUNIT_OK;
@@ -215,7 +214,7 @@ MunitResult test_get_or(const MunitParameter params[], void* fixture) {
     result = map_get_or(map, "four", "forty two");
     munit_assert_string_equal("forty two", result.vstring);
 
-    const short short1 = (const short)99;
+    constexpr short short1 = (const short)99;
     void * sptr = (void*) &short1;
 
     void * missing_key = &"not here";
@@ -237,7 +236,6 @@ MunitResult test_try_get(const MunitParameter params[], void* fixture) {
     map_put(map, vptr, vptr );
 
     MapValue mv = {};
-    bool result;;
     munit_assert_true(map_try_get(map, 1, &mv));
     munit_assert_int(1, ==, mv.vlong);
     munit_assert_true(map_try_get(map, 2.0, &mv));
@@ -335,19 +333,19 @@ int main(int argc, char *argv[argc + 1]) {
 // ad hoc tests
 // -------------------------
 void test_repr(void) {
-    HashMap *map = map_create(0, free);
+    HashMap *map = map_create(0);
     map_repr_HashMap(map, true); print("");
     map_free(map);
 
-    map = map_create(10, free);
+    map_create(0);
     map_repr_HashMap(map, true); print("");
     map_free(map);
 
-    map = map_create(16, free);
+    map = map_create(16);
     map_repr_HashMap(map, true); print("");
     map_free(map);
 
-    map = map_create(17, free);
+    map = map_create(17);
 
     map_free(map);
 }
@@ -355,7 +353,7 @@ void test_repr(void) {
 MunitResult test_10K_inserts(const MunitParameter params[], void* fixture) {
     print("test_10K_inserts");
     constexpr size_t N = 10'0;
-    HashMap *map = map_create(0, free);
+    HashMap *map = map_create(0);
     size_t buffer_size = 20;  // max 9 chars for value of i, plus 5 for 'hello', plus terminator
     for (int i = 0; i < N; ++i) {
         char search_string[buffer_size] = {};
@@ -390,7 +388,7 @@ MunitResult test_10K_inserts(const MunitParameter params[], void* fixture) {
 MunitResult test_10K_string_inserts(const MunitParameter params[], void* fixture) {
     print("test_10K_string_inserts");
     constexpr size_t N = 10;
-    HashMap *map = map_create(0, free);
+    HashMap *map = map_create(0);
 
     char * value_str = "hello world";
     for (int i = 0; i < N; ++i) {

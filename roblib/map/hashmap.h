@@ -16,6 +16,27 @@
 
 // in phase 3 we'll optimize memory by allocating in chunks so we can keep our buckets
 // and linked lists in the same memory chunk.
+// ideas for memory :
+//  * HashMap will manage its own memory
+//  * memory will be allocated in pages/chunks. No coordination with OS for memory-manager "pages".
+//  * biggest requirement: HashMap buckets is sequential chunk of num_buckets MapNodes. When map grows,
+//      new memory must be allocated and the old chunk released for reuse.
+//  * we need to track multiple pages as parts of the abstract memory object for the map, so new pages can be
+//      allocated as needed
+//  * after buckets, individual MapNodes for the linked lists are the next largest requirement.
+//  * same requirements will apply to the intern string map, probably with smaller requirements. But child
+//      structuees like the intern map and any Sets we use (future work) all need to live in the same
+//      memory object.
+//  Sizes of objects:
+//  * MapNodes - 48 bytes each
+//  * MapKey and MapValue are part of a MapNode so we don't need to consider them separately, i.e., we don't
+//      allocate them on the heap.
+//      so our memory pages should be multiples of sizeof(MapNode).
+//
+//  To be clear, the top-level HashMap struct can live on the heap or stack, but it will not be contained in
+//      the memory it manages.
+//
+//
 
 
 
@@ -40,6 +61,7 @@ typedef struct BasicBlob {
 //      if the caller is transfering ownership, we won't need to copy it.
 // 4. hash function and is_equal method. Perhaps a compare as well.
 // for now we won't support void* as a map key. We copy all strings and free the copies when we're done with them.
+
 // 16 bytes
 typedef struct MapKey {
     union {
@@ -63,20 +85,20 @@ typedef struct MapValue {
 } MapValue;
 
 
-// 48
-typedef struct Node {
+// 48 bytes
+typedef struct MapNode {
     const MapKey key;
     MapValue     value;
     const size_t hash;
-    struct Node  *next;
-} Node;
+    struct MapNode  *next;
+} MapNode;
 
 
 struct HashMap;
-// Define the HashMap structure
+
 // 64 bytes
 typedef struct HashMap {
-    Node **buckets;               // each bucket is a linked list
+    MapNode **buckets;               // each bucket is a linked list
     size_t size;                  // Number of key-value pairs currently in the map
     size_t fill_capacity;         // holds the max ideal size for the current number of buckets. Increases when buckets increase
     double load;                  // current load = size / num_buckets
@@ -84,28 +106,51 @@ typedef struct HashMap {
     double fill_factor;           // desired load
 
     struct HashMap * intern_strings;
-    void (*free_func)(void *); // Function pointer to free allocated values
     uint64_t flags; // future use
 } HashMap;
 
-constexpr MapKey   NULL_MAP_KEY   = (MapKey){  .kvoid_ptr = nullptr, .key_type   = MAP_TYPE_NULL};
-constexpr MapValue NULL_MAP_VALUE = (MapValue){.vvoid_ptr = nullptr, .value_type = MAP_TYPE_NULL};
+typedef struct ValuePolicies {
+    // A context pointer to be passed to the policy functions.
+    void* context;
 
-static constexpr Node NULL_NODE = (Node){ .key = NULL_MAP_KEY, .value = NULL_MAP_VALUE, .hash = 0, .next = nullptr};
+    // Called when a value is added. Returns the value to be stored.
+    // Can be used for copying, interning, or reference counting.
+    MapValue (*copy)(void* context, MapValue value);
+
+    // Called when a value is removed or the map is freed.
+    void (*free)(void* context, MapValue value);
+} ValuePolicies;
+
+
+static constexpr MapKey   NULL_MAP_KEY   = (MapKey){  .kvoid_ptr = nullptr, .key_type   = MAP_TYPE_NULL};
+static constexpr MapValue NULL_MAP_VALUE = (MapValue){.vvoid_ptr = nullptr, .value_type = MAP_TYPE_NULL};
+
+static constexpr MapNode NULL_MAP_NODE = (MapNode){ .key = NULL_MAP_KEY, .value = NULL_MAP_VALUE, .hash = 0, .next = nullptr};
 static constexpr double DEFAULT_FILL_FACTOR = 0.75;
 
+
+// -------------------------------------
+// 'Package-private/friend' API methods
+// -------------------------------------
+// declared in hashmap_private.h
+
+
+
 // ---------------------------
-// API methods
+// Public API methods
 // ---------------------------
 
-HashMap *map_create(size_t num_buckets, void (*free_value_func)(void *));
-//Removes all of the mappings from this map. Keeps existing buckets. After call size == 0.
+HashMap *map_create(size_t num_buckets);
+
+//Removes all the mappings from this map. Keeps existing buckets. After call, size == 0.
 void map_clear(HashMap map[static 1]);
 //  Returns true if this map contains a mapping for the specified key.
 // if you intend to use the key's value immediately if it exists, consider using map_try_get instead, for efficiency.
 bool map_contains_key(HashMap map[static 1], MapKey key) ;
-//  Returns true if this map contains a mapping for the specified key.
+//  Returns true if this map contains a mapping for the specified key. Currently O(N)
 bool map_contains_value(HashMap map[static 1], MapValue value);
+
+
 
 void map_free(HashMap map[static 1]);
 
@@ -117,8 +162,11 @@ MapValue (map_get_or)(const HashMap map[static 1], const MapKey key, const MapVa
 // if key exists, copies the value into out and returns true. If key does not exist, writes
 bool (map_try_get)(const HashMap map[static 1], MapKey key, MapValue *out);
 
+
+
 // Returns true if this map contains no key-value mappings.
 bool map_is_empty(const HashMap map[static 1]);
+
 
 
 //associates value with key in the map. If key did not previously exist in the map, this
@@ -137,7 +185,7 @@ void (map_remove)(HashMap map[static 1], MapKey key);
 void map_repr_HashMap(const HashMap map[static 1], bool verbose);
 void map_repr_MapKey(MapKey map_key, bool verbose);
 void map_repr_MapValue(MapValue map_value, bool verbose);
-void map_repr_Node(const Node node[static 1]);
+void map_repr_Node(const MapNode node[static 1]);
 
 // Returns the number of key-value mappings in this map.
 size_t map_size(const HashMap *map);
