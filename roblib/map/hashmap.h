@@ -156,13 +156,11 @@ void map_free(HashMap map[static 1]);
 
 // Returns the value for the given key.
 // If no value found for the key, MapValue.value_type === MAP_TYPE_NULL and MapValue.vvoidptr == nullptr
-MapValue (map_get)(const HashMap map[static 1], const MapKey key);
+MapValue (map_get)(const HashMap map[static 1], MapKey key);
 // Returns the value to which the specified key is mapped, or fallback if this map contains no mapping for the key.
-MapValue (map_get_or)(const HashMap map[static 1], const MapKey key, const MapValue fallback) ;
+MapValue (map_get_or)(const HashMap map[static 1], MapKey key, MapValue fallback) ;
 // if key exists, copies the value into out and returns true. If key does not exist, writes
 bool (map_try_get)(const HashMap map[static 1], MapKey key, MapValue *out);
-
-
 
 // Returns true if this map contains no key-value mappings.
 bool map_is_empty(const HashMap map[static 1]);
