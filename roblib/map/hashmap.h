@@ -112,6 +112,12 @@ typedef struct HashMap {
     uint64_t flags; // future use
 } HashMap;
 
+
+
+// We should have KeyPolicies and ValuePolicies
+// 1. on put : key copy?  value increment?
+// 2. on remove : free? value decrement? free when count is zero?
+
 typedef struct ValuePolicies {
     // A context pointer to be passed to the policy functions.
     void* context;

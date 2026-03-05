@@ -177,10 +177,32 @@ MapNode * map_create_node(const size_t hashcode, const MapKey key) {
     return new_node;
 }
 
-static void map_free_value_if(const HashMap map[static 1], const MapNode node[static 1]) {
+// ------------------------------
+// default policy functions
+// ------------------------------
+
+//key policies
+
+static void map_policy_key_free_default(const HashMap map[static 1], const MapNode node[static 1]) {
+    if (node->key.key_type == MAP_TYPE_STRING) {
+        free(node->key.kstring);  //default add policy makes a copy of this string so we own it.
+    }
+}
+
+// value policies
+static void map_policy_value_free_default(const HashMap map[static 1], const MapNode node[static 1]) {
+    if ( node->value.value_type == MAP_TYPE_STRING) {
+            // default is to make a copy of the string. We own it, we can free it.
+            free( node->value.vstring);
+    }
+    else if ( node->value.value_type == MAP_TYPE_VOID_PTR ) {
+        // invoke the pointer's free method
+    }
+}
+
+static void map_policy_value_free_stringpool(const HashMap map[static 1], const MapNode node[static 1]) {
     if ( node->value.value_type == MAP_TYPE_STRING) {
         if ( map->string_pool) {
-            //todo the ValuePolicy should govern this next call:
             instr_remove(map->string_pool, node->value.vstring);
         } else {
             // we're not using a string pool, so we made a copy of the string. We can free it.
@@ -193,12 +215,33 @@ static void map_free_value_if(const HashMap map[static 1], const MapNode node[st
     }
 }
 
-static void map_destroy_node(HashMap map[static 1], MapNode node[static 1]) {
-    if (node->key.key_type == MAP_TYPE_STRING) {
-        // this is safe, since we always make a copy of a string key and we own it
-        // todo this should be controlled by KeyPolicy
-        free(node->key.kstring);
+
+
+
+static void map_free_key_if(const HashMap map[static 1], const MapNode node[static 1]) {
+    // todo check if a policy exists for this operation. If so, call that. Otherwise use a default;
+    if (map->string_pool) {
+        // policy_key_free_pointer->map_policy_key_free(map, node);
+        map_policy_value_free_stringpool(map, node);
+    } else {
+        // no key free policy, use default
+        map_policy_key_free_default(map, node);
     }
+}
+
+
+static void map_free_value_if(const HashMap map[static 1], const MapNode node[static 1]) {
+    // todo check if a policy exists for this operation. If so, call that. Otherwise use a default;
+    bool temp = false;
+    if (temp) {
+        // policy_value_free_pointer->map_policy_value_free(map, node);
+    } else {
+        map_policy_value_free_default(map, node);
+    }
+}
+
+static void map_destroy_node(HashMap map[static 1], MapNode node[static 1]) {
+    map_free_key_if(map, node);
     map_free_value_if(map, node);
     free(node);
 }
@@ -420,7 +463,8 @@ void map_destroy(HashMap map[static 1]) {
 // deletes and frees all Nodes but does not reduce bucket size or free allocated bucket memory.
 // todo some kind of resize method to realloc to a smaller memory footprint?
 void map_clear(HashMap map[static 1]) {
-    for (size_t i = 0; i < map->num_buckets; i++) {
+    const size_t num_buckets = map->num_buckets;
+    for (size_t i = 0; i < num_buckets; i++) {
         MapNode *current = map->buckets[i];
         while (current != nullptr) {
             MapNode *temp = current;

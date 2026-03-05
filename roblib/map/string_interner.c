@@ -26,11 +26,57 @@ struct InternStringMap {
     HashMap *map;
 };
 
+// ------------------------------
+// default policy functions
+// ------------------------------
 
-static void instr_destroy_node(MapNode *node) {
-    // this is safe, since we always make a copy of a string key and we own it
-    // values are always a long scalar, they don't need to be freed
+//key policies
+
+static void instr_policy_key_free_default(const InternStringMap ismap[static 1], const MapNode node[static 1]) {
+    // default add always make a copy of a string key and we own it
     free(node->key.kstring);
+}
+
+// value policies
+static void instr_policy_value_free_default(const InternStringMap ismap[static 1], const MapNode node[static 1]) {
+    // values are always a long scalar, they don't need to be freed
+    // no-op
+}
+
+// when this InternStringMap is being used as a string pool for another map, remove operation in enclosing HashMap
+// is coupled to this stringpool. Removing a string value in the HashMap means decrementing the count in the
+// string pool, not outright freeing it.
+[[maybe_unused]] static void instr_policy_value_free_stringpool(InternStringMap ismap[static 1], const MapNode node[static 1]) {
+    if ( node->value.value_type == MAP_TYPE_STRING) {
+        instr_remove(ismap, node->value.vstring);
+    }
+}
+
+static void instr_free_key_if(const InternStringMap ismap[static 1], const MapNode node[static 1]) {
+    // todo check if a policy exists for this operation. If so, call that. Otherwise use a default;
+    bool temp = false;
+    if (temp) {
+        // policy_key_free_pointer->instr_policy_key_free(ismap, node);
+    } else {
+        // no key free policy, default is free.
+        instr_policy_key_free_default(ismap, node);
+    }
+}
+
+static void instr_free_value_if(const InternStringMap ismap[static 1], const MapNode node[static 1]) {
+    // todo check if a policy exists for this operation. If so, call that. Otherwise use a default;
+    bool temp = false;
+    if (temp) {
+        // policy_value_free_pointer->instr_policy_value_free(ismap, node);
+    } else {
+        instr_policy_value_free_default(ismap, node);
+    }
+}
+
+static void instr_destroy_node(const InternStringMap ismap[static 1], MapNode *node) {
+    if (!ismap) return;
+    instr_free_key_if(ismap, node);
+    instr_free_value_if(ismap, node);
     free(node);
 }
 
@@ -83,7 +129,7 @@ void instr_clear(InternStringMap ismap[static 1]) {
         while (current) {
             MapNode *temp = current;
             current = current->next;
-            instr_destroy_node(temp);
+            instr_destroy_node(ismap, temp);
         }
         map->buckets[i] =  nullptr;
     }
@@ -196,7 +242,7 @@ void (instr_remove)(InternStringMap ismap[static 1], const char* strkey) {
                 } else {
                     prev->next = current->next;
                 }
-                instr_destroy_node(current);
+                instr_destroy_node(ismap, current);
                 map->size--;
                 map_recalc_load(map);
             } else {
