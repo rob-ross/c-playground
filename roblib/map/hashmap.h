@@ -38,6 +38,7 @@
 //
 //
 
+typedef struct InternStringMap InternStringMap;
 
 
 typedef enum MapTypeEnum: unsigned char {
@@ -95,6 +96,8 @@ typedef struct MapNode {
 
 
 struct HashMap;
+// Forward-declare the dependency type.
+struct InternStringMap;
 
 // 64 bytes
 typedef struct HashMap {
@@ -105,7 +108,7 @@ typedef struct HashMap {
     size_t num_buckets;           // must always be a power of 2
     double fill_factor;           // desired load
 
-    struct HashMap * intern_strings;
+    InternStringMap * string_pool;
     uint64_t flags; // future use
 } HashMap;
 
@@ -122,10 +125,10 @@ typedef struct ValuePolicies {
 } ValuePolicies;
 
 
-static constexpr MapKey   NULL_MAP_KEY   = (MapKey){  .kvoid_ptr = nullptr, .key_type   = MAP_TYPE_NULL};
-static constexpr MapValue NULL_MAP_VALUE = (MapValue){.vvoid_ptr = nullptr, .value_type = MAP_TYPE_NULL};
+extern const MapKey   NULL_MAP_KEY;
+extern const MapValue NULL_MAP_VALUE;
+extern const MapNode  NULL_MAP_NODE;
 
-static constexpr MapNode NULL_MAP_NODE = (MapNode){ .key = NULL_MAP_KEY, .value = NULL_MAP_VALUE, .hash = 0, .next = nullptr};
 static constexpr double DEFAULT_FILL_FACTOR = 0.75;
 
 
@@ -140,7 +143,7 @@ static constexpr double DEFAULT_FILL_FACTOR = 0.75;
 // Public API methods
 // ---------------------------
 
-HashMap *map_create(size_t num_buckets);
+HashMap *map_create(size_t num_buckets, InternStringMap * string_pool);
 
 //Removes all the mappings from this map. Keeps existing buckets. After call, size == 0.
 void map_clear(HashMap map[static 1]);
@@ -177,7 +180,7 @@ void (map_remove)(HashMap map[static 1], MapKey key);
 //// ---------------------------------------------
 ////  repr methods
 //// ---------------------------------------------
-void map_repr_HashMap(const HashMap map[static 1], bool verbose);
+void map_repr_HashMap(const HashMap map[static 1], bool verbose, const char* type_str);
 void map_repr_MapKey(MapKey map_key, bool verbose);
 void map_repr_MapValue(MapValue map_value, bool verbose);
 void map_repr_Node(const MapNode node[static 1]);

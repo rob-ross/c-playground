@@ -106,3 +106,9 @@ setjmp and longjmp:
     To 'throw an exception' in the try-block path, :
         if (jmp_buf_valid)
           longjmp(punit_error_jmp_buf, 1);
+
+
+To break cyclic dependencies in header files:
+CYCLES :  Stop including the “other” header in your public header.
+          Use forward declarations + opaque pointers in headers.
+          Put the real #include in the .c file, where the full definition is actually needed.

@@ -16,24 +16,29 @@
 static constexpr size_t MIN_CAP  = 16;
 static constexpr size_t MAX_POW2 = (SIZE_MAX >> 1) + 1;
 
+const MapKey   NULL_MAP_KEY   = (MapKey){  .kvoid_ptr = nullptr, .key_type   = MAP_TYPE_NULL};
+const MapValue NULL_MAP_VALUE = (MapValue){.vvoid_ptr = nullptr, .value_type = MAP_TYPE_NULL};
+const MapNode NULL_MAP_NODE = (MapNode){ .key = NULL_MAP_KEY, .value = NULL_MAP_VALUE, .hash = 0, .next = nullptr};
 
 
 // forward references
-static bool are_equal_doubles(double d1, double d2);
-static void free_node(HashMap map[static 1], MapNode *node);
-static void free_value_if(const HashMap *map, const MapNode *node_ptr);
-static size_t hash_string(const char *str);
-static size_t hash_mix64(size_t x);
-static const MapNode * node_for(const HashMap *map, MapKey key);
+static bool map_equals_double(double d1, double d2);
+static void map_destroy_node(HashMap map[static 1], MapNode *node);
+static void map_free_value_if(const HashMap *map, const MapNode *node);
+static size_t map_hash_string(const char *str);
+static size_t map_hash_mix64(size_t x);
 
-
-
+// string_interner.h API methods used here. We can't include string_interner.h due to circular dependencies
+void instr_destroy(InternStringMap *ismap);
+const char* instr_intern(InternStringMap *string_pool, char string[static 1]);
+void instr_remove(InternStringMap *ismap, const char* strkey);
+size_t instr_size(InternStringMap *ismap);
 
 // -------------------------------------
 // Static/private/internal methods
 // ------------------------------------
 
-static bool are_equal_doubles(double d1, double d2) {
+static bool map_equals_double(double d1, double d2) {
     // Optional policy: NaNs are not equal to anything (including NaN)
     if (isnan(d1) || isnan(d2)) return false;
 
@@ -47,7 +52,7 @@ static bool are_equal_doubles(double d1, double d2) {
     return ua == ub;
 }
 
-static bool values_are_equal(const MapValue v1, const MapValue v2) {
+static bool map_equals_MapValue(const MapValue v1, const MapValue v2) {
 
     if (v1.value_type != v2.value_type) return false;
 
@@ -57,7 +62,7 @@ static bool values_are_equal(const MapValue v1, const MapValue v2) {
         case MAP_TYPE_LONG:
             return v1.vlong == v2.vlong;
         case MAP_TYPE_DOUBLE:
-            return are_equal_doubles(v1.vdouble, v2.vdouble);
+            return map_equals_double(v1.vdouble, v2.vdouble);
         case MAP_TYPE_STRING:
             return strcmp(v1.vstring, v2.vstring) == 0;
         case MAP_TYPE_VOID_PTR:
@@ -71,55 +76,9 @@ static bool values_are_equal(const MapValue v1, const MapValue v2) {
     }
 }
 
-//specialized free method that works with just the intern_strings HashMap
-static void free_intern_strings(HashMap map[static 1]) {
-    if (!map->intern_strings) {
-        return;
-    }
-    const size_t num_buckets = map->intern_strings->num_buckets;
-    for (size_t i = 0; i < num_buckets; ++i) {
-        MapNode *current = map->intern_strings->buckets[i];
-        while (current) {
-            MapNode *temp = current;
-            current = current->next;
-            free_node(map->intern_strings, temp);
-        }
-    }
-    // all string objects (char *) have been freed. Now free the intern string map
-    free(map->intern_strings->buckets);
-    free(map->intern_strings);
-    map->intern_strings = nullptr;
-}
-
-static void free_node(HashMap map[static 1], MapNode *node) {
-    if (node->key.key_type == MAP_TYPE_STRING) {
-        // this is safe, since we always make a copy of a string key and we own it
-        free(node->key.kstring);
-    }
-    free_value_if(map, node);
-    free(node);
-}
-
-static void free_value_if(const HashMap *map, const MapNode *node_ptr) {
-    if ( map->intern_strings && node_ptr->value.value_type == MAP_TYPE_STRING) {
-        char * string =  node_ptr->value.vstring;
-        MapValue vrefcount = map_get(map->intern_strings, string);
-        size_t refcount = vrefcount.vlong - 1;
-        if (!refcount) {
-            //refcount is zero, we can free this string
-            map_remove(map->intern_strings, string);
-        } else {
-            // update with new refcount
-            map_put(map->intern_strings, string, refcount);
-        }
-    }
-    else if ( node_ptr->value.value_type == MAP_TYPE_VOID_PTR ) {
-        // invoke the pointer's free method
-    }
-}
 
 // hash mixer
-static size_t hash_mix64( size_t x ) {
+static size_t map_hash_mix64( size_t x ) {
     x ^= x >> 33;
     x *= 0xff51afd7ed558ccdULL;
     x ^= x >> 33;
@@ -129,7 +88,7 @@ static size_t hash_mix64( size_t x ) {
 }
 
 //djb2 hash algorithm, O(N) (actually Theta(N))
-static size_t hash_string(const char *str) {
+static size_t map_hash_string(const char *str) {
     unsigned long hash = 5381; // A "magic" prime number
     int c;
 
@@ -142,22 +101,9 @@ static size_t hash_string(const char *str) {
     return (size_t)hash;
 }
 
-static  char* intern(HashMap *intern_strings, char string[static 1]) {
-    MapKey key = (MapKey){.kstring = string, .key_type = MAP_TYPE_STRING};
 
-    const MapNode * node = node_for(intern_strings, key);
-    if (node == &NULL_MAP_NODE) {
-        // first time string is encountered
-        char * dupe = strdup(string);
-        map_put( intern_strings, dupe, 1) ;
-        return dupe;
-    }
-    // string exists in intern string pool
-    map_put(intern_strings, string, node->value.vlong + 1 );
-    return node->key.kstring;
-}
 
-static size_t next_power_of_two(size_t n) {
+static size_t map_next_power_of_two(size_t n) {
     // Clamp lower bound
     if (n < MIN_CAP) return MIN_CAP;
 
@@ -181,42 +127,6 @@ static size_t next_power_of_two(size_t n) {
     return n + 1;
 }
 
-static const MapNode * node_for(const HashMap *map, MapKey key) {
-    if (map == nullptr) return &NULL_MAP_NODE;
-    const size_t index = map_calc_bucket_index(map_hash_function(key), map->num_buckets);
-
-    MapNode const *current = map->buckets[index];
-
-    while (current != nullptr) {
-        if ( map_keys_are_equal(key, current->key) ) {
-            return current;
-        }
-        current = current->next;
-    }
-    return &NULL_MAP_NODE; // Key not found
-}
-
-static HashMap *create_intern_string_map() {
-
-    HashMap *map = (HashMap *)calloc(1, sizeof(HashMap));
-    if (map == nullptr) {
-        return nullptr;
-    }
-
-    MapNode **buckets = (MapNode **)calloc(MIN_CAP, sizeof(MapNode *));
-    if (buckets == nullptr) {
-        free(map);
-        return nullptr;
-    }
-
-    map->buckets = buckets;
-    map->size = 0;
-    map->fill_capacity =(size_t)( MIN_CAP * (long double)DEFAULT_FILL_FACTOR );
-    map->load = 0;
-    map->num_buckets = MIN_CAP;
-    map->fill_factor = DEFAULT_FILL_FACTOR;
-    return map;
-}
 
 
 
@@ -231,14 +141,13 @@ size_t map_calc_bucket_index(const size_t hashcode, const size_t num_buckets) {
 }
 
 MapNode * map_create_node(const size_t hashcode, const MapKey key) {
-    // hash and key are const, so we can't write to them after object is created. So we first create a temp MapNode
-    // with the immutable values, then we set the mutable values, and finally we copy the temp to the final MapNode object.
-    // for strings we make a copy and store that, since we will free it when the MapNode is removed or the map is
-    // deleted. This is a temporary fix. Theres a whole copy/move design to consider, ultimate memory management,
-    // etc. For the void* which represents some unknown blob of data somewhere, we may want to define a basic object
-    // datatype, e.g., struct BasicObject, that has a pointer, a size, and a type. For flexibility type will probably
-    // be a small string array of fixed size. Maybe the BasicObject will use a flexible array for the bytes. We can
-    // use flags to indicate ownership? Do we free or not? And if so we'll need a funct ptr for a free function.
+
+    MapNode *new_node = (MapNode *)malloc(sizeof(MapNode));
+    if (new_node == nullptr) {
+        // Handle allocation failure (in a real app, maybe return status)
+        return nullptr;
+    }
+
     MapNode *temp_node;
     switch (key.key_type) {
         case MAP_TYPE_LONG:
@@ -248,6 +157,8 @@ MapNode * map_create_node(const size_t hashcode, const MapKey key) {
             temp_node = &(MapNode){ .hash = hashcode, .key.kdouble = key.kdouble, .key.key_type = MAP_TYPE_DOUBLE };
             break;
         case MAP_TYPE_STRING: {
+            //we always copy the string used as a key.
+            // todo this should be governed by the KeyPolicy, for things like an IdentityHashMap impl
             char *string_copy = strdup(key.kstring);
             temp_node = &(MapNode){ .hash = hashcode, .key.kstring = string_copy, .key.key_type = MAP_TYPE_STRING };
             break;
@@ -261,18 +172,38 @@ MapNode * map_create_node(const size_t hashcode, const MapKey key) {
             break;
     }
 
-    MapNode *new_node = (MapNode *)malloc(sizeof(MapNode));
-    if (new_node == nullptr) {
-        // Handle allocation failure (in a real app, maybe return status)
-        return nullptr;
-    }
     memcpy(new_node, temp_node, sizeof(MapNode));
 
     return new_node;
-
 }
 
-void map_ensure_capacity(HashMap *map) {
+static void map_free_value_if(const HashMap map[static 1], const MapNode node[static 1]) {
+    if ( node->value.value_type == MAP_TYPE_STRING) {
+        if ( map->string_pool) {
+            //todo the ValuePolicy should govern this next call:
+            instr_remove(map->string_pool, node->value.vstring);
+        } else {
+            // we're not using a string pool, so we made a copy of the string. We can free it.
+            //todo this should be controlled by ValuePolicy
+            free( node->value.vstring) ;
+        }
+    }
+    else if ( node->value.value_type == MAP_TYPE_VOID_PTR ) {
+        // invoke the pointer's free method
+    }
+}
+
+static void map_destroy_node(HashMap map[static 1], MapNode node[static 1]) {
+    if (node->key.key_type == MAP_TYPE_STRING) {
+        // this is safe, since we always make a copy of a string key and we own it
+        // todo this should be controlled by KeyPolicy
+        free(node->key.kstring);
+    }
+    map_free_value_if(map, node);
+    free(node);
+}
+
+void map_ensure_capacity(HashMap map[static 1]) {
     const size_t new_num_buckets = map->num_buckets * 2;
     if (new_num_buckets > MAX_POW2) {
         return; // Can't grow anymore
@@ -336,7 +267,7 @@ size_t map_hash_function(const MapKey key) {
             break;
         }
         case MAP_TYPE_STRING: {
-            raw_hash = hash_string((char*)key.kstring);
+            raw_hash = map_hash_string((char*)key.kstring);
             break;
         }
         case MAP_TYPE_VOID_PTR: {
@@ -348,7 +279,7 @@ size_t map_hash_function(const MapKey key) {
         default:
             raw_hash = 0;
     }
-    return hash_mix64(raw_hash);
+    return map_hash_mix64(raw_hash);
 }
 
 bool map_keys_are_equal(const MapKey k1, const MapKey k2) {
@@ -361,7 +292,7 @@ bool map_keys_are_equal(const MapKey k1, const MapKey k2) {
         case MAP_TYPE_LONG:
             return k1.klong == k2.klong;
         case MAP_TYPE_DOUBLE:
-            return are_equal_doubles(k1.kdouble, k2.kdouble);
+            return map_equals_double(k1.kdouble, k2.kdouble);
         case MAP_TYPE_STRING:
             return strcmp(k1.kstring, k2.kstring) == 0;
         case MAP_TYPE_VOID_PTR:
@@ -375,7 +306,22 @@ bool map_keys_are_equal(const MapKey k1, const MapKey k2) {
     }
 }
 
-void map_set_value(const HashMap *top_map, MapNode *node, const MapValue value ) {
+MapNode * map_node_for(const HashMap map[static 1], const MapKey key) {
+    if (map == nullptr) return nullptr;
+    const size_t index = map_calc_bucket_index(map_hash_function(key), map->num_buckets);
+
+    MapNode *current = map->buckets[index];
+
+    while (current != nullptr) {
+        if ( map_keys_are_equal(key, current->key) ) {
+            return current;
+        }
+        current = current->next;
+    }
+    return nullptr; // Key not found
+}
+
+void map_set_value(const HashMap map[static 1], MapNode node[static 1], const MapValue value ) {
     switch (value.value_type) {
         case MAP_TYPE_LONG:
             node->value.vlong = value.vlong;
@@ -384,12 +330,15 @@ void map_set_value(const HashMap *top_map, MapNode *node, const MapValue value )
             node->value.vdouble = value.vdouble;
             break;
         case MAP_TYPE_STRING:
-            if (top_map->intern_strings) {
+            if (map->string_pool) {
                 //get string from intern string pool
-                node->value.vstring = intern(top_map->intern_strings, value.vstring);
+                // we need the void* cast because instr_intern returns const char*.
+                // todo make value.vstring const char*
+                node->value.vstring = (void *) instr_intern(map->string_pool, value.vstring);
             } else {
-                // adding to the intern pool hash map
-                node->value.vstring = value.vstring; // intern called us with a dupe
+                //todo ValuePolicy should control this.
+                // here, if there is no string_pool, we will copy the string to be safe.
+                node->value.vstring = strdup(value.vstring);
             }
             break;
         case MAP_TYPE_VOID_PTR:
@@ -419,7 +368,7 @@ void map_recalc_load(HashMap *map) {
 // num_buckets is clamped to smalles power of two > num_buckets.
 // buckets double when fill capacity is reached (75% full). 16 buckets provides adequate sizing for 12 items before
 // doubling.
-HashMap *map_create(size_t num_buckets) {
+HashMap *map_create(size_t num_buckets, InternStringMap * string_pool) {
 
     HashMap *map = (HashMap *)malloc(sizeof(HashMap));
     if (map == nullptr) {
@@ -430,19 +379,12 @@ HashMap *map_create(size_t num_buckets) {
     } else if ( num_buckets > (SIZE_MAX >> 1) + 1) {
        num_buckets = (SIZE_MAX >> 1) + 1;
     } else {
-        num_buckets = next_power_of_two(num_buckets);
+        num_buckets = map_next_power_of_two(num_buckets);
     }
 
     MapNode **buckets = (MapNode **)calloc(num_buckets, sizeof(MapNode *));
     if (!buckets) {
         free(map);
-        return nullptr;
-    }
-
-    HashMap *intern_strings = create_intern_string_map();
-    if (!intern_strings) {
-        free(map);
-        free(buckets);
         return nullptr;
     }
 
@@ -453,7 +395,7 @@ HashMap *map_create(size_t num_buckets) {
         .load = 0,
         .num_buckets = num_buckets,
         .fill_factor = DEFAULT_FILL_FACTOR,
-        .intern_strings = intern_strings,
+        .string_pool = string_pool,
         .flags = 0 };
 
     memcpy(map, &prototype, sizeof(HashMap));
@@ -461,7 +403,21 @@ HashMap *map_create(size_t num_buckets) {
     return map;
 }
 
-// deletes all entries and frees them, but does not reduce bucket size or free allocated bucket memory.
+void map_destroy(HashMap map[static 1]) {
+    if (!map) return;
+    map_clear(map);
+    free(map->buckets);
+    map->buckets = nullptr;
+    //todo this shouldn't be a dependency here, but part of the ValuePolicy?
+    if (map->string_pool) {
+        instr_destroy(map->string_pool);
+        map->string_pool = nullptr;
+    }
+
+    free(map);
+}
+
+// deletes and frees all Nodes but does not reduce bucket size or free allocated bucket memory.
 // todo some kind of resize method to realloc to a smaller memory footprint?
 void map_clear(HashMap map[static 1]) {
     for (size_t i = 0; i < map->num_buckets; i++) {
@@ -469,9 +425,7 @@ void map_clear(HashMap map[static 1]) {
         while (current != nullptr) {
             MapNode *temp = current;
             current = current->next;
-            // todo we need to free string keys here
-            free_value_if(map, temp);
-            free(temp);
+            map_destroy_node(map, temp);
         }
         map->buckets[i] =  nullptr;
     }
@@ -491,7 +445,7 @@ bool (map_contains_value)(HashMap map[static 1], const MapValue value) {
     for ( size_t index = 0; index < num_buckets; ++index ) {
         const MapNode *current = map->buckets[index];
         while (current) {
-            if ( values_are_equal(value, current->value) ) {
+            if ( map_equals_MapValue(value, current->value) ) {
                 return current;
             }
             current = current->next;
@@ -500,24 +454,6 @@ bool (map_contains_value)(HashMap map[static 1], const MapValue value) {
     return false;
 }
 
-void map_destroy(HashMap map[static 1]) {
-    if (map == nullptr) return;
-
-    free_intern_strings(map->intern_strings);
-    const size_t num_buckets = map->num_buckets;
-
-    for (size_t i = 0; i < num_buckets; i++) {
-        MapNode *current = map->buckets[i];
-        while (current != nullptr) {
-            MapNode *temp = current;
-            current = current->next;
-            free_node(map, temp);
-        }
-    }
-
-    free(map->buckets);
-    free(map);
-}
 
 MapValue (map_get)(const HashMap map[static 1], const MapKey key) {
     if (map == nullptr) return NULL_MAP_VALUE;
@@ -571,7 +507,7 @@ void (map_put)(HashMap map[static 1], const MapKey key, const MapValue value) {
     // Check if key already exists and update value
     while (current != nullptr) {
         if ( map_keys_are_equal(key, current->key) ) {
-            free_value_if(map, current);
+            map_free_value_if(map, current);
             map_set_value(map, current, value);
             return;
         }
@@ -607,15 +543,13 @@ void (map_remove)(HashMap map[static 1], const MapKey key) {
             } else {
                 prev->next = current->next;
             }
-            free_value_if(map, current );
-            free(current);
+            map_destroy_node(map, current);
             map->size--;
             map_recalc_load(map);
             return;
         }
         prev = current;
         current = current->next;
-
     }
 }
 
@@ -623,18 +557,20 @@ void (map_remove)(HashMap map[static 1], const MapKey key) {
 ////  repr methods
 //// ---------------------------------------------
 
-void map_repr_HashMap(const HashMap map[static 1], bool verbose) {
+void map_repr_HashMap(const HashMap map[static 1], const bool verbose, const char* type_str) {
+    if (!type_str || type_str[0] == '\0') type_str = "HashMap";
     if (!map) {
-        printf("(HashMap)nullptr");
+        printf("(%s)nullptr",type_str);
         return;
     }
 
     // ReSharper disable CppPrintfBadFormat
     // ReSharper disable CppPrintfExtraArg
-    size_t intern_strings_size = map->intern_strings ? map->intern_strings->size : 0;
-    printf( "(HashMap){ .size=%'zu, .fill_capacity=%'zu, .load=%'g, .num_buckets=%'zu, .fill_factor=%g, "
-            ".intern_strings.size=%zu }",
-            map->size, map->fill_capacity, map->load, map->num_buckets, map->fill_factor, intern_strings_size);
+    printf( "(%s){ .size=%'zu, .fill_capacity=%'zu, .load=%'g, "
+            ".num_buckets=%'zu, .fill_factor=%g, "
+            ".string_pool=%p }", type_str,
+            map->size, map->fill_capacity, map->load,
+            map->num_buckets, map->fill_factor, map->string_pool);
 
 
     // we might want a special Bucket struct to be the head of each bucket, so we can keep statistics on the bucket

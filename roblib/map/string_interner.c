@@ -20,32 +20,65 @@
 // Static/private/internal methods
 // ------------------------------------
 
+// Opaque pointer type.
+// The full definition is now private to the .c file.
+struct InternStringMap {
+    HashMap *map;
+};
+
+
 static void instr_destroy_node(MapNode *node) {
     // this is safe, since we always make a copy of a string key and we own it
+    // values are always a long scalar, they don't need to be freed
     free(node->key.kstring);
     free(node);
 }
-
 
 
 // ---------------------------
 // Public API methods
 // ---------------------------
 
-InternStringMap instr_create() {
-    HashMap *map = map_create(0);
+InternStringMap * instr_create(const size_t num_buckets) {
+    // 1. Allocate the wrapper struct.
+    InternStringMap *ismap = malloc(sizeof(InternStringMap));
+    if (!ismap) {
+        return nullptr;
+    }
+    
+    // 2. Create the actual HashMap. Pass nullptr for its own interner
+    //    to prevent infinite recursion.
+    ismap->map = map_create(num_buckets, nullptr);
+    if (!ismap->map) {
+        free(ismap); // Clean up the wrapper if map creation fails
+        return nullptr;
+    }
 
-    return (InternStringMap){.map = map};
-
+    return ismap;
 }
 
+void instr_destroy(InternStringMap ismap[static 1]) {
+    if (!ismap->map)  return;
+    
+    HashMap *map = ismap->map;
+    instr_clear(ismap);
+    // all string keys and MapNodes have been freed.
+    free(map->buckets);
+    map->buckets = nullptr;
+    free(map);
+    ismap->map = nullptr;
+    free(ismap);
+}
+
+
 // deletes all entries and frees them, but does not reduce bucket size or free allocated bucket memory.
-void instr_clear(InternStringMap ismap) {
-    if (!ismap.map) {
+void instr_clear(InternStringMap ismap[static 1]) {
+    if (!ismap->map) {
         return;
     }
-    HashMap *map = ismap.map;
-    for (size_t i = 0; i < map->num_buckets; i++) {
+    HashMap *map = ismap->map;
+    const size_t num_buckets = map->num_buckets;
+    for (size_t i = 0; i < num_buckets; i++) {
         MapNode *current = map->buckets[i];
         while (current) {
             MapNode *temp = current;
@@ -58,51 +91,54 @@ void instr_clear(InternStringMap ismap) {
     map->size = 0;
 }
 
-bool instr_contains_key(InternStringMap ismap, const char* strkey) {
-    if (!ismap.map) return false;
-    return (map_contains_key)(ismap.map, key_for_string(strkey));
+bool instr_contains_key(InternStringMap ismap[static 1], const char* strkey) {
+    if (!ismap->map) return false;
+    return (map_contains_key)(ismap->map, key_for_string(strkey));
 }
 
-void instr_destroy(InternStringMap ismap) {
-    if (!ismap.map) {
-        return;
-    }
-    HashMap *map = ismap.map;
 
-    const size_t num_buckets = map->num_buckets;
-    for (size_t i = 0; i < num_buckets; ++i) {
-        MapNode *current = map->buckets[i];
-        while (current) {
-            MapNode *temp = current;
-            current = current->next;
-            instr_destroy_node(temp);
-        }
-        map->buckets[i] =  nullptr;
-    }
-    // all string keys and MapNodes have been freed.
-    free(map->buckets);
-    map->buckets = nullptr;
-    free(map);
-    ismap.map = nullptr;
-}
 
 // we are re-implementing map_put so we don't have to do to a get then put value+1 when string is already present
-MapValue (instr_get_count)(const InternStringMap ismap, const char* key) {
-    if (!ismap.map) {
-        return NULL_MAP_VALUE;
+long instr_get_count(const InternStringMap ismap[static 1], const char *key) {
+    if (!ismap->map) {
+        return 0;
     }
-    return (map_get)(ismap.map, key_for_string(key));
+    const MapValue mv = (map_get)(ismap->map, key_for_string(key));
+    return mv.vlong;
+}
+
+// Ensures the argument string exists in the string_pool.
+// Returns a pointer to a const char* that is equal to the `string` argument. Each invocation
+// with the same `string` characters will return the same pointer value.
+const char* instr_intern(InternStringMap ismap[static 1], char string[static 1]) {
+    const MapKey key = (MapKey){.kstring = string, .key_type = MAP_TYPE_STRING};
+
+
+    MapNode * node = map_node_for(ismap->map, key);
+    if (!node) {
+        // first time string is encountered
+        instr_put(ismap, string);
+        node = map_node_for(ismap->map, key);
+    } else {
+        node->value.vlong++;
+    }
+
+    if ( !node ) {
+        return nullptr;
+    }
+
+    return node->key.kstring;
 }
 
 
-bool instr_is_empty(InternStringMap ismap) {
-    return map_is_empty(ismap.map);
+bool instr_is_empty(InternStringMap ismap[static 1]) {
+    return map_is_empty(ismap->map);
 }
 
-void instr_put(InternStringMap ismap, const char* strkey) {
-    if ( !ismap.map ) return;
+void instr_put(InternStringMap ismap[static 1], const char* strkey) {
+    if ( !ismap->map ) return;
 
-    HashMap *map = ismap.map;
+    HashMap *map = ismap->map;
 
     if (map->size >= map->fill_capacity) {
         map_ensure_capacity(map);
@@ -138,10 +174,10 @@ void instr_put(InternStringMap ismap, const char* strkey) {
 
 
 //reduce key refcount by 1. When refcount == 0, removes the key from the map
-void (instr_remove)(InternStringMap ismap, const char* strkey) {
-    if (!ismap.map) return;
+void (instr_remove)(InternStringMap ismap[static 1], const char* strkey) {
+    if (!ismap->map) return;
 
-    HashMap *map = ismap.map;
+    HashMap *map = ismap->map;
 
     const MapKey key = key_for_string(strkey);
     const size_t hashcode = map_hash_function(key);
@@ -174,6 +210,19 @@ void (instr_remove)(InternStringMap ismap, const char* strkey) {
     }
 }
 
-size_t instr_size(InternStringMap ismap) {
-    return map_size(ismap.map);
+size_t instr_size(InternStringMap ismap[static 1]) {
+    return map_size(ismap->map);
+}
+
+
+//// ---------------------------------------------
+////  repr methods
+//// ---------------------------------------------
+
+void instr_repr_InternStringMap(InternStringMap ismap[static 1], const bool verbose) {
+    if (!ismap) {
+        printf("(InternStringMap)nullptr");
+        return;
+    }
+    map_repr_HashMap(ismap->map, verbose, "InternStringMap");
 }

@@ -9,30 +9,31 @@
 #pragma once
 #include "hashmap.h"
 
-typedef struct InternStringMap {
-    HashMap *map;
-} InternStringMap;
-
-
-
+// Forward-declare the struct to make it an opaque type.
+// Users can only have pointers to it, not instances.
+// Full definition in string_interner.c
+struct InternStringMap;
+typedef struct InternStringMap InternStringMap;
 
 
 // ---------------------------
 // Public API methods
 // ---------------------------
 
-InternStringMap instr_create();
-void instr_clear(InternStringMap ismap);
-bool instr_contains_key(InternStringMap ismap, const char* strkey);
-void instr_destroy(InternStringMap ismap);
+InternStringMap * instr_create(size_t num_buckets);
+void instr_clear(InternStringMap *ismap);
+bool instr_contains_key(InternStringMap *ismap, const char* strkey);
+void instr_destroy(InternStringMap *ismap);
 
-MapValue instr_get_count(InternStringMap ismap, const char* key);
+long instr_get_count(const InternStringMap *ismap, const char *key);
+const char* instr_intern(InternStringMap *string_pool, char string[static 1]);
+bool instr_is_empty(InternStringMap *ismap);
+void instr_put(InternStringMap *ismap, const char* key) ;
 
-bool instr_is_empty(InternStringMap ismap);
-void instr_put(InternStringMap ismap, const char* key) ;
+void instr_remove(InternStringMap *ismap, const char* strkey);
+size_t instr_size(InternStringMap *ismap);
 
-void instr_remove(InternStringMap ismap, const char* strkey);
-size_t instr_size(InternStringMap ismap);
+void instr_repr_InternStringMap(InternStringMap *ismap, bool verbose);
 
 /*
 // In your application code...
