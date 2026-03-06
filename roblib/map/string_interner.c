@@ -13,6 +13,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <_string.h>
 
 #include "hashmap_private.h"
 
@@ -21,7 +22,7 @@
 // ------------------------------------
 
 // Opaque pointer type.
-// The full definition is now private to the .c file.
+// The full definition is now private to this .c file.
 struct InternStringMap {
     HashMap *map;
 };
@@ -31,14 +32,19 @@ struct InternStringMap {
 // ------------------------------
 
 //key policies
-
-static void instr_policy_key_free_default(const InternStringMap ismap[static 1], const MapNode node[static 1]) {
+static MapKey instr_policy_key_add_default(HashMap map[static 1], MapKey key) {
     // default add always make a copy of a string key and we own it
-    free(node->key.kstring);
+    char *string_copy = strdup(key.kstring);
+    return (MapKey){.key_type = MAP_TYPE_STRING, .kstring = string_copy};
+}
+
+static void instr_policy_key_free_default(HashMap map[static 1], MapKey key) {
+    // default-add always make a copy of a string key and we own it, so we must free it
+    free(key.kstring);
 }
 
 // value policies
-static void instr_policy_value_free_default(const InternStringMap ismap[static 1], const MapNode node[static 1]) {
+static void instr_policy_value_free_default(HashMap map[static 1], MapValue value) {
     // values are always a long scalar, they don't need to be freed
     // no-op
 }
@@ -46,34 +52,51 @@ static void instr_policy_value_free_default(const InternStringMap ismap[static 1
 // when this InternStringMap is being used as a string pool for another map, remove operation in enclosing HashMap
 // is coupled to this stringpool. Removing a string value in the HashMap means decrementing the count in the
 // string pool, not outright freeing it.
+
 [[maybe_unused]] static void instr_policy_value_free_stringpool(InternStringMap ismap[static 1], const MapNode node[static 1]) {
     if ( node->value.value_type == MAP_TYPE_STRING) {
         instr_remove(ismap, node->value.vstring);
     }
 }
 
-static void instr_free_key_if(const InternStringMap ismap[static 1], const MapNode node[static 1]) {
-    // todo check if a policy exists for this operation. If so, call that. Otherwise use a default;
-    bool temp = false;
-    if (temp) {
-        // policy_key_free_pointer->instr_policy_key_free(ismap, node);
+const MapKeyPolicies   DEFAULT_INSTR_KEY_POLICIES = (MapKeyPolicies){
+    .policy_type   = MAP_POLICY_COPY,
+    .on_add_key    = instr_policy_key_add_default,
+    .on_free_key   = instr_policy_key_free_default,
+    .on_remove_key = nullptr,
+};
+
+const MapValuePolicies DEFAULT_INSTR_VALUE_POLICIES = (MapValuePolicies){
+    .policy_type     = MAP_POLICY_NONE,
+    .on_set_value    = nullptr,
+    .on_free_value   = nullptr,
+    .on_remove_value = nullptr,
+};
+
+static void instr_free_key_if(InternStringMap ismap[static 1], const MapNode node[static 1]) {
+    if (!ismap || !ismap->map || !node) return;
+    HashMap *map = ismap->map;
+
+    if ( map->policies.key_policies.on_free_key ) {
+        map->policies.key_policies.on_free_key(map, node->key);
     } else {
         // no key free policy, default is free.
-        instr_policy_key_free_default(ismap, node);
+        instr_policy_key_free_default(map, node->key);
     }
 }
 
-static void instr_free_value_if(const InternStringMap ismap[static 1], const MapNode node[static 1]) {
-    // todo check if a policy exists for this operation. If so, call that. Otherwise use a default;
-    bool temp = false;
-    if (temp) {
-        // policy_value_free_pointer->instr_policy_value_free(ismap, node);
+static void instr_free_value_if(InternStringMap ismap[static 1], const MapNode node[static 1]) {
+    if (!ismap || !ismap->map || !node) return;
+    HashMap *map = ismap->map;
+    if (map->policies.value_policies.on_free_value) {
+        map->policies.value_policies.on_free_value(map, node->value);
     } else {
-        instr_policy_value_free_default(ismap, node);
+        // no value free policy, default is NO-OP.
+        instr_policy_value_free_default(map, node->value);
     }
 }
 
-static void instr_destroy_node(const InternStringMap ismap[static 1], MapNode *node) {
+static void instr_destroy_node(InternStringMap ismap[static 1], MapNode *node) {
     if (!ismap) return;
     instr_free_key_if(ismap, node);
     instr_free_value_if(ismap, node);
@@ -94,11 +117,14 @@ InternStringMap * instr_create(const size_t num_buckets) {
     
     // 2. Create the actual HashMap. Pass nullptr for its own interner
     //    to prevent infinite recursion.
-    ismap->map = map_create(num_buckets, nullptr);
+    ismap->map = map_create(num_buckets);
     if (!ismap->map) {
         free(ismap); // Clean up the wrapper if map creation fails
         return nullptr;
     }
+
+    ismap->map->policies.key_policies   = DEFAULT_INSTR_KEY_POLICIES;
+    ismap->map->policies.value_policies = DEFAULT_INSTR_VALUE_POLICIES;
 
     return ismap;
 }
@@ -156,16 +182,17 @@ long instr_get_count(const InternStringMap ismap[static 1], const char *key) {
 // Ensures the argument string exists in the string_pool.
 // Returns a pointer to a const char* that is equal to the `string` argument. Each invocation
 // with the same `string` characters will return the same pointer value.
-const char* instr_intern(InternStringMap ismap[static 1], char string[static 1]) {
+const char* instr_ref(InternStringMap ismap[static 1], char string[static 1]) {
+    if (!ismap->map) return nullptr;
+
     const MapKey key = (MapKey){.kstring = string, .key_type = MAP_TYPE_STRING};
-
-
     MapNode * node = map_node_for(ismap->map, key);
     if (!node) {
         // first time string is encountered
-        instr_put(ismap, string);
+        instr_put(ismap, string, 1);
         node = map_node_for(ismap->map, key);
     } else {
+        // string in map, increment ref count
         node->value.vlong++;
     }
 
@@ -176,84 +203,46 @@ const char* instr_intern(InternStringMap ismap[static 1], char string[static 1])
     return node->key.kstring;
 }
 
+//reduce key refcount by 1. When refcount == 0, removes the key from the map
+void instr_unref(InternStringMap ismap[static 1], const char *strkey) {
+    if (!ismap->map) return;
+
+    const MapKey key = key_for_string(strkey);
+    MapNode * node = map_node_for(ismap->map, key);
+
+    if (!node) return ; // key not in map
+
+    if (node->value.vlong - 1 == 0 ) {
+        //todo how do we handle negative numbers for references? if we do <= here and user is using negative values,
+        //the string will be immediately freed. I.e., if count == -12 and we unref(), does it go to -13 or do we
+        // remove it?
+        // for now, only +1 -> 0 results in a remove.
+        instr_remove(ismap, strkey);
+    } else {
+        node->value.vlong--; //decrement ref count
+    }
+}
+
+
 
 bool instr_is_empty(InternStringMap ismap[static 1]) {
     return map_is_empty(ismap->map);
 }
 
-void instr_put(InternStringMap ismap[static 1], const char* strkey) {
+void instr_put(InternStringMap ismap[static 1], const char* strkey, long value) {
     if ( !ismap->map ) return;
 
     HashMap *map = ismap->map;
-
-    if (map->size >= map->fill_capacity) {
-        map_ensure_capacity(map);
-    }
-
-    const MapKey key = key_for_string(strkey);
-
-    const size_t hashcode = map_hash_function(key);
-    const size_t bucket_index = map_calc_bucket_index(hashcode, map->num_buckets);
-    MapNode *current = map->buckets[bucket_index];
-
-    // Check if key already exists and update value
-    while (current != nullptr) {
-        if ( map_keys_are_equal(key, current->key) ) {
-            long value = current->value.vlong + 1;  //increment ref count
-            map_set_value(map, current, value_for_long(value));
-            return;
-        }
-        current = current->next;
-    }
-    // Key not found, insert new node at the beginning of the list
-    MapNode *new_node = map_create_node(hashcode, key);
-    if (new_node == nullptr) {
-        // Handle allocation failure (in a real app, maybe return status)
-        return;
-    }
-    new_node->next =  map->buckets[bucket_index];  // inserts this MapNode at the head of the bucket
-    map_set_value(map, new_node, value_for_long(1l));
-    map->buckets[bucket_index] = new_node;
-    map->size++;
-    map_recalc_load(map);
+    (map_put)(map, key_for_string(strkey), value_for_long(value));
 }
 
 
-//reduce key refcount by 1. When refcount == 0, removes the key from the map
 void (instr_remove)(InternStringMap ismap[static 1], const char* strkey) {
     if (!ismap->map) return;
 
     HashMap *map = ismap->map;
 
-    const MapKey key = key_for_string(strkey);
-    const size_t hashcode = map_hash_function(key);
-    const size_t index = map_calc_bucket_index(hashcode, map->num_buckets);
-
-
-    MapNode *current = map->buckets[index];
-    MapNode *prev = nullptr;
-
-    while (current) {
-        if ( map_keys_are_equal(key, current->key ) ){
-            if (current->value.vlong - 1 <= 0) {
-                //refcount is now zero, we can free this string and the node
-                if (!prev) {
-                    map->buckets[index] = current->next;
-                } else {
-                    prev->next = current->next;
-                }
-                instr_destroy_node(ismap, current);
-                map->size--;
-                map_recalc_load(map);
-            } else {
-                current->value.vlong--; // decrement the refcount
-            }
-            return;
-        }
-        prev = current;
-        current = current->next;
-
-    }
+    (map_remove)(map, key_for_string(strkey));
 }
 
 size_t instr_size(InternStringMap ismap[static 1]) {

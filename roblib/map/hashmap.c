@@ -17,22 +17,29 @@ static constexpr size_t MIN_CAP  = 16;
 static constexpr size_t MAX_POW2 = (SIZE_MAX >> 1) + 1;
 
 const MapKey   NULL_MAP_KEY   = (MapKey){  .kvoid_ptr = nullptr, .key_type   = MAP_TYPE_NULL};
-const MapValue NULL_MAP_VALUE = (MapValue){.vvoid_ptr = nullptr, .value_type = MAP_TYPE_NULL};
-const MapNode NULL_MAP_NODE = (MapNode){ .key = NULL_MAP_KEY, .value = NULL_MAP_VALUE, .hash = 0, .next = nullptr};
+const MapValue NULL_MAP_VALUE = (MapValue){ .vvoid_ptr = nullptr, .value_type = MAP_TYPE_NULL};
+const MapNode  NULL_MAP_NODE = (MapNode){ .key = NULL_MAP_KEY, .value = NULL_MAP_VALUE, .hash = 0, .next = nullptr};
 
 
 // forward references
 static bool map_equals_double(double d1, double d2);
 static void map_destroy_node(HashMap map[static 1], MapNode *node);
-static void map_free_value_if(const HashMap *map, const MapNode *node);
-static size_t map_hash_string(const char *str);
+static void map_free_key_if(HashMap map[static 1], const MapNode node[static 1]);
+static void map_free_value_if(HashMap map[static 1], const MapNode *node);
+// static size_t map_hash_string(const char *str);
 static size_t map_hash_mix64(size_t x);
+static MapKey map_policy_key_add_default(HashMap map[static 1], MapKey key);
+static void map_policy_key_free_default(HashMap map[static 1], MapKey key);
+static MapValue map_policy_value_set_default(HashMap map[static 1], MapValue value);
+static void map_policy_value_free_default(HashMap map[static 1], MapValue value);
 
 // string_interner.h API methods used here. We can't include string_interner.h due to circular dependencies
 void instr_destroy(InternStringMap *ismap);
-const char* instr_intern(InternStringMap *string_pool, char string[static 1]);
+const char* instr_ref(InternStringMap *ismap, char string[static 1]);
+void instr_unref(InternStringMap *ismap, const char *strkey);
 void instr_remove(InternStringMap *ismap, const char* strkey);
 size_t instr_size(InternStringMap *ismap);
+
 
 // -------------------------------------
 // Static/private/internal methods
@@ -76,7 +83,25 @@ static bool map_equals_MapValue(const MapValue v1, const MapValue v2) {
     }
 }
 
+static void map_free_key_if(HashMap map[static 1], const MapNode node[static 1]) {
+    // todo check if a policy exists for this operation. If so, call that. Otherwise use a default;
+    if (!map || !node) return;
+    if (map->policies.key_policies.on_free_key) {
+        map->policies.key_policies.on_free_key(map, node->key);
+    } else {
+        // no key free policy, use default
+        map_policy_key_free_default(map, node->key);
+    }
+}
 
+static void map_free_value_if(HashMap map[static 1], const MapNode node[static 1]) {
+    if (!map || !node) return;
+    if (map->policies.value_policies.on_free_value) {
+        map->policies.value_policies.on_free_value(map, node->value);
+    } else {
+        map_policy_value_free_default(map, node->value);
+    }
+}
 // hash mixer
 static size_t map_hash_mix64( size_t x ) {
     x ^= x >> 33;
@@ -100,8 +125,6 @@ static size_t map_hash_string(const char *str) {
 
     return (size_t)hash;
 }
-
-
 
 static size_t map_next_power_of_two(size_t n) {
     // Clamp lower bound
@@ -127,6 +150,125 @@ static size_t map_next_power_of_two(size_t n) {
     return n + 1;
 }
 
+//// ------------------------------
+//// default policy functions
+//// ------------------------------
+
+
+// ------------------------------
+// key policies
+// ------------------------------
+static MapKey map_policy_key_add_default(HashMap map[static 1], MapKey key) {
+    // default add always make a copy of a string key and we own it
+    if (!map) return NULL_MAP_KEY;
+    MapPolicyType keypolicy = map->policies.key_policies.policy_type;
+    if (key.key_type == MAP_TYPE_STRING &&  ( keypolicy == MAP_POLICY_COPY || keypolicy == MAP_POLICY_NONE )) {
+        char *string_copy = strdup(key.kstring);
+        return (MapKey){.key_type = MAP_TYPE_STRING, .kstring = string_copy};
+    }
+    return key;
+}
+
+static void map_policy_key_free_default(HashMap map[static 1], MapKey key) {
+    if (!map) return;
+    MapPolicyType keypolicy = map->policies.key_policies.policy_type;
+    if (key.key_type == MAP_TYPE_STRING &&
+        ( keypolicy == MAP_POLICY_COPY || keypolicy == MAP_POLICY_TAKE || keypolicy == MAP_POLICY_NONE )) {
+        free(key.kstring);  //we own it.
+    }
+}
+
+// -----------------------
+// value policies
+// -----------------------
+
+static MapValue map_policy_value_set_default(HashMap map[static 1], MapValue value) {
+    // default add always make a copy of a string key and we own it
+    if (!map) return NULL_MAP_VALUE;
+    MapPolicyType valuepolicy = map->policies.value_policies.policy_type;
+    if ( value.value_type == MAP_TYPE_STRING &&
+        ( valuepolicy == MAP_POLICY_COPY || valuepolicy == MAP_POLICY_NONE )) {
+        char *string_copy = strdup(value.vstring);
+        return (MapValue){.value_type = MAP_TYPE_STRING, .vstring = string_copy};
+    }
+    if ( value.value_type == MAP_TYPE_VOID_PTR ) {
+        // invoke the pointer's add method?
+        //todo deal with void* types
+    }
+    return value;
+}
+
+static void map_policy_value_free_default(HashMap map[static 1], MapValue value) {
+    if (!map) return;
+    MapPolicyType valuepolicy = map->policies.value_policies.policy_type;
+    if ( value.value_type == MAP_TYPE_STRING &&
+        ( valuepolicy == MAP_POLICY_COPY || valuepolicy == MAP_POLICY_TAKE || valuepolicy == MAP_POLICY_NONE )) {
+        free(value.vstring);  //we own it.
+    } else if ( value.value_type == MAP_TYPE_VOID_PTR ) {
+        // invoke the pointer's free method
+        //todo deal with void* types
+    }
+}
+
+[[maybe_unused]]
+static MapValue map_policy_value_add_to_stringpool(HashMap map[static 1], MapValue value) {
+    if (!map) return NULL_MAP_VALUE;
+    InternStringMap *ismap = map->policies.value_policies.context; // this should be the stringpool
+    if (!ismap) return NULL_MAP_VALUE;
+
+    MapPolicyType valuepolicy = map->policies.value_policies.policy_type;
+
+    if ( value.value_type == MAP_TYPE_STRING &&
+        ( valuepolicy == MAP_POLICY_COPY || valuepolicy == MAP_POLICY_NONE )) {
+            const char *strref = instr_ref(ismap, value.vstring);
+            return (MapValue){ .value_type = MAP_TYPE_STRING, .vstring = (char *)strref };
+    }
+    if ( value.value_type == MAP_TYPE_VOID_PTR ) {
+        // invoke the pointer's free method
+        //todo deal with void* types
+    }
+
+    return value;
+}
+
+[[maybe_unused]]
+static void map_policy_value_remove_from_stringpool(HashMap map[static 1], MapValue value) {
+    if (!map) return;
+    InternStringMap *ismap = map->policies.value_policies.context; // this should be the stringpool
+    if (!ismap) return;
+
+    MapPolicyType valuepolicy = map->policies.value_policies.policy_type;
+
+    if ( value.value_type == MAP_TYPE_STRING &&
+        ( valuepolicy == MAP_POLICY_COPY || valuepolicy == MAP_POLICY_NONE )) {
+            instr_unref(ismap, value.vstring);
+            return;
+    }
+
+    if ( value.value_type == MAP_TYPE_VOID_PTR ) {
+        // invoke the pointer's free method
+        //todo deal with void* types
+    }
+}
+
+const MapKeyPolicies   DEFAULT_MAP_KEY_POLICIES = (MapKeyPolicies){
+    .policy_type   = MAP_POLICY_COPY,
+    .on_add_key    = map_policy_key_add_default,
+    .on_free_key   = map_policy_key_free_default,
+    .on_remove_key = nullptr,
+};
+
+const MapValuePolicies DEFAULT_MAP_VALUE_POLICIES = (MapValuePolicies){
+    .policy_type     = MAP_POLICY_COPY,
+    .on_set_value    = map_policy_value_set_default,
+    .on_free_value   = map_policy_value_free_default,
+    .on_remove_value = nullptr,
+};
+
+//// ------------------------------
+//// End default policy functions
+//// ------------------------------
+
 
 
 
@@ -140,7 +282,7 @@ size_t map_calc_bucket_index(const size_t hashcode, const size_t num_buckets) {
     return hashcode & (num_buckets - 1);  // works because num_buckets is a power of 2
 }
 
-MapNode * map_create_node(const size_t hashcode, const MapKey key) {
+MapNode * map_create_node(HashMap map[static 1], const size_t hashcode, const MapKey key) {
 
     MapNode *new_node = (MapNode *)malloc(sizeof(MapNode));
     if (new_node == nullptr) {
@@ -157,10 +299,13 @@ MapNode * map_create_node(const size_t hashcode, const MapKey key) {
             temp_node = &(MapNode){ .hash = hashcode, .key.kdouble = key.kdouble, .key.key_type = MAP_TYPE_DOUBLE };
             break;
         case MAP_TYPE_STRING: {
-            //we always copy the string used as a key.
-            // todo this should be governed by the KeyPolicy, for things like an IdentityHashMap impl
-            char *string_copy = strdup(key.kstring);
-            temp_node = &(MapNode){ .hash = hashcode, .key.kstring = string_copy, .key.key_type = MAP_TYPE_STRING };
+            MapKey copy;
+            if ( map->policies.key_policies.on_add_key ) {
+                copy = map->policies.key_policies.on_add_key(map, key);
+            } else {
+                copy = map_policy_key_add_default(map, key);
+            }
+            temp_node = &(MapNode){ .hash = hashcode, .key.kstring = copy.kstring, .key.key_type = MAP_TYPE_STRING };
             break;
         }
         case MAP_TYPE_VOID_PTR:
@@ -175,69 +320,6 @@ MapNode * map_create_node(const size_t hashcode, const MapKey key) {
     memcpy(new_node, temp_node, sizeof(MapNode));
 
     return new_node;
-}
-
-// ------------------------------
-// default policy functions
-// ------------------------------
-
-//key policies
-
-static void map_policy_key_free_default(const HashMap map[static 1], const MapNode node[static 1]) {
-    if (node->key.key_type == MAP_TYPE_STRING) {
-        free(node->key.kstring);  //default add policy makes a copy of this string so we own it.
-    }
-}
-
-// value policies
-static void map_policy_value_free_default(const HashMap map[static 1], const MapNode node[static 1]) {
-    if ( node->value.value_type == MAP_TYPE_STRING) {
-            // default is to make a copy of the string. We own it, we can free it.
-            free( node->value.vstring);
-    }
-    else if ( node->value.value_type == MAP_TYPE_VOID_PTR ) {
-        // invoke the pointer's free method
-    }
-}
-
-static void map_policy_value_free_stringpool(const HashMap map[static 1], const MapNode node[static 1]) {
-    if ( node->value.value_type == MAP_TYPE_STRING) {
-        if ( map->string_pool) {
-            instr_remove(map->string_pool, node->value.vstring);
-        } else {
-            // we're not using a string pool, so we made a copy of the string. We can free it.
-            //todo this should be controlled by ValuePolicy
-            free( node->value.vstring) ;
-        }
-    }
-    else if ( node->value.value_type == MAP_TYPE_VOID_PTR ) {
-        // invoke the pointer's free method
-    }
-}
-
-
-
-
-static void map_free_key_if(const HashMap map[static 1], const MapNode node[static 1]) {
-    // todo check if a policy exists for this operation. If so, call that. Otherwise use a default;
-    if (map->string_pool) {
-        // policy_key_free_pointer->map_policy_key_free(map, node);
-        map_policy_value_free_stringpool(map, node);
-    } else {
-        // no key free policy, use default
-        map_policy_key_free_default(map, node);
-    }
-}
-
-
-static void map_free_value_if(const HashMap map[static 1], const MapNode node[static 1]) {
-    // todo check if a policy exists for this operation. If so, call that. Otherwise use a default;
-    bool temp = false;
-    if (temp) {
-        // policy_value_free_pointer->map_policy_value_free(map, node);
-    } else {
-        map_policy_value_free_default(map, node);
-    }
 }
 
 static void map_destroy_node(HashMap map[static 1], MapNode node[static 1]) {
@@ -325,7 +407,7 @@ size_t map_hash_function(const MapKey key) {
     return map_hash_mix64(raw_hash);
 }
 
-bool map_keys_are_equal(const MapKey k1, const MapKey k2) {
+bool map_equals_MapKey(const MapKey k1, const MapKey k2) {
 
     if (k1.key_type != k2.key_type) return false;
 
@@ -356,7 +438,7 @@ MapNode * map_node_for(const HashMap map[static 1], const MapKey key) {
     MapNode *current = map->buckets[index];
 
     while (current != nullptr) {
-        if ( map_keys_are_equal(key, current->key) ) {
+        if ( map_equals_MapKey(key, current->key) ) {
             return current;
         }
         current = current->next;
@@ -364,7 +446,7 @@ MapNode * map_node_for(const HashMap map[static 1], const MapKey key) {
     return nullptr; // Key not found
 }
 
-void map_set_value(const HashMap map[static 1], MapNode node[static 1], const MapValue value ) {
+void map_set_value(HashMap map[static 1], MapNode node[static 1], const MapValue value ) {
     switch (value.value_type) {
         case MAP_TYPE_LONG:
             node->value.vlong = value.vlong;
@@ -373,15 +455,10 @@ void map_set_value(const HashMap map[static 1], MapNode node[static 1], const Ma
             node->value.vdouble = value.vdouble;
             break;
         case MAP_TYPE_STRING:
-            if (map->string_pool) {
-                //get string from intern string pool
-                // we need the void* cast because instr_intern returns const char*.
-                // todo make value.vstring const char*
-                node->value.vstring = (void *) instr_intern(map->string_pool, value.vstring);
+            if ( map->policies.value_policies.on_set_value ) {
+                node->value.vstring = map->policies.value_policies.on_set_value(map, value).vstring;
             } else {
-                //todo ValuePolicy should control this.
-                // here, if there is no string_pool, we will copy the string to be safe.
-                node->value.vstring = strdup(value.vstring);
+                node->value.vstring = map_policy_value_set_default(map, value).vstring;
             }
             break;
         case MAP_TYPE_VOID_PTR:
@@ -411,7 +488,7 @@ void map_recalc_load(HashMap *map) {
 // num_buckets is clamped to smalles power of two > num_buckets.
 // buckets double when fill capacity is reached (75% full). 16 buckets provides adequate sizing for 12 items before
 // doubling.
-HashMap *map_create(size_t num_buckets, InternStringMap * string_pool) {
+HashMap *map_create(size_t num_buckets) {
 
     HashMap *map = (HashMap *)malloc(sizeof(HashMap));
     if (map == nullptr) {
@@ -438,8 +515,10 @@ HashMap *map_create(size_t num_buckets, InternStringMap * string_pool) {
         .load = 0,
         .num_buckets = num_buckets,
         .fill_factor = DEFAULT_FILL_FACTOR,
-        .string_pool = string_pool,
         .flags = 0 };
+
+    prototype.policies.key_policies   = DEFAULT_MAP_KEY_POLICIES;
+    prototype.policies.value_policies = DEFAULT_MAP_VALUE_POLICIES;
 
     memcpy(map, &prototype, sizeof(HashMap));
 
@@ -452,10 +531,11 @@ void map_destroy(HashMap map[static 1]) {
     free(map->buckets);
     map->buckets = nullptr;
     //todo this shouldn't be a dependency here, but part of the ValuePolicy?
-    if (map->string_pool) {
-        instr_destroy(map->string_pool);
-        map->string_pool = nullptr;
-    }
+    // delete string_pool?
+    // if (map->string_pool) {
+    //     instr_destroy(map->string_pool);
+    //     map->string_pool = nullptr;
+    // }
 
     free(map);
 }
@@ -506,7 +586,7 @@ MapValue (map_get)(const HashMap map[static 1], const MapKey key) {
     MapNode const *current = map->buckets[index];
 
     while (current != nullptr) {
-        if ( map_keys_are_equal(key, current->key) ) {
+        if ( map_equals_MapKey(key, current->key) ) {
             return current->value;
         }
         current = current->next;
@@ -550,7 +630,7 @@ void (map_put)(HashMap map[static 1], const MapKey key, const MapValue value) {
 
     // Check if key already exists and update value
     while (current != nullptr) {
-        if ( map_keys_are_equal(key, current->key) ) {
+        if ( map_equals_MapKey(key, current->key) ) {
             map_free_value_if(map, current);
             map_set_value(map, current, value);
             return;
@@ -558,7 +638,7 @@ void (map_put)(HashMap map[static 1], const MapKey key, const MapValue value) {
         current = current->next;
     }
     // Key not found, insert new node at the beginning of the list
-    MapNode *new_node = map_create_node(hashcode, key);
+    MapNode *new_node = map_create_node(map, hashcode, key);
     if (new_node == nullptr) {
         // Handle allocation failure (in a real app, maybe return status)
         return;
@@ -581,7 +661,7 @@ void (map_remove)(HashMap map[static 1], const MapKey key) {
     MapNode *prev = nullptr;
 
     while (current) {
-        if ( map_keys_are_equal(key, current->key ) ){
+        if ( map_equals_MapKey(key, current->key ) ){
             if (!prev) {
                 map->buckets[index] = current->next;
             } else {
@@ -612,9 +692,9 @@ void map_repr_HashMap(const HashMap map[static 1], const bool verbose, const cha
     // ReSharper disable CppPrintfExtraArg
     printf( "(%s){ .size=%'zu, .fill_capacity=%'zu, .load=%'g, "
             ".num_buckets=%'zu, .fill_factor=%g, "
-            ".string_pool=%p }", type_str,
+            "}", type_str,
             map->size, map->fill_capacity, map->load,
-            map->num_buckets, map->fill_factor, map->string_pool);
+            map->num_buckets, map->fill_factor);
 
 
     // we might want a special Bucket struct to be the head of each bucket, so we can keep statistics on the bucket

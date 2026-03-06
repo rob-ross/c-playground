@@ -112,3 +112,13 @@ To break cyclic dependencies in header files:
 CYCLES :  Stop including the “other” header in your public header.
           Use forward declarations + opaque pointers in headers.
           Put the real #include in the .c file, where the full definition is actually needed.
+
+
+Signal Errors:
+--------------
+Signal 11, or SIGSEGV (Segmentation Fault),
+    a program has attempted to access a memory location it is not allowed to use
+Signal 5 is SIGTRAP (Trace/Breakpoint Trap)
+Signal 6, or SIGABRT (Signal Abort)  is a POSIX signal sent to a process to terminate it abnormally,
+    usually triggered when the program detects a critical internal error, such as a failed assert(),
+    double-free memory corruption, or by calling abort()

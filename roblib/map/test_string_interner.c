@@ -48,28 +48,30 @@ MunitResult test_create_and_free(const MunitParameter params[], void* fixture) {
 
 MunitResult test_put_and_get_string(const MunitParameter params[], void* fixture) {
     InternStringMap *map = fixture;
-    instr_put(map, "hello");
+    instr_put(map, "hello",1);
     long vlong = instr_get_count(map, "hello");
     munit_assert_int(1, ==, vlong);
-    instr_put(map, "hello");
-    instr_put(map, "hello");
+    instr_put(map, "hello", 22);
+    instr_put(map, "hello", 3);
     vlong = instr_get_count(map, "hello");
     munit_assert_int(3, ==, vlong);
     return MUNIT_OK;
 }
 
-MunitResult test_update_value(const MunitParameter params[], void* fixture) {
+MunitResult test_refcount(const MunitParameter params[], void* fixture) {
     InternStringMap *map = fixture;
-    instr_put(map, "hello");
-    instr_put(map, "hello");
+    instr_ref(map, "hello");
+    instr_ref(map, "hello");
     long vlong = instr_get_count(map, "hello");
     munit_assert_int(2, ==, vlong);
+    MapValue mv = map_get(map->map, "hello");
+    munit_assert_int(2, ==, mv.vlong);
     return MUNIT_OK;
 }
 
 MunitResult test_remove_key(const MunitParameter params[], void* fixture) {
     InternStringMap *map = fixture;
-    instr_put(map, "hello");
+    instr_put(map, "hello",1);
     instr_remove(map, "hello");
     long vlong = instr_get_count(map, "hello");
     munit_assert_int(0, ==, vlong);
@@ -79,8 +81,8 @@ MunitResult test_remove_key(const MunitParameter params[], void* fixture) {
 MunitResult test_put_and_get_str_key(const MunitParameter params[], void* fixture) {
     InternStringMap *map = fixture;
 
-    instr_put(map, "hello");
-    instr_put(map, "good");
+    instr_put(map, "hello",1);
+    instr_put(map, "good", 1);
     long vlong= instr_get_count(map, "hello");
     munit_assert_int(1, ==, vlong);
 
@@ -97,7 +99,7 @@ MunitResult test_100_string_different(const MunitParameter params[], void* fixtu
     for (int i = 0; i < 100; ++i) {
         char strkey[10]; // max 4 chars for value of i, plus 5 for 'hello', plus terminator
         snprintf(strkey, 10, "hello%d",i+1);
-        instr_put(map, strkey );
+        instr_put(map, strkey, i );
     }
     munit_assert_int(100, ==, instr_size(map));
 
@@ -118,8 +120,8 @@ MunitResult test_100_string_different(const MunitParameter params[], void* fixtu
 MunitResult test_clear(const MunitParameter params[], void* fixture) {
     InternStringMap *map = fixture;
 
-    instr_put(map,"dog");
-    instr_put(map, "cat");
+    instr_put(map,"dog", 1);
+    instr_put(map, "cat", 1);
     munit_assert_int(2, ==,  map->map->size);
     instr_clear( map );
     munit_assert_int(0, ==,  map->map->size);
@@ -130,9 +132,9 @@ MunitResult test_clear(const MunitParameter params[], void* fixture) {
 MunitResult test_contains_key(const MunitParameter params[], void* fixture) {
     InternStringMap *map = fixture;
 
-    instr_put(map,"dog");
-    instr_put(map, "cat");
-    instr_put(map, "wolf");
+    instr_put(map,"dog",1);
+    instr_put(map, "cat", 1);
+    instr_put(map, "wolf",1 );
 
     munit_assert_true(instr_contains_key(map, "dog"));
     munit_assert_true(instr_contains_key(map, "cat"));
@@ -170,7 +172,7 @@ int main(int argc, char *argv[argc + 1]) {
     MunitTest tests[] = {
         munit_test(test_create_and_free),
         munit_test(test_put_and_get_string),
-        munit_test(test_update_value),
+        munit_test(test_refcount),
         munit_test(test_remove_key),
         munit_test(test_put_and_get_str_key),
         munit_test(test_clear),

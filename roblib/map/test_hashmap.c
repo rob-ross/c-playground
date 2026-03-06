@@ -20,7 +20,7 @@
 // ----------------------------------------------
 // create a HashMap for use in test cases
 void *  hashmap_fixture(const MunitParameter params[], void* user_data) {
-    HashMap *map = map_create(10, nullptr);
+    HashMap *map = map_create(10);
     munit_assert_not_null(map);
     return map;
 }
@@ -35,7 +35,7 @@ void hashmap_free(void * fixture) {
 // -------------------------------------------------
 
 MunitResult test_create_and_free(const MunitParameter params[], void* fixture) {
-    HashMap *map = map_create(10, nullptr);
+    HashMap *map = map_create(10);
     munit_assert_ptr_not_null(map);
     map_destroy(map);
     return MUNIT_OK;
@@ -65,7 +65,7 @@ MunitResult test_put_and_get_string(const MunitParameter params[], void* fixture
     return MUNIT_OK;
 }
 
-MunitResult test_update_value(const MunitParameter params[], void* fixture) {
+MunitResult test_refcount(const MunitParameter params[], void* fixture) {
     HashMap *map = fixture;
     map_put(map, 1, "hello");
     map_put(map, 1, "world"); // This should free val1 and replace it with val2
@@ -293,7 +293,7 @@ int main(int argc, char *argv[argc + 1]) {
         munit_test(test_create_and_free),
         munit_test("/test_put_and_get_int", test_put_and_get_int),
         munit_test(test_put_and_get_string),
-        munit_test(test_update_value),
+        munit_test(test_refcount),
         munit_test(test_remove_key),
         munit_test(test_put_and_get_str_key),
         munit_test(test_put_and_get_bool_values),
@@ -311,7 +311,7 @@ int main(int argc, char *argv[argc + 1]) {
 
     apply_fixture(tests, hashmap_fixture, hashmap_free);
 
-
+[[maybe_unused]]
      MunitSuite suite = {
         "/hashmap", /* name */
         tests, /* tests */
@@ -324,8 +324,13 @@ int main(int argc, char *argv[argc + 1]) {
     int result = 0;
     result = munit_suite_main(&suite, nullptr, argc, argv);
 
-    test_10K_inserts(nullptr, nullptr);
-    test_10K_string_inserts(nullptr, nullptr);
+    // munit spawns a process for each test and that confuses the debugger. To debug a failing test we must run it
+    // manually in the main thread. examples:
+    // test_put_and_get_string(nullptr, hashmap_fixture(nullptr, nullptr));
+    // test_10K_inserts(nullptr, nullptr);
+    // test_10K_string_inserts(nullptr, nullptr);
+
+
     return result;
 
 }
@@ -335,19 +340,19 @@ int main(int argc, char *argv[argc + 1]) {
 // ad hoc tests
 // -------------------------
 void test_repr(void) {
-    HashMap *map = map_create(0, nullptr);
+    HashMap *map = map_create(0);
     map_repr_HashMap(map, true, ""); print("");
     map_destroy(map);
 
-    map_create(0, nullptr);
+    map_create(0);
     map_repr_HashMap(map, true, ""); print("");
     map_destroy(map);
 
-    map = map_create(16, nullptr);
+    map = map_create(16);
     map_repr_HashMap(map, true, ""); print("");
     map_destroy(map);
 
-    map = map_create(17, nullptr);
+    map = map_create(17);
 
     map_destroy(map);
 }
@@ -355,7 +360,7 @@ void test_repr(void) {
 MunitResult test_10K_inserts(const MunitParameter params[], void* fixture) {
     print("test_10K_inserts");
     constexpr size_t N = 10'0;
-    HashMap *map = map_create(0, nullptr);
+    HashMap *map = map_create(0);
     size_t buffer_size = 20;  // max 9 chars for value of i, plus 5 for 'hello', plus terminator
     for (int i = 0; i < N; ++i) {
         char search_string[buffer_size] = {};
@@ -387,62 +392,63 @@ MunitResult test_10K_inserts(const MunitParameter params[], void* fixture) {
 }
 
 
-MunitResult test_10K_string_inserts(const MunitParameter params[], void* fixture) {
-    print("test_10K_string_inserts");
-    constexpr size_t N = 10;
-    InternStringMap *string_pool = instr_create(16);
-    HashMap *map = map_create(0, string_pool);
-    // print("map: %p, string_pool: %p", map, string_pool);
-    InternStringMap *ismap = map->string_pool;
-    munit_assert_ptr_equal(string_pool, ismap);
-
-    char * value_str = "hello world";
-    for (int i = 0; i < N; ++i) {
-        map_put(map, i, value_str );
-        // print("map_put(map, %d, %s)", i, value_str);
-    }
-    // print("done with map_put");
-
-    for (int i=0; i < N; ++i) {
-        MapValue value = map_get(map, i );
-        // printf("map_get(map, %d) ", i);
-        // map_repr_MapValue(value, true);
-        fflush(stdout);
-        munit_assert_string_equal( value_str, value.vstring);
-    }
-
-    // print("done with map_get");
-
-    // printf("finished adding %zu items to map.\n", N);
-    map_repr_HashMap(map, false, "");
-
-    if (ismap) {
-        long count = instr_get_count(ismap, "hello world");
-        printf("'hello world' ref count = %ld\n", count);
-        instr_repr_InternStringMap(ismap, false);
-    }
-
-
-    print("\n");
-
-    //try removing keys, the reference count should reduce by 1 each time
-    for (int i=0; i< N; ++i) {
-        // print("\nremoving #%d", i);
-        map_remove(map, i );
-        munit_assert_int( N-i - 1, ==, map->size);
-        if (ismap) {
-            long count = instr_get_count(ismap, "hello world");
-            munit_assert_int( N-i - 1, ==, count);
-            // printf("'hello world' ref count = %ld\n", count);
-            // instr_repr_InternStringMap(ismap, false);
-        }
-
-    }
-
-    fflush(stdout);
-    // printf("about to call map_destroy:\n");
-    fflush(stdout);
-    map_destroy(map);
-
-    return MUNIT_OK;
-}
+// MunitResult test_10K_string_inserts(const MunitParameter params[], void* fixture) {
+//     print("test_10K_string_inserts");
+//     constexpr size_t N = 10;
+//     InternStringMap *string_pool = instr_create(16);
+//     HashMap *map = map_create(0);
+//
+//     // print("map: %p, string_pool: %p", map, string_pool);
+//     InternStringMap *ismap; // = map->string_pool;
+//     munit_assert_ptr_equal(string_pool, ismap);
+//
+//     char * value_str = "hello world";
+//     for (int i = 0; i < N; ++i) {
+//         map_put(map, i, value_str );
+//         // print("map_put(map, %d, %s)", i, value_str);
+//     }
+//     // print("done with map_put");
+//
+//     for (int i=0; i < N; ++i) {
+//         MapValue value = map_get(map, i );
+//         // printf("map_get(map, %d) ", i);
+//         // map_repr_MapValue(value, true);
+//         fflush(stdout);
+//         munit_assert_string_equal( value_str, value.vstring);
+//     }
+//
+//     // print("done with map_get");
+//
+//     // printf("finished adding %zu items to map.\n", N);
+//     map_repr_HashMap(map, false, "");
+//
+//     if (ismap) {
+//         long count = instr_get_count(ismap, "hello world");
+//         printf("'hello world' ref count = %ld\n", count);
+//         instr_repr_InternStringMap(ismap, false);
+//     }
+//
+//
+//     print("\n");
+//
+//     //try removing keys, the reference count should reduce by 1 each time
+//     for (int i=0; i< N; ++i) {
+//         // print("\nremoving #%d", i);
+//         map_remove(map, i );
+//         munit_assert_int( N-i - 1, ==, map->size);
+//         if (ismap) {
+//             long count = instr_get_count(ismap, "hello world");
+//             munit_assert_int( N-i - 1, ==, count);
+//             // printf("'hello world' ref count = %ld\n", count);
+//             // instr_repr_InternStringMap(ismap, false);
+//         }
+//
+//     }
+//
+//     fflush(stdout);
+//     // printf("about to call map_destroy:\n");
+//     fflush(stdout);
+//     map_destroy(map);
+//
+//     return MUNIT_OK;
+// }

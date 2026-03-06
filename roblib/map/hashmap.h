@@ -94,10 +94,61 @@ typedef struct MapNode {
     struct MapNode  *next;
 } MapNode;
 
-
 struct HashMap;
 // Forward-declare the dependency type.
 struct InternStringMap;
+
+
+
+
+
+// We should have MapKeyPolicies and MapValuePolicies
+// 1. on put : key copy?  value increment?
+// 2. on remove : free? value decrement? free when count is zero?
+typedef enum MapPolicyType: uint8_t {
+    MAP_POLICY_NONE, // default ininitialized value
+    MAP_POLICY_COPY, // callee makes a copy and owns the copy. Frees owned copy
+    MAP_POLICY_TAKE, // callee takes ownership and does not make a copy. Callee frees
+    MAP_POLICY_SHARED // callee uses value, does not free. //todo must implement reference counting for this
+} MapPolicyType;
+
+typedef struct MapKeyPolicies {
+    // A context pointer to be passed to the policy functions.
+    void* context;
+    // Called when a key is added. Returns the key to be stored.
+    // Can be used for copying, interning, or reference counting.
+    MapKey (*on_add_key)(struct HashMap *map, MapKey key);
+    // Called when a key is freed.
+    void (*on_free_key)(struct HashMap *map, MapKey key);
+    // Called when a key is removed
+    MapKey (*on_remove_key)(struct HashMap *map, MapKey key);
+    // for any specialized cleanup of the context
+    void (*on_free_context)(void* context);
+    MapPolicyType policy_type;
+} MapKeyPolicies;
+
+typedef struct MapValuePolicies {
+    // A context pointer to be passed to the policy functions.
+    void* context;
+    // Called when a value is added. Returns the value to be stored.
+    // Can be used for copying, interning, or reference counting.
+    MapValue (*on_set_value)(struct HashMap *map, MapValue value);
+    // Called when a value is freed.
+    void (*on_free_value)(struct HashMap *map, MapValue value);
+    // Called when a value is removed
+    // todo when we back a HashMap with a InternStringMap, that HashMap should implement on-remove_value to
+    // unref the string value in the InternStringMap
+    MapValue (*on_remove_value)(struct HashMap *map, MapValue value);
+    // for any specialized cleanup of the context
+    void (*on_free_context)(void* context);
+    MapPolicyType policy_type;
+} MapValuePolicies;
+
+
+typedef struct MapPolicies {
+    MapKeyPolicies   key_policies;
+    MapValuePolicies value_policies;
+} MapPolicies;
 
 // 64 bytes
 typedef struct HashMap {
@@ -108,27 +159,13 @@ typedef struct HashMap {
     size_t num_buckets;           // must always be a power of 2
     double fill_factor;           // desired load
 
-    InternStringMap * string_pool;
+    MapPolicies     policies;
     uint64_t flags; // future use
 } HashMap;
 
 
 
-// We should have KeyPolicies and ValuePolicies
-// 1. on put : key copy?  value increment?
-// 2. on remove : free? value decrement? free when count is zero?
 
-typedef struct ValuePolicies {
-    // A context pointer to be passed to the policy functions.
-    void* context;
-
-    // Called when a value is added. Returns the value to be stored.
-    // Can be used for copying, interning, or reference counting.
-    MapValue (*copy)(void* context, MapValue value);
-
-    // Called when a value is removed or the map is freed.
-    void (*free)(void* context, MapValue value);
-} ValuePolicies;
 
 
 extern const MapKey   NULL_MAP_KEY;
@@ -149,7 +186,7 @@ static constexpr double DEFAULT_FILL_FACTOR = 0.75;
 // Public API methods
 // ---------------------------
 
-HashMap *map_create(size_t num_buckets, InternStringMap * string_pool);
+HashMap *map_create(size_t num_buckets);
 
 //Removes all the mappings from this map. Keeps existing buckets. After call, size == 0.
 void map_clear(HashMap map[static 1]);

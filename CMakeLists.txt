@@ -5,6 +5,7 @@ set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
 # Helpful for debugging (CLion usually does this in Debug, but explicit is fine)
+# -fsanitize=address -fsanitize=leak
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g -fno-omit-frame-pointer -fsanitize=address -fsanitize=leak -Wall -Werror")
 
 # 1. Explicitly define your library/shared code
