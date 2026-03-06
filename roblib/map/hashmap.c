@@ -219,7 +219,7 @@ static MapValue map_policy_value_add_to_stringpool(HashMap map[static 1], MapVal
     MapPolicyType valuepolicy = map->policies.value_policies.policy_type;
 
     if ( value.value_type == MAP_TYPE_STRING &&
-        ( valuepolicy == MAP_POLICY_COPY || valuepolicy == MAP_POLICY_NONE )) {
+        ( valuepolicy == MAP_POLICY_SHARED || valuepolicy == MAP_POLICY_COPY || valuepolicy == MAP_POLICY_NONE )) {
             const char *strref = instr_ref(ismap, value.vstring);
             return (MapValue){ .value_type = MAP_TYPE_STRING, .vstring = (char *)strref };
     }
@@ -240,7 +240,7 @@ static void map_policy_value_remove_from_stringpool(HashMap map[static 1], MapVa
     MapPolicyType valuepolicy = map->policies.value_policies.policy_type;
 
     if ( value.value_type == MAP_TYPE_STRING &&
-        ( valuepolicy == MAP_POLICY_COPY || valuepolicy == MAP_POLICY_NONE )) {
+        ( valuepolicy == MAP_POLICY_SHARED || valuepolicy == MAP_POLICY_COPY || valuepolicy == MAP_POLICY_NONE )) {
             instr_unref(ismap, value.vstring);
             return;
     }
@@ -263,6 +263,22 @@ const MapValuePolicies DEFAULT_MAP_VALUE_POLICIES = (MapValuePolicies){
     .on_set_value    = map_policy_value_set_default,
     .on_free_value   = map_policy_value_free_default,
     .on_remove_value = nullptr,
+};
+
+const MapPolicies STRING_POOL_MAP_POLICIES =  (MapPolicies){
+    .key_policies ={
+        .policy_type   = MAP_POLICY_COPY,
+        .on_add_key    = map_policy_key_add_default,
+        .on_free_key   = map_policy_key_free_default,
+        .on_remove_key = nullptr,
+
+    },
+    .value_policies = {
+        .policy_type     = MAP_POLICY_SHARED,
+        .on_set_value    = map_policy_value_add_to_stringpool,
+        .on_free_value   = nullptr,
+        .on_remove_value = map_policy_value_remove_from_stringpool,
+    }
 };
 
 //// ------------------------------
