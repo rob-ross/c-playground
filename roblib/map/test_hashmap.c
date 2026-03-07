@@ -328,7 +328,8 @@ int main(int argc, char *argv[argc + 1]) {
     // manually in the main thread. examples:
     // test_put_and_get_string(nullptr, hashmap_fixture(nullptr, nullptr));
     // test_10K_inserts(nullptr, nullptr);
-    // test_10K_string_inserts(nullptr, nullptr);
+
+    test_10K_string_inserts(nullptr, nullptr);
 
 
     return result;
@@ -425,7 +426,7 @@ MunitResult test_10K_string_inserts(const MunitParameter params[], void* fixture
     if (string_pool) {
         long count = sct_get_count(string_pool, "hello world");
         printf("'hello world' ref count = %ld\n", count);
-        sct_repr_InternStringMap(string_pool, false);
+        sct_repr_StringCounter(string_pool, false);
     }
 
 
@@ -441,7 +442,7 @@ MunitResult test_10K_string_inserts(const MunitParameter params[], void* fixture
             count = sct_get_count(string_pool, "hello world");
             munit_assert_int( N-i - 1, ==, count);
             printf("'hello world' ref count = %ld\n", count);
-            sct_repr_InternStringMap(string_pool, false);
+            sct_repr_StringCounter(string_pool, false);
         }
 
     }

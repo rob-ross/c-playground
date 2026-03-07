@@ -21,11 +21,11 @@ struct StringCounter {
 // ----------------------------------------------
 // create a HashMap for use in test cases
 void *  intstr_fixture(const MunitParameter params[], void* user_data) {
-    StringCounter *ismap = sct_create(16);
-    munit_assert_not_null(ismap);
-    HashMap *map = ismap->map;
+    StringCounter *sct = sct_create(16);
+    munit_assert_not_null(sct);
+    HashMap *map = sct->map;
     munit_assert_not_null(map);
-    return ismap;
+    return sct;
 }
 
 // to free the hashmap created by the intstr_fixture after a test
@@ -38,10 +38,10 @@ void hashintstr_free(void * fixture) {
 // -------------------------------------------------
 
 MunitResult test_create_and_free(const MunitParameter params[], void* fixture) {
-    StringCounter *ismap = sct_create(16);
-    HashMap *map = ismap->map;
+    StringCounter *sct = sct_create(16);
+    HashMap *map = sct->map;
     munit_assert_ptr_not_null(map);
-    sct_destroy(ismap);
+    sct_destroy(sct);
     return MUNIT_OK;
 }
 

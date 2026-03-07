@@ -160,8 +160,6 @@ typedef struct HashMap {
 
 
 
-
-
 extern const MapKey   NULL_MAP_KEY;
 extern const MapValue NULL_MAP_VALUE;
 extern const MapNode  NULL_MAP_NODE;
