@@ -392,63 +392,64 @@ MunitResult test_10K_inserts(const MunitParameter params[], void* fixture) {
 }
 
 
-// MunitResult test_10K_string_inserts(const MunitParameter params[], void* fixture) {
-//     print("test_10K_string_inserts");
-//     constexpr size_t N = 10;
-//     InternStringMap *string_pool = instr_create(16);
-//     HashMap *map = map_create(0);
-//
-//     // print("map: %p, string_pool: %p", map, string_pool);
-//     InternStringMap *ismap; // = map->string_pool;
-//     munit_assert_ptr_equal(string_pool, ismap);
-//
-//     char * value_str = "hello world";
-//     for (int i = 0; i < N; ++i) {
-//         map_put(map, i, value_str );
-//         // print("map_put(map, %d, %s)", i, value_str);
-//     }
-//     // print("done with map_put");
-//
-//     for (int i=0; i < N; ++i) {
-//         MapValue value = map_get(map, i );
-//         // printf("map_get(map, %d) ", i);
-//         // map_repr_MapValue(value, true);
-//         fflush(stdout);
-//         munit_assert_string_equal( value_str, value.vstring);
-//     }
-//
-//     // print("done with map_get");
-//
-//     // printf("finished adding %zu items to map.\n", N);
-//     map_repr_HashMap(map, false, "");
-//
-//     if (ismap) {
-//         long count = instr_get_count(ismap, "hello world");
-//         printf("'hello world' ref count = %ld\n", count);
-//         instr_repr_InternStringMap(ismap, false);
-//     }
-//
-//
-//     print("\n");
-//
-//     //try removing keys, the reference count should reduce by 1 each time
-//     for (int i=0; i< N; ++i) {
-//         // print("\nremoving #%d", i);
-//         map_remove(map, i );
-//         munit_assert_int( N-i - 1, ==, map->size);
-//         if (ismap) {
-//             long count = instr_get_count(ismap, "hello world");
-//             munit_assert_int( N-i - 1, ==, count);
-//             // printf("'hello world' ref count = %ld\n", count);
-//             // instr_repr_InternStringMap(ismap, false);
-//         }
-//
-//     }
-//
-//     fflush(stdout);
-//     // printf("about to call map_destroy:\n");
-//     fflush(stdout);
-//     map_destroy(map);
-//
-//     return MUNIT_OK;
-// }
+MunitResult test_10K_string_inserts(const MunitParameter params[], void* fixture) {
+    print("test_10K_string_inserts");
+    constexpr size_t N = 10;
+    HashMap *map = map_create_using_stringpool(16);
+
+    InternStringMap *string_pool = map->policies.value_policies.context;
+
+    print("map: %p, string_pool: %p", map, string_pool);
+
+
+    char * value_str = "hello world";
+    for (int i = 0; i < N; ++i) {
+        map_put(map, i, value_str );
+        print("map_put(map, %d, %s)", i, value_str);
+    }
+    print("done with map_put");
+
+    for (int i=0; i < N; ++i) {
+        MapValue value = map_get(map, i );
+        printf("\nmap_get(map, %d) ", i);
+        map_repr_MapValue(value, true);
+        fflush(stdout);
+        munit_assert_string_equal( value_str, value.vstring);
+    }
+
+    print("\ndone with map_get");
+
+    printf("finished adding %zu items to map.\n", N);
+    map_repr_HashMap(map, false, "");
+
+    if (string_pool) {
+        long count = instr_get_count(string_pool, "hello world");
+        printf("'hello world' ref count = %ld\n", count);
+        instr_repr_InternStringMap(string_pool, false);
+    }
+
+
+    print("\n");
+
+    //try removing keys, the reference count should reduce by 1 each time
+    for (int i=0; i< N; ++i) {
+        long count = 0;
+        print("\nremoving #%d", i);
+        map_remove(map, i );
+        munit_assert_int( N-i - 1, ==, map->size);
+        if (string_pool) {
+            count = instr_get_count(string_pool, "hello world");
+            munit_assert_int( N-i - 1, ==, count);
+            printf("'hello world' ref count = %ld\n", count);
+            instr_repr_InternStringMap(string_pool, false);
+        }
+
+    }
+
+    //fflush(stdout);
+    printf("about to call map_destroy:\n");
+   // fflush(stdout);
+    map_destroy(map);
+
+    return MUNIT_OK;
+}

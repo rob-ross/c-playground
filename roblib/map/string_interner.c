@@ -133,7 +133,12 @@ void instr_destroy(InternStringMap ismap[static 1]) {
     if (!ismap->map)  return;
     
     HashMap *map = ismap->map;
-    instr_clear(ismap);
+    // todo in instr_create, we just allocate the InternStringMap wrapper, then delegate to map_create().
+    // see if we can refactor this instr_destroy() method to work similarly. The only difference is that if the
+    // ismap is being used as a string pool for a parent HashMap, there will be coordination between destroying in the
+    // parent and in the child ismap. But this *should* be able to be handled via the policies installed on the
+    // parent HashMap.
+    instr_clear(ismap); // this frees all allocated MapNodes, keys, and values
     // all string keys and MapNodes have been freed.
     free(map->buckets);
     map->buckets = nullptr;

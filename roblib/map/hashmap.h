@@ -186,7 +186,12 @@ static constexpr double DEFAULT_FILL_FACTOR = 0.75;
 // Public API methods
 // ---------------------------
 
+// call map_destroy to free all resources
 HashMap *map_create(size_t num_buckets);
+
+// creates and returns a HashMap backed by a string pool that interns all string values. Good when the same string is
+// used for multiple key values. Call map_destroy to free all allocated resources, including the backing string pool.
+HashMap *map_create_using_stringpool(size_t num_buckets);
 
 //Removes all the mappings from this map. Keeps existing buckets. After call, size == 0.
 void map_clear(HashMap map[static 1]);

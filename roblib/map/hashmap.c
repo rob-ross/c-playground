@@ -4,6 +4,10 @@
 //
 //
 
+
+// DO NOT INCLUDE string_interner.h. There is a cyclic dependency between that header file and hashmap.h.
+// the declarations needed by both string_inerner.c and hashmap.c are in hashmap_private.h.
+
 #include "hashmap.h"
 #include "hashmap_private.h"
 
@@ -11,6 +15,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h> // Required for memcpy
+
+
 
 
 static constexpr size_t MIN_CAP  = 16;
@@ -21,7 +27,28 @@ const MapValue NULL_MAP_VALUE = (MapValue){ .vvoid_ptr = nullptr, .value_type = 
 const MapNode  NULL_MAP_NODE = (MapNode){ .key = NULL_MAP_KEY, .value = NULL_MAP_VALUE, .hash = 0, .next = nullptr};
 
 
-// forward references
+
+
+// -----------------------------------------------------------------
+//      string_interner.h API methods
+//
+// We can't include string_interner.h due to circular dependencies
+// -----------------------------------------------------------------
+InternStringMap * instr_create(size_t num_buckets);
+void instr_destroy(InternStringMap *ismap);
+const char* instr_ref(InternStringMap *ismap, char string[static 1]);
+void instr_unref(InternStringMap *ismap, const char *strkey);
+void instr_remove(InternStringMap *ismap, const char* strkey);
+size_t instr_size(InternStringMap *ismap);
+
+
+
+
+// -----------------------------------------------------------------
+//      Forward References
+//
+// for functions defined in this file
+// -----------------------------------------------------------------
 static bool map_equals_double(double d1, double d2);
 static void map_destroy_node(HashMap map[static 1], MapNode *node);
 static void map_free_key_if(HashMap map[static 1], const MapNode node[static 1]);
@@ -33,17 +60,14 @@ static void map_policy_key_free_default(HashMap map[static 1], MapKey key);
 static MapValue map_policy_value_set_default(HashMap map[static 1], MapValue value);
 static void map_policy_value_free_default(HashMap map[static 1], MapValue value);
 
-// string_interner.h API methods used here. We can't include string_interner.h due to circular dependencies
-void instr_destroy(InternStringMap *ismap);
-const char* instr_ref(InternStringMap *ismap, char string[static 1]);
-void instr_unref(InternStringMap *ismap, const char *strkey);
-void instr_remove(InternStringMap *ismap, const char* strkey);
-size_t instr_size(InternStringMap *ismap);
 
 
-// -------------------------------------
-// Static/private/internal methods
-// ------------------------------------
+
+//// ------------------------------------------------------------
+////
+////    Static/private/internal methods
+////
+//// ------------------------------------------------------------
 
 static bool map_equals_double(double d1, double d2) {
     // Optional policy: NaNs are not equal to anything (including NaN)
@@ -84,7 +108,6 @@ static bool map_equals_MapValue(const MapValue v1, const MapValue v2) {
 }
 
 static void map_free_key_if(HashMap map[static 1], const MapNode node[static 1]) {
-    // todo check if a policy exists for this operation. If so, call that. Otherwise use a default;
     if (!map || !node) return;
     if (map->policies.key_policies.on_free_key) {
         map->policies.key_policies.on_free_key(map, node->key);
@@ -150,14 +173,19 @@ static size_t map_next_power_of_two(size_t n) {
     return n + 1;
 }
 
-//// ------------------------------
-//// default policy functions
-//// ------------------------------
 
+
+
+//// ------------------------------------------------------------
+////
+////    Default policy functions
+////
+//// ------------------------------------------------------------
 
 // ------------------------------
 // key policies
 // ------------------------------
+
 static MapKey map_policy_key_add_default(HashMap map[static 1], MapKey key) {
     // default add always make a copy of a string key and we own it
     if (!map) return NULL_MAP_KEY;
@@ -251,6 +279,12 @@ static void map_policy_value_remove_from_stringpool(HashMap map[static 1], MapVa
     }
 }
 
+static void map_policy_value_free_context_stringpool(void* context) {
+    InternStringMap *ismap = (InternStringMap*)context;
+    if (!ismap) return;
+    instr_destroy(ismap);
+}
+
 const MapKeyPolicies   DEFAULT_MAP_KEY_POLICIES = (MapKeyPolicies){
     .policy_type   = MAP_POLICY_COPY,
     .on_add_key    = map_policy_key_add_default,
@@ -267,17 +301,19 @@ const MapValuePolicies DEFAULT_MAP_VALUE_POLICIES = (MapValuePolicies){
 
 const MapPolicies STRING_POOL_MAP_POLICIES =  (MapPolicies){
     .key_policies ={
-        .policy_type   = MAP_POLICY_COPY,
-        .on_add_key    = map_policy_key_add_default,
-        .on_free_key   = map_policy_key_free_default,
-        .on_remove_key = nullptr,
+        .policy_type     = MAP_POLICY_COPY,
+        .on_add_key      = map_policy_key_add_default,
+        .on_free_key     = map_policy_key_free_default,
+        .on_remove_key   = nullptr,
+        .on_free_context = nullptr,
 
     },
     .value_policies = {
         .policy_type     = MAP_POLICY_SHARED,
         .on_set_value    = map_policy_value_add_to_stringpool,
-        .on_free_value   = nullptr,
-        .on_remove_value = map_policy_value_remove_from_stringpool,
+        .on_free_value   = map_policy_value_remove_from_stringpool,
+        .on_remove_value = nullptr,
+        .on_free_context = map_policy_value_free_context_stringpool
     }
 };
 
@@ -288,11 +324,12 @@ const MapPolicies STRING_POOL_MAP_POLICIES =  (MapPolicies){
 
 
 
-// -------------------------------------
-// 'Package-private/friend' API methods
-// -------------------------------------
-//  declared in hashmap_private.h
-//
+//// ------------------------------------------------------------
+////
+////    'Package-private' / 'friend' API methods
+////
+////    declared in hashmap_private.h
+//// ------------------------------------------------------------
 
 size_t map_calc_bucket_index(const size_t hashcode, const size_t num_buckets) {
     return hashcode & (num_buckets - 1);  // works because num_buckets is a power of 2
@@ -492,18 +529,25 @@ void map_set_value(HashMap map[static 1], MapNode node[static 1], const MapValue
 void map_recalc_load(HashMap *map) {
     map->load =  (double) ((long double)map->size / map->num_buckets);
 }
+//// ------------------------------------------------------------
+////    End 'Package-private' / 'friend' API methods
+//// ------------------------------------------------------------
 
 
 
 
-// ---------------------------
-// Public API methods
-// ---------------------------
+
+//// ------------------------------------------------------------
+////
+////    Public API methods
+////
+//// ------------------------------------------------------------
+
 
 // returns nullptr on failure. if num_buckets == 0, uses 16 as initial bucket size.
-// num_buckets is clamped to smalles power of two > num_buckets.
-// buckets double when fill capacity is reached (75% full). 16 buckets provides adequate sizing for 12 items before
-// doubling.
+// num_buckets is clamped to smallest power of two that is greater than num_buckets.
+// number of buckets doubles when fill capacity is reached (75% full by default).
+// 16 buckets provides adequate sizing for 12 items before growing HashMap capacity
 HashMap *map_create(size_t num_buckets) {
 
     HashMap *map = (HashMap *)malloc(sizeof(HashMap));
@@ -541,17 +585,45 @@ HashMap *map_create(size_t num_buckets) {
     return map;
 }
 
+HashMap *map_create_using_stringpool(size_t num_buckets) {
+    HashMap *map = map_create(num_buckets);
+    if (!map) return nullptr;
+
+    InternStringMap *ismap = instr_create(num_buckets);
+
+    if (!ismap) {
+        map_destroy(map);
+        return nullptr;
+    }
+
+    MapPolicies string_pool = STRING_POOL_MAP_POLICIES; // copies template
+
+    //add the string pool map as the context for the parent HashMap's value policy
+    string_pool.value_policies.context = ismap;
+
+    map->policies = string_pool;
+
+    return map;
+}
+
 void map_destroy(HashMap map[static 1]) {
     if (!map) return;
+
     map_clear(map);
+
+    // free any policy contexts that exist
+    if (map->policies.key_policies.on_free_context) {
+        map->policies.key_policies.on_free_context(map->policies.key_policies.context);
+    }
+    map->policies.key_policies.context = nullptr;
+
+    if (map->policies.value_policies.on_free_context) {
+        map->policies.value_policies.on_free_context(map->policies.value_policies.context);
+    }
+    map->policies.value_policies.context = nullptr;
+
     free(map->buckets);
     map->buckets = nullptr;
-    //todo this shouldn't be a dependency here, but part of the ValuePolicy?
-    // delete string_pool?
-    // if (map->string_pool) {
-    //     instr_destroy(map->string_pool);
-    //     map->string_pool = nullptr;
-    // }
 
     free(map);
 }
@@ -860,10 +932,11 @@ size_t map_size(const HashMap map[static 1]) {
 
 
 
-//// ---------------------------------------------------
-//// Converters for generic map function arguments
-////  these convert expressions to a MapKey or MapValue
-//// ---------------------------------------------------
+//// -----------------------------------------------------
+////    Converters for generic map function arguments
+////
+////    these convert expressions to a MapKey or MapValue
+//// -----------------------------------------------------
 
 MapKey key_for_long(const long k) {
     return (MapKey){.klong = k, .key_type = MAP_TYPE_LONG};
