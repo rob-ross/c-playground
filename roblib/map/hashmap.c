@@ -10,6 +10,8 @@
 
 #include "hashmap.h"
 #include "hashmap_private.h"
+#include "../memory/memory_pool.h"
+
 
 #include <math.h>
 #include <stdlib.h>
@@ -24,8 +26,7 @@ static constexpr size_t MAX_POW2 = (SIZE_MAX >> 1) + 1;
 
 const MapKey   NULL_MAP_KEY   = (MapKey){  .kvoid_ptr = nullptr, .key_type   = MAP_TYPE_NULL};
 const MapValue NULL_MAP_VALUE = (MapValue){ .vvoid_ptr = nullptr, .value_type = MAP_TYPE_NULL};
-const MapNode  NULL_MAP_NODE = (MapNode){ .key = NULL_MAP_KEY, .value = NULL_MAP_VALUE, .hash = 0, .next = nullptr};
-
+const MapNode  NULL_MAP_NODE  = (MapNode){ .key = NULL_MAP_KEY, .value = NULL_MAP_VALUE, .hash = 0, .next = nullptr};
 
 
 
@@ -59,6 +60,15 @@ static void map_policy_value_free_default(HashMap map[static 1], MapValue value)
 ////    Static/private/internal methods
 ////
 //// ------------------------------------------------------------
+
+[[maybe_unused]]
+static void * map_alloc_bytes(const MemPolicy mem_policy, const size_t num_bytes) {
+    return mem_policy.alloc(mem_policy.context, num_bytes);
+}
+
+static void  map_free_bytes(const MemPolicy mem_policy, void * bytes) {
+     mem_policy.free(mem_policy.context, bytes);
+}
 
 [[maybe_unused]]
 static MapKey map_copy_MapKey(MapKey map_key) {
@@ -188,6 +198,43 @@ static size_t map_next_power_of_two(size_t n) {
     return n + 1;
 }
 
+//// ------------------------------------------------------------
+////
+////    Default memory policy functions
+////
+//// ------------------------------------------------------------
+
+void * map_mempolicy_default_malloc( void* context, size_t num_bytes ) {
+    return calloc(1, num_bytes);
+}
+
+void map_mempolicy_default_free( void* context, void * bytes ) {
+    return free( bytes) ;
+}
+
+void * map_mempolicy_default_allocator_alloc( void* context, size_t num_bytes ) {
+    MemoryPool *pool = context;
+    return pool_alloc(pool, num_bytes);
+}
+
+void  map_mempolicy_default_allocator_free( void * context, void * bytes ) {
+    MemoryPool *pool = context;
+    pool_free(pool, bytes);
+}
+
+const MemPolicy MAP_DEFAULT_MALLOC_POLICY = (MemPolicy){
+    .context = nullptr,
+    .policy_type = MEM_POLICY_MALLOC,
+    .alloc = map_mempolicy_default_malloc,
+    .free = map_mempolicy_default_free,
+};
+
+const MemPolicy MAP_DEFAULT_ALLOCATOR_POLICY = (MemPolicy){
+    .context = nullptr,  // context gets filled in by actual memory_pool
+    .policy_type = MEM_POLICY_ALLOCATOR_OWN,
+    .alloc = map_mempolicy_default_allocator_alloc,
+    .free = map_mempolicy_default_allocator_free
+};
 
 
 
@@ -217,7 +264,7 @@ void map_policy_key_free_default(HashMap map[static 1], MapKey key) {
     MapPolicyType keypolicy = map->policies.key_policies.policy_type;
     if (key.key_type == MAP_TYPE_STRING &&
         ( keypolicy == MAP_POLICY_COPY || keypolicy == MAP_POLICY_TAKE || keypolicy == MAP_POLICY_NONE )) {
-        free(key.kstring);  //we own it.
+        map_free_bytes(map->mem_policy, key.kstring);  //we own it.
     }
 }
 
@@ -246,7 +293,7 @@ static void map_policy_value_free_default(HashMap map[static 1], MapValue value)
     MapPolicyType valuepolicy = map->policies.value_policies.policy_type;
     if ( value.value_type == MAP_TYPE_STRING &&
         ( valuepolicy == MAP_POLICY_COPY || valuepolicy == MAP_POLICY_TAKE || valuepolicy == MAP_POLICY_NONE )) {
-        free(value.vstring);  //we own it.
+        map_free_bytes(map->mem_policy, value.vstring);  //we own it.
     } else if ( value.value_type == MAP_TYPE_VOID_PTR ) {
         // invoke the pointer's free method
         //todo deal with void* types
@@ -287,7 +334,7 @@ size_t map_calc_bucket_index(const size_t hashcode, const size_t num_buckets) {
 
 MapNode * map_create_node(HashMap map[static 1], const size_t hashcode, const MapKey key) {
 
-    MapNode *new_node = (MapNode *)malloc(sizeof(MapNode));
+    MapNode *new_node = (MapNode *)map_alloc_bytes(map->mem_policy, sizeof(MapNode));
     if (new_node == nullptr) {
         // Handle allocation failure (in a real app, maybe return status)
         return nullptr;
@@ -328,7 +375,7 @@ MapNode * map_create_node(HashMap map[static 1], const size_t hashcode, const Ma
 void map_destroy_node(HashMap map[static 1], MapNode node[static 1]) {
     map_free_key_if(map, node);
     map_free_value_if(map, node);
-    free(node);
+    map_free_bytes(map->mem_policy, node);
 }
 
 void map_ensure_capacity(HashMap map[static 1]) {
@@ -337,7 +384,7 @@ void map_ensure_capacity(HashMap map[static 1]) {
         return; // Can't grow anymore
     }
 
-    MapNode **new_buckets = (MapNode **)calloc(new_num_buckets, sizeof(MapNode *));
+    MapNode **new_buckets = (MapNode **)map_alloc_bytes(map->mem_policy, new_num_buckets * sizeof(MapNode *));
     if (!new_buckets) {
         return; // Allocation failed, keep old map
     }
@@ -359,7 +406,7 @@ void map_ensure_capacity(HashMap map[static 1]) {
         }
     }
 
-    free(map->buckets);
+    map_free_bytes(map->mem_policy, map->buckets);
     map->buckets = new_buckets;
     map->num_buckets = new_num_buckets;
     map->fill_capacity = (size_t)(new_num_buckets * (long double)map->fill_factor);
@@ -480,16 +527,17 @@ void map_recalc_load(HashMap *map) {
 //// ------------------------------------------------------------
 
 
+
 // returns nullptr on failure. if num_buckets == 0, uses 16 as initial bucket size.
 // num_buckets is clamped to smallest power of two that is greater than num_buckets.
 // number of buckets doubles when fill capacity is reached (75% full by default).
 // 16 buckets provides adequate sizing for 12 items before growing HashMap capacity
 HashMap *map_create(size_t num_buckets) {
 
-    HashMap *map = (HashMap *)malloc(sizeof(HashMap));
-    if (map == nullptr) {
-        return nullptr;
-    }
+    //todo initial pool size depends on num_buckets, from which we get fill_capacity, which we multiply by sizeof(MapNode),
+    // and add sizeof(HashMap)
+    // MemoryPool *pool = pool_create(DEFAULT_PAGE_SIZE);
+
     if (!num_buckets) {
         num_buckets = MIN_CAP;
     } else if ( num_buckets > (SIZE_MAX >> 1) + 1) {
@@ -498,25 +546,46 @@ HashMap *map_create(size_t num_buckets) {
         num_buckets = map_next_power_of_two(num_buckets);
     }
 
-    MapNode **buckets = (MapNode **)calloc(num_buckets, sizeof(MapNode *));
+    size_t initial_pool_size = sizeof(HashMap) +  num_buckets * sizeof(MapNode *) + num_buckets * sizeof(MapNode)*2;
+    MemoryPool *pool = pool_create(initial_pool_size * 3);
+    if (!pool) {
+        return nullptr;
+    }
+
+    MemPolicy mem_policy;
+    // mem_policy = MAP_DEFAULT_MALLOC_POLICY;
+    mem_policy = MAP_DEFAULT_ALLOCATOR_POLICY;
+    mem_policy.context = pool;
+
+    HashMap *map = (HashMap *)map_alloc_bytes(mem_policy, sizeof(HashMap));
+
+    if (map == nullptr) {
+        return nullptr;
+    }
+
+
+    MapNode **buckets = (MapNode **)map_alloc_bytes(mem_policy, num_buckets * sizeof(MapNode *));
     if (!buckets) {
-        free(map);
+        map_free_bytes(mem_policy, map);
         return nullptr;
     }
 
     HashMap prototype = (HashMap){
         .buckets = buckets,
         .size = 0,
-        .fill_capacity = (size_t)( MIN_CAP * (long double)DEFAULT_FILL_FACTOR ),
+        // todo fill_capacity calculation probably needs to use num_buckets and not MIN_CAP here?
+        .fill_capacity = (size_t)( num_buckets * (long double)DEFAULT_FILL_FACTOR ),
         .load = 0,
         .num_buckets = num_buckets,
         .fill_factor = DEFAULT_FILL_FACTOR,
+        .mem_policy  = mem_policy,
         .flags = 0 };
 
     prototype.policies.key_policies   = DEFAULT_MAP_KEY_POLICIES;
     prototype.policies.value_policies = DEFAULT_MAP_VALUE_POLICIES;
 
     memcpy(map, &prototype, sizeof(HashMap));
+    // printf("returnin from map_create: "); map_repr_HashMap(map, false, ""); printf("\n");
 
     return map;
 }
@@ -541,6 +610,11 @@ HashMap *map_create_using_stringpool(size_t num_buckets) {
     return map;
 }
 
+[[maybe_unused]]
+HashMap *map_create_using_allocator(size_t num_buckets) {
+    return nullptr;
+}
+
 void map_destroy(HashMap map[static 1]) {
     if (!map) return;
 
@@ -557,10 +631,16 @@ void map_destroy(HashMap map[static 1]) {
     }
     map->policies.value_policies.context = nullptr;
 
-    free(map->buckets);
+    map_free_bytes(map->mem_policy, map->buckets);
     map->buckets = nullptr;
 
-    free(map);
+    map_free_bytes(map->mem_policy, map);
+
+    if (map->mem_policy.context) {
+        //todo mem_policy should contain the destructor method for the context(pool) in case it's part of a larger
+        // pool structure. For now we just free it since we allocated the pool ourselves.
+        free(map->mem_policy.context);
+    }
 }
 
 // deletes and frees all Nodes but does not reduce bucket size or free allocated bucket memory.
@@ -718,10 +798,10 @@ void map_repr_HashMap(const HashMap map[static 1], const bool verbose, const cha
     // ReSharper disable CppPrintfBadFormat
     // ReSharper disable CppPrintfExtraArg
     printf( "(%s){ .size=%'zu, .fill_capacity=%'zu, .load=%'g, "
-            ".num_buckets=%'zu, .fill_factor=%g, "
+            ".num_buckets=%'zu, .fill_factor=%g, .mem_policy_type = %hhd"
             "}", type_str,
             map->size, map->fill_capacity, map->load,
-            map->num_buckets, map->fill_factor);
+            map->num_buckets, map->fill_factor, map->mem_policy.policy_type);
 
 
     // we might want a special Bucket struct to be the head of each bucket, so we can keep statistics on the bucket

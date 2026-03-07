@@ -78,3 +78,10 @@ finished adding 10000000 items to map.
 finished adding 100,000,000 items to map.
 (HashMap){ .size=100000000, .fill_capacity=100663296, .load=0.745058, .num_buckets=134217728, .fill_factor=0.75, .free_func=0x7ff80f88ac2d }
 ./out/test_hashmap.out  140.81s user 7.76s system 99% cpu 2:30.03 total
+
+---------------------------------------------
+After implementing simple paging memory manager:
+
+finished adding 100,000,000 items to map.
+(HashMap){ .size=100,000,000, .fill_capacity=100,663,296, .load=0.745058, .num_buckets=134,217,728, .fill_factor=0.75, .mem_policy_type = 2}
+./out/test_hashmap  109.70s user 3.30s system 99% cpu 1:53.12 total

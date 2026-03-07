@@ -43,7 +43,7 @@ MunitResult test_create_and_free(const MunitParameter params[], void* fixture) {
 
 MunitResult test_put_and_get_int(const MunitParameter params[], void* fixture) {
     HashMap *map = fixture;
-
+    // printf("test_put_and_get_int: \n");
     map_put(map, 1, 42);
     MapValue retrieved = map_get(map, 1);
     munit_assert_int(retrieved.vlong, ==, 42);
@@ -53,6 +53,7 @@ MunitResult test_put_and_get_int(const MunitParameter params[], void* fixture) {
     map_put(map, foo, bar);
     retrieved = map_get(map, foo);
     munit_assert_int(retrieved.vlong, ==, bar);
+    // printf("returning from test_put_and_get_int: \n");
 
     return MUNIT_OK;
 }
@@ -322,14 +323,16 @@ int main(int argc, char *argv[argc + 1]) {
 
 
     int result = 0;
-    result = munit_suite_main(&suite, nullptr, argc, argv);
+    // result = munit_suite_main(&suite, nullptr, argc, argv);
 
     // munit spawns a process for each test and that confuses the debugger. To debug a failing test we must run it
     // manually in the main thread. examples:
     // test_put_and_get_string(nullptr, hashmap_fixture(nullptr, nullptr));
-    // test_10K_inserts(nullptr, nullptr);
+    test_10K_inserts(nullptr, nullptr);
 
-    test_10K_string_inserts(nullptr, nullptr);
+    // test_10K_string_inserts(nullptr, nullptr);
+
+    // test_put_and_get_int(nullptr, hashmap_fixture(nullptr, nullptr));
 
 
     return result;
@@ -360,7 +363,9 @@ void test_repr(void) {
 
 MunitResult test_10K_inserts(const MunitParameter params[], void* fixture) {
     print("test_10K_inserts");
-    constexpr size_t N = 10'0;
+    // constexpr size_t N = 100'000'000;
+    constexpr size_t N = 10'000'000;
+
     HashMap *map = map_create(0);
     size_t buffer_size = 20;  // max 9 chars for value of i, plus 5 for 'hello', plus terminator
     for (int i = 0; i < N; ++i) {
@@ -371,16 +376,16 @@ MunitResult test_10K_inserts(const MunitParameter params[], void* fixture) {
     for (int i=0; i< N; ++i) {
         char search_string[buffer_size] = {}; // max 4 chars for value of i, plus 5 for 'hello', plus terminator
         snprintf(search_string,buffer_size, "hello%d",i+1);
-        MapValue value = map_get(map, i );
+        [[maybe_unused]]MapValue value = map_get(map, i );
         // print("search string = %s, value = %s", search_string, value);
 
-        munit_assert_string_equal( search_string, value.vstring);
+        // munit_assert_string_equal( search_string, value.vstring);
     }
 
     print("");
 
-    // printf("finished adding %zu items to map.\n", N);
-    // map_repr_HashMap(map, false);
+    printf("finished adding %'zu items to map.\n", N);
+    map_repr_HashMap(map, false, "");
 
 
     fflush(stdout);

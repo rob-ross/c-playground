@@ -142,23 +142,50 @@ typedef struct MapPolicies {
     MapValuePolicies value_policies;
 } MapPolicies;
 
-// 64 bytes
+
+//Memory Policy.... what are options?
+// stdlib vs allocator?
+// maybe always use an allocator, and the default allocator just makes malloc calls?
+// To start, HashMap will manage the lifecycle of its allocator (create, use, destroy).
+// inital memory manager algorithm will be wasteful with memory but more efficent that
+// small individual mallocs.
+typedef enum MemPolicyType: uint8_t {
+    MEM_POLICY_NONE,
+    MEM_POLICY_MALLOC,
+    MEM_POLICY_ALLOCATOR_OWN,
+    MEM_POLICY_ALLOCATOR_SHARED,
+} MemPolicyType;
+
+
+typedef struct MemPolicy {
+    void * context;
+    void * (*alloc)( void * context, size_t num_bytes );
+    void  (*free)( void * context, void * );
+    MemPolicyType policy_type;
+} MemPolicy;
+
+// ?? bytes
 typedef struct HashMap {
-    MapNode **buckets;               // each bucket is a linked list
+    MapNode **buckets;            // each bucket is a linked list
     size_t size;                  // Number of key-value pairs currently in the map
     size_t fill_capacity;         // holds the max ideal size for the current number of buckets. Increases when buckets increase
     double load;                  // current load = size / num_buckets
     size_t num_buckets;           // must always be a power of 2
     double fill_factor;           // desired load
 
-    MapPolicies     policies;
+    MapPolicies     policies;      //todo need a more descriptive name here, data_policies?
+    MemPolicy       mem_policy;
     uint64_t flags; // future use
 } HashMap;
 
 
+
+
+
+
 //// ------------------------------------------------------------
 ////
-////    Return and Error
+////    Return and Error WIP
 ////
 //// ------------------------------------------------------------
 

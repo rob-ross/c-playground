@@ -28,6 +28,11 @@ typedef struct MemoryPool {
     size_t default_page_size;    // Default size for new pages.
 } MemoryPool;
 
+// static constexpr size_t DEFAULT_PAGE_SIZE = 4096;
+
+static constexpr size_t DEFAULT_PAGE_SIZE = 64 * 1024 * 1024; //64 MB
+
+
 // --- API Functions ---
 
 /**

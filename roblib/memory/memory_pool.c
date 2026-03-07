@@ -8,23 +8,23 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define DEFAULT_PAGE_SIZE 4096
+
 
 // --- Helper Functions ---
 
 static MemoryPage *create_page(size_t size) {
-    MemoryPage *page = (MemoryPage *)malloc(sizeof(MemoryPage));
-    if (!page) return NULL;
+    MemoryPage *page = (MemoryPage *)calloc(1, sizeof(MemoryPage));
+    if (!page) return nullptr;
 
-    page->start = malloc(size);
+    page->start = calloc(1, size);
     if (!page->start) {
         free(page);
-        return NULL;
+        return nullptr;
     }
 
     page->size = size;
     page->used = 0;
-    page->next = NULL;
+    page->next = nullptr;
     return page;
 }
 
@@ -38,11 +38,12 @@ static void destroy_page(MemoryPage *page) {
 // --- API Implementation ---
 
 MemoryPool *pool_create(size_t default_page_size) {
-    MemoryPool *pool = (MemoryPool *)malloc(sizeof(MemoryPool));
-    if (!pool) return NULL;
+    default_page_size = default_page_size > DEFAULT_PAGE_SIZE ? default_page_size : DEFAULT_PAGE_SIZE;
+    MemoryPool *pool = (MemoryPool *)calloc(1, sizeof(MemoryPool));
+    if (!pool) return nullptr;
 
-    pool->default_page_size = (default_page_size > 0) ? default_page_size : DEFAULT_PAGE_SIZE;
-    pool->pages_head = NULL;
+    pool->default_page_size = default_page_size;
+    pool->pages_head = nullptr;
     return pool;
 }
 
@@ -59,7 +60,7 @@ void pool_destroy(MemoryPool *pool) {
 }
 
 void *pool_alloc(MemoryPool *pool, size_t size) {
-    if (!pool || size == 0) return NULL;
+    if (!pool || size == 0) return nullptr;
 
     // Try to allocate from existing pages
     MemoryPage *current = pool->pages_head;
@@ -75,7 +76,7 @@ void *pool_alloc(MemoryPool *pool, size_t size) {
     // No suitable page found, allocate a new one
     size_t new_page_size = (size > pool->default_page_size) ? size : pool->default_page_size;
     MemoryPage *new_page = create_page(new_page_size);
-    if (!new_page) return NULL;
+    if (!new_page) return nullptr;
 
     // Add new page to the head of the list
     new_page->next = pool->pages_head;
