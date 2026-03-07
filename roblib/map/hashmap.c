@@ -34,12 +34,12 @@ const MapNode  NULL_MAP_NODE = (MapNode){ .key = NULL_MAP_KEY, .value = NULL_MAP
 //
 // We can't include string_interner.h due to circular dependencies
 // -----------------------------------------------------------------
-InternStringMap * instr_create(size_t num_buckets);
-void instr_destroy(InternStringMap *ismap);
-const char* instr_ref(InternStringMap *ismap, char string[static 1]);
-void instr_unref(InternStringMap *ismap, const char *strkey);
-void instr_remove(InternStringMap *ismap, const char* strkey);
-size_t instr_size(InternStringMap *ismap);
+StringCounter * sct_create(size_t num_buckets);
+void sct_destroy(StringCounter *ismap);
+const char* sct_ref(StringCounter *ismap, char string[static 1]);
+void sct_unref(StringCounter *ismap, const char *strkey);
+void sct_remove(StringCounter *ismap, const char* strkey);
+size_t sct_size(StringCounter *ismap);
 
 
 
@@ -241,14 +241,14 @@ static void map_policy_value_free_default(HashMap map[static 1], MapValue value)
 [[maybe_unused]]
 static MapValue map_policy_value_add_to_stringpool(HashMap map[static 1], MapValue value) {
     if (!map) return NULL_MAP_VALUE;
-    InternStringMap *ismap = map->policies.value_policies.context; // this should be the stringpool
+    StringCounter *ismap = map->policies.value_policies.context; // this should be the stringpool
     if (!ismap) return NULL_MAP_VALUE;
 
     MapPolicyType valuepolicy = map->policies.value_policies.policy_type;
 
     if ( value.value_type == MAP_TYPE_STRING &&
         ( valuepolicy == MAP_POLICY_SHARED || valuepolicy == MAP_POLICY_COPY || valuepolicy == MAP_POLICY_NONE )) {
-            const char *strref = instr_ref(ismap, value.vstring);
+            const char *strref = sct_ref(ismap, value.vstring);
             return (MapValue){ .value_type = MAP_TYPE_STRING, .vstring = (char *)strref };
     }
     if ( value.value_type == MAP_TYPE_VOID_PTR ) {
@@ -262,14 +262,14 @@ static MapValue map_policy_value_add_to_stringpool(HashMap map[static 1], MapVal
 [[maybe_unused]]
 static void map_policy_value_remove_from_stringpool(HashMap map[static 1], MapValue value) {
     if (!map) return;
-    InternStringMap *ismap = map->policies.value_policies.context; // this should be the stringpool
+    StringCounter *ismap = map->policies.value_policies.context; // this should be the stringpool
     if (!ismap) return;
 
     MapPolicyType valuepolicy = map->policies.value_policies.policy_type;
 
     if ( value.value_type == MAP_TYPE_STRING &&
         ( valuepolicy == MAP_POLICY_SHARED || valuepolicy == MAP_POLICY_COPY || valuepolicy == MAP_POLICY_NONE )) {
-            instr_unref(ismap, value.vstring);
+            sct_unref(ismap, value.vstring);
             return;
     }
 
@@ -280,9 +280,9 @@ static void map_policy_value_remove_from_stringpool(HashMap map[static 1], MapVa
 }
 
 static void map_policy_value_free_context_stringpool(void* context) {
-    InternStringMap *ismap = (InternStringMap*)context;
+    StringCounter *ismap = (StringCounter*)context;
     if (!ismap) return;
-    instr_destroy(ismap);
+    sct_destroy(ismap);
 }
 
 const MapKeyPolicies   DEFAULT_MAP_KEY_POLICIES = (MapKeyPolicies){
@@ -585,7 +585,7 @@ HashMap *map_create_using_stringpool(size_t num_buckets) {
     HashMap *map = map_create(num_buckets);
     if (!map) return nullptr;
 
-    InternStringMap *ismap = instr_create(num_buckets);
+    StringCounter *ismap = sct_create(num_buckets);
 
     if (!ismap) {
         map_destroy(map);

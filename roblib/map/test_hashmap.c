@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "string_interner.h"
+#include "string_counter.h"
 
 
 // -----------------------------------------------
@@ -397,7 +397,7 @@ MunitResult test_10K_string_inserts(const MunitParameter params[], void* fixture
     constexpr size_t N = 10;
     HashMap *map = map_create_using_stringpool(16);
 
-    InternStringMap *string_pool = map->policies.value_policies.context;
+    StringCounter *string_pool = map->policies.value_policies.context;
 
     print("map: %p, string_pool: %p", map, string_pool);
 
@@ -423,9 +423,9 @@ MunitResult test_10K_string_inserts(const MunitParameter params[], void* fixture
     map_repr_HashMap(map, false, "");
 
     if (string_pool) {
-        long count = instr_get_count(string_pool, "hello world");
+        long count = sct_get_count(string_pool, "hello world");
         printf("'hello world' ref count = %ld\n", count);
-        instr_repr_InternStringMap(string_pool, false);
+        sct_repr_InternStringMap(string_pool, false);
     }
 
 
@@ -438,10 +438,10 @@ MunitResult test_10K_string_inserts(const MunitParameter params[], void* fixture
         map_remove(map, i );
         munit_assert_int( N-i - 1, ==, map->size);
         if (string_pool) {
-            count = instr_get_count(string_pool, "hello world");
+            count = sct_get_count(string_pool, "hello world");
             munit_assert_int( N-i - 1, ==, count);
             printf("'hello world' ref count = %ld\n", count);
-            instr_repr_InternStringMap(string_pool, false);
+            sct_repr_InternStringMap(string_pool, false);
         }
 
     }

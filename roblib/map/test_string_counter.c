@@ -1,4 +1,4 @@
-// test_string_interner.c
+// test_string_counter.c
 //
 // Copyright (c) Rob Ross 2026. 
 //
@@ -8,11 +8,11 @@
 #include <locale.h>
 #include <stdio.h>
 
-#include "string_interner.h"
+#include "string_counter.h"
 #include "../testing_utils.h"
 #include "hashmap.h"
 
-struct InternStringMap {
+struct StringCounter {
     HashMap *map;
 };
 
@@ -21,7 +21,7 @@ struct InternStringMap {
 // ----------------------------------------------
 // create a HashMap for use in test cases
 void *  intstr_fixture(const MunitParameter params[], void* user_data) {
-    InternStringMap *ismap = instr_create(16);
+    StringCounter *ismap = sct_create(16);
     munit_assert_not_null(ismap);
     HashMap *map = ismap->map;
     munit_assert_not_null(map);
@@ -30,7 +30,7 @@ void *  intstr_fixture(const MunitParameter params[], void* user_data) {
 
 // to free the hashmap created by the intstr_fixture after a test
 void hashintstr_free(void * fixture) {
-    instr_destroy((InternStringMap*)fixture);
+    sct_destroy((StringCounter*)fixture);
 }
 
 // -------------------------------------------------
@@ -38,31 +38,31 @@ void hashintstr_free(void * fixture) {
 // -------------------------------------------------
 
 MunitResult test_create_and_free(const MunitParameter params[], void* fixture) {
-    InternStringMap *ismap = instr_create(16);
+    StringCounter *ismap = sct_create(16);
     HashMap *map = ismap->map;
     munit_assert_ptr_not_null(map);
-    instr_destroy(ismap);
+    sct_destroy(ismap);
     return MUNIT_OK;
 }
 
 
 MunitResult test_put_and_get_string(const MunitParameter params[], void* fixture) {
-    InternStringMap *map = fixture;
-    instr_put(map, "hello",1);
-    long vlong = instr_get_count(map, "hello");
+    StringCounter *map = fixture;
+    sct_put(map, "hello",1);
+    long vlong = sct_get_count(map, "hello");
     munit_assert_int(1, ==, vlong);
-    instr_put(map, "hello", 22);
-    instr_put(map, "hello", 3);
-    vlong = instr_get_count(map, "hello");
+    sct_put(map, "hello", 22);
+    sct_put(map, "hello", 3);
+    vlong = sct_get_count(map, "hello");
     munit_assert_int(3, ==, vlong);
     return MUNIT_OK;
 }
 
 MunitResult test_refcount(const MunitParameter params[], void* fixture) {
-    InternStringMap *map = fixture;
-    instr_ref(map, "hello");
-    instr_ref(map, "hello");
-    long vlong = instr_get_count(map, "hello");
+    StringCounter *map = fixture;
+    sct_ref(map, "hello");
+    sct_ref(map, "hello");
+    long vlong = sct_get_count(map, "hello");
     munit_assert_int(2, ==, vlong);
     MapValue mv = map_get(map->map, "hello");
     munit_assert_int(2, ==, mv.vlong);
@@ -70,24 +70,24 @@ MunitResult test_refcount(const MunitParameter params[], void* fixture) {
 }
 
 MunitResult test_remove_key(const MunitParameter params[], void* fixture) {
-    InternStringMap *map = fixture;
-    instr_put(map, "hello",1);
-    instr_remove(map, "hello");
-    long vlong = instr_get_count(map, "hello");
+    StringCounter *map = fixture;
+    sct_put(map, "hello",1);
+    sct_remove(map, "hello");
+    long vlong = sct_get_count(map, "hello");
     munit_assert_int(0, ==, vlong);
     return MUNIT_OK;
 }
 
 MunitResult test_put_and_get_str_key(const MunitParameter params[], void* fixture) {
-    InternStringMap *map = fixture;
+    StringCounter *map = fixture;
 
-    instr_put(map, "hello",1);
-    instr_put(map, "good", 1);
-    long vlong= instr_get_count(map, "hello");
+    sct_put(map, "hello",1);
+    sct_put(map, "good", 1);
+    long vlong= sct_get_count(map, "hello");
     munit_assert_int(1, ==, vlong);
 
-    instr_remove(map, "good");
-    vlong = instr_get_count(map, "good");
+    sct_remove(map, "good");
+    vlong = sct_get_count(map, "good");
     munit_assert_int(0, ==, vlong);
 
     return MUNIT_OK;
@@ -95,19 +95,19 @@ MunitResult test_put_and_get_str_key(const MunitParameter params[], void* fixtur
 
 
 MunitResult test_100_string_different(const MunitParameter params[], void* fixture) {
-    InternStringMap *map = fixture;
+    StringCounter *map = fixture;
     for (int i = 0; i < 100; ++i) {
         char strkey[10]; // max 4 chars for value of i, plus 5 for 'hello', plus terminator
         snprintf(strkey, 10, "hello%d",i+1);
-        instr_put(map, strkey, i );
+        sct_put(map, strkey, i );
     }
-    munit_assert_int(100, ==, instr_size(map));
+    munit_assert_int(100, ==, sct_size(map));
 
     for (int i=0; i< 100; ++i) {
         char search_string[10]; // max 4 chars for value of i, plus 5 for 'hello', plus terminator
         snprintf(search_string,10, "hello%d",i+1);
 
-        long vlong = instr_get_count(map, search_string );
+        long vlong = sct_get_count(map, search_string );
 
         munit_assert_int( 1, ==, vlong);
     }
@@ -118,28 +118,28 @@ MunitResult test_100_string_different(const MunitParameter params[], void* fixtu
 
 
 MunitResult test_clear(const MunitParameter params[], void* fixture) {
-    InternStringMap *map = fixture;
+    StringCounter *map = fixture;
 
-    instr_put(map,"dog", 1);
-    instr_put(map, "cat", 1);
+    sct_put(map,"dog", 1);
+    sct_put(map, "cat", 1);
     munit_assert_int(2, ==,  map->map->size);
-    instr_clear( map );
+    sct_clear( map );
     munit_assert_int(0, ==,  map->map->size);
-    munit_assert_true(instr_is_empty(map));
+    munit_assert_true(sct_is_empty(map));
     return MUNIT_OK;
 }
 
 MunitResult test_contains_key(const MunitParameter params[], void* fixture) {
-    InternStringMap *map = fixture;
+    StringCounter *map = fixture;
 
-    instr_put(map,"dog",1);
-    instr_put(map, "cat", 1);
-    instr_put(map, "wolf",1 );
+    sct_put(map,"dog",1);
+    sct_put(map, "cat", 1);
+    sct_put(map, "wolf",1 );
 
-    munit_assert_true(instr_contains_key(map, "dog"));
-    munit_assert_true(instr_contains_key(map, "cat"));
-    munit_assert_true(instr_contains_key(map, "wolf"));
-    munit_assert_false(instr_contains_key(map, "no such key"));
+    munit_assert_true(sct_contains_key(map, "dog"));
+    munit_assert_true(sct_contains_key(map, "cat"));
+    munit_assert_true(sct_contains_key(map, "wolf"));
+    munit_assert_false(sct_contains_key(map, "no such key"));
 
     return MUNIT_OK;
 
@@ -165,7 +165,7 @@ void apply_fixture(MunitTest tests[static 1], MunitTestSetup setup, MunitTestTea
 
 }
 // make
-// clang -std=c23 -fsanitize=address -fsanitize=leak -Wall -Werror -o ./out/test_string_interner.out test_string_interner.c string_interner.c hashmap.c ../munit/munit.c
+// clang -std=c23 -fsanitize=address -fsanitize=leak -Wall -Werror -o ./out/test_string_counter.out test_string_counter.c string_counter.c hashmap.c ../munit/munit.c
 int main(int argc, char *argv[argc + 1]) {
     setlocale(LC_NUMERIC, "en_US.UTF-8");   // use user's system locale
 

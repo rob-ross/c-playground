@@ -15,7 +15,7 @@ add_executable(string_buffer roblib/string_buffer.c roblib/string_buffer.h)
 add_executable(test_hashmap
         roblib/map/test_hashmap.c
         roblib/map/hashmap.c
-        roblib/map/string_interner.c
+        roblib/map/string_counter.c
         roblib/munit/munit.c
 )
 

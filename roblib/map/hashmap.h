@@ -38,7 +38,7 @@
 //
 //
 
-typedef struct InternStringMap InternStringMap;
+typedef struct StringCounter StringCounter;
 
 
 typedef enum MapTypeEnum: unsigned char {
@@ -96,7 +96,7 @@ typedef struct MapNode {
 
 struct HashMap;
 // Forward-declare the dependency type.
-struct InternStringMap;
+struct StringCounter;
 
 
 

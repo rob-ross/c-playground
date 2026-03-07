@@ -12,33 +12,33 @@
 // Forward-declare the struct to make it an opaque type.
 // Users can only have pointers to it, not instances.
 // Full definition in string_interner.c
-struct InternStringMap;
-typedef struct InternStringMap InternStringMap;
+struct StringCounter;
+typedef struct StringCounter StringCounter;
 
 
 // ---------------------------
 // Public API methods
 // ---------------------------
 
-InternStringMap * instr_create(size_t num_buckets);
-void instr_clear(InternStringMap *ismap);
-bool instr_contains_key(InternStringMap *ismap, const char* strkey);
-void instr_destroy(InternStringMap *ismap);
+StringCounter * sct_create(size_t num_buckets);
+void sct_clear(StringCounter *ismap);
+bool sct_contains_key(StringCounter *ismap, const char* strkey);
+void sct_destroy(StringCounter *ismap);
 
-long instr_get_count(const InternStringMap *ismap, const char *key);
-bool instr_is_empty(InternStringMap *ismap);
-void instr_put(InternStringMap *ismap, const char* strkey, long value);
+long sct_get_count(const StringCounter *ismap, const char *key);
+bool sct_is_empty(StringCounter *ismap);
+void sct_put(StringCounter *ismap, const char* strkey, long value);
 
 // Increases the reference count of the string key.
 // If the string key is not in the map, adds it and sets refcount to 1
-const char* instr_ref(InternStringMap *ismap, char string[static 1]) ;
+const char* sct_ref(StringCounter *ismap, char string[static 1]) ;
 //Decreases the reference count of the string. When its reference count drops to 0, the object is finalized (i.e. its memory is freed).
-void instr_unref(InternStringMap *ismap, const char *strkey);
+void sct_unref(StringCounter *ismap, const char *strkey);
 
-void instr_remove(InternStringMap *ismap, const char* strkey);
-size_t instr_size(InternStringMap *ismap);
+void sct_remove(StringCounter *ismap, const char* strkey);
+size_t sct_size(StringCounter *ismap);
 
-void instr_repr_InternStringMap(InternStringMap *ismap, bool verbose);
+void sct_repr_InternStringMap(StringCounter *ismap, bool verbose);
 
 /*
  *
