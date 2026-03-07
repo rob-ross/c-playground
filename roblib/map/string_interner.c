@@ -63,14 +63,12 @@ const MapKeyPolicies   DEFAULT_INSTR_KEY_POLICIES = (MapKeyPolicies){
     .policy_type   = MAP_POLICY_COPY,
     .on_add_key    = instr_policy_key_add_default,
     .on_free_key   = instr_policy_key_free_default,
-    .on_remove_key = nullptr,
 };
 
 const MapValuePolicies DEFAULT_INSTR_VALUE_POLICIES = (MapValuePolicies){
     .policy_type     = MAP_POLICY_NONE,
     .on_set_value    = nullptr,
     .on_free_value   = nullptr,
-    .on_remove_value = nullptr,
 };
 
 static void instr_free_key_if(InternStringMap ismap[static 1], const MapNode node[static 1]) {

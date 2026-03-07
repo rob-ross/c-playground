@@ -120,8 +120,6 @@ typedef struct MapKeyPolicies {
     MapKey (*on_add_key)(struct HashMap *map, MapKey key);
     // Called when a key is freed.
     void (*on_free_key)(struct HashMap *map, MapKey key);
-    // Called when a key is removed
-    void (*on_remove_key)(struct HashMap *map, MapKey key);
     // for any specialized cleanup of the context
     void (*on_free_context)(void* context);
     MapPolicyType policy_type;
@@ -135,10 +133,6 @@ typedef struct MapValuePolicies {
     MapValue (*on_set_value)(struct HashMap *map, MapValue value);
     // Called when a value is freed.
     void (*on_free_value)(struct HashMap *map, MapValue value);
-    // Called when a value is removed
-    // todo when we back a HashMap with a InternStringMap, that HashMap should implement on-remove_value to
-    // unref the string value in the InternStringMap
-    void (*on_remove_value)(struct HashMap *map, MapValue value);
     // for any specialized cleanup of the context
     void (*on_free_context)(void* context);
     MapPolicyType policy_type;

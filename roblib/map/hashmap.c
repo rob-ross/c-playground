@@ -289,14 +289,12 @@ const MapKeyPolicies   DEFAULT_MAP_KEY_POLICIES = (MapKeyPolicies){
     .policy_type   = MAP_POLICY_COPY,
     .on_add_key    = map_policy_key_add_default,
     .on_free_key   = map_policy_key_free_default,
-    .on_remove_key = nullptr,
 };
 
 const MapValuePolicies DEFAULT_MAP_VALUE_POLICIES = (MapValuePolicies){
     .policy_type     = MAP_POLICY_COPY,
     .on_set_value    = map_policy_value_set_default,
     .on_free_value   = map_policy_value_free_default,
-    .on_remove_value = nullptr,
 };
 
 const MapPolicies STRING_POOL_MAP_POLICIES =  (MapPolicies){
@@ -304,7 +302,6 @@ const MapPolicies STRING_POOL_MAP_POLICIES =  (MapPolicies){
         .policy_type     = MAP_POLICY_COPY,
         .on_add_key      = map_policy_key_add_default,
         .on_free_key     = map_policy_key_free_default,
-        .on_remove_key   = nullptr,
         .on_free_context = nullptr,
 
     },
@@ -312,7 +309,6 @@ const MapPolicies STRING_POOL_MAP_POLICIES =  (MapPolicies){
         .policy_type     = MAP_POLICY_SHARED,
         .on_set_value    = map_policy_value_add_to_stringpool,
         .on_free_value   = map_policy_value_remove_from_stringpool,
-        .on_remove_value = nullptr,
         .on_free_context = map_policy_value_free_context_stringpool
     }
 };
