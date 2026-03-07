@@ -102,14 +102,12 @@ struct StringCounter;
 
 
 
-// We should have MapKeyPolicies and MapValuePolicies
-// 1. on put : key copy?  value increment?
-// 2. on remove : free? value decrement? free when count is zero?
 typedef enum MapPolicyType: uint8_t {
     MAP_POLICY_NONE, // default ininitialized value
-    MAP_POLICY_COPY, // callee makes a copy and owns the copy. Frees owned copy
-    MAP_POLICY_TAKE, // callee takes ownership and does not make a copy. Callee frees
-    MAP_POLICY_SHARED // callee uses value, does not free. //todo must implement reference counting for this
+    MAP_POLICY_COPY, // HashMap makes a copy and owns the copy. HashMap frees owned copy
+    MAP_POLICY_TAKE, // HashMap takes ownership and does not make a copy. HashMap frees
+    //todo must implement reference counting for shared policy
+    MAP_POLICY_SHARED // HashMap uses value, does not copy,  does not free.
 } MapPolicyType;
 
 typedef struct MapKeyPolicies {
@@ -158,6 +156,36 @@ typedef struct HashMap {
 } HashMap;
 
 
+//// ------------------------------------------------------------
+////
+////    Return and Error
+////
+//// ------------------------------------------------------------
+
+typedef enum MapErrorCode {
+    MAP_OK,
+    MAP_ERR_NULL_ARG,
+    MAP_ERR_OUT_OF_MEM,
+
+} MapErrorCode;
+
+typedef struct MapError {
+    MapErrorCode err;
+    const char msg[]; // error message, flexible array
+} MapError;
+
+typedef struct MapResult {
+    union {
+        MapKey   key;
+        MapValue value;
+    };
+    const char type[1]; // holds either 'k' or 'v'
+} MapResult;
+
+typedef struct MapRE {
+    MapResult result;
+    MapError  err;
+} MapRE;
 
 
 extern const MapKey   NULL_MAP_KEY;
@@ -169,8 +197,9 @@ static constexpr double DEFAULT_FILL_FACTOR = 0.75;
 
 // -------------------------------------
 // 'Package-private/friend' API methods
-// -------------------------------------
+//
 // declared in hashmap_private.h
+// -------------------------------------
 
 
 
@@ -194,8 +223,17 @@ bool map_contains_key(HashMap map[static 1], MapKey key) ;
 bool map_contains_value(HashMap map[static 1], MapValue value);
 void map_destroy(HashMap map[static 1]);
 
-// Returns the value for the given key.
-// If no value found for the key, MapValue.value_type === MAP_TYPE_NULL and MapValue.vvoidptr == nullptr
+/**
+ * Returns the value associated with the given key.
+ *
+ * If the key is not found, returns a MapValue where value_type is MAP_TYPE_NULL.
+ *
+ * Ownership (Borrowing):
+ *  - For pointer types (e.g. strings), the caller "borrows" the pointer from the HashMap.
+ *  - The caller must NOT free the returned pointer.
+ *  - The pointer is valid only as long as the entry remains in the HashMap.
+ *  - Removing the key from the HashMap invalidates the pointer (dangling pointer).
+ */
 MapValue (map_get)(const HashMap map[static 1], MapKey key);
 // Returns the value to which the specified key is mapped, or fallback if this map contains no mapping for the key.
 MapValue (map_get_or)(const HashMap map[static 1], MapKey key, MapValue fallback) ;
@@ -204,8 +242,6 @@ bool (map_try_get)(const HashMap map[static 1], MapKey key, MapValue *out);
 
 // Returns true if this map contains no key-value mappings.
 bool map_is_empty(const HashMap map[static 1]);
-
-
 
 //associates value with key in the map. If key did not previously exist in the map, this
 // function adds it. If the key already exists, the value is replaced with the argument value.
@@ -217,6 +253,10 @@ void map_put(HashMap map[static 1], MapKey key, MapValue value) ;
 // Returns the value to which this map previously associated the key, or null if the map contained no mapping for the key.
 void (map_remove)(HashMap map[static 1], MapKey key);
 
+// Returns the number of key-value mappings in this map.
+size_t map_size(const HashMap *map);
+
+
 //// ---------------------------------------------
 ////  repr methods
 //// ---------------------------------------------
@@ -225,8 +265,7 @@ void map_repr_MapKey(MapKey map_key, bool verbose);
 void map_repr_MapValue(MapValue map_value, bool verbose);
 void map_repr_Node(const MapNode node[static 1]);
 
-// Returns the number of key-value mappings in this map.
-size_t map_size(const HashMap *map);
+
 
 // ---------------------------------------------------
 // Converters for generic map function arguments

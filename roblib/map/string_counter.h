@@ -47,6 +47,8 @@ const char* sct_ref(StringCounter *sct, char string[static 1] ) ;
 //Decreases the reference count of the string. When its reference count drops to 0, the object is freed
 void sct_unref(StringCounter *sct, const char string[static 1] );
 
+//Removes the mapping for a key from this map if it is present
+//Returns the value to which this map previously associated the key, or null if the map contained no mapping for the key.
 void sct_remove(StringCounter *sct, const char string[static 1] );
 size_t sct_size(StringCounter *sct);
 

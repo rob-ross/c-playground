@@ -60,6 +60,30 @@ static void map_policy_value_free_default(HashMap map[static 1], MapValue value)
 ////
 //// ------------------------------------------------------------
 
+[[maybe_unused]]
+static MapKey map_copy_MapKey(MapKey map_key) {
+    // todo without a refcounting memory manager we can't give out object references. We can only return copies.
+    // for now HashMap only supports scalar keys, or strings.
+    if (map_key.key_type == MAP_TYPE_STRING) {
+        char *string = nullptr;
+        string = strdup(map_key.kstring);
+        return (MapKey){.key_type = map_key.key_type, .kstring = string};
+    }
+    return map_key;  // todo this leaks the duplicated string if caller doesn't free it!
+}
+
+[[maybe_unused]]
+static MapValue map_copy_MapValue(MapValue map_value) {
+    // todo without a refcounting memory manager we can't give out object references. We can only return copies.
+    // for now HashMap only supports scalar keys, or strings.
+    if (map_value.value_type == MAP_TYPE_STRING) {
+        char *string = nullptr;
+        string = strdup(map_value.vstring);
+        return (MapValue){.value_type = map_value.value_type, .vstring = string};
+    }
+    return map_value; // todo this leaks the duplicated string if caller doesn't free it!
+}
+
 static bool map_equals_double(double d1, double d2) {
     // Optional policy: NaNs are not equal to anything (including NaN)
     if (isnan(d1) || isnan(d2)) return false;
@@ -426,30 +450,16 @@ MapNode * map_node_for(const HashMap map[static 1], const MapKey key) {
 }
 
 void map_set_value(HashMap map[static 1], MapNode node[static 1], const MapValue value ) {
-    switch (value.value_type) {
-        case MAP_TYPE_LONG:
-            node->value.vlong = value.vlong;
-            break;
-        case MAP_TYPE_DOUBLE:
-            node->value.vdouble = value.vdouble;
-            break;
-        case MAP_TYPE_STRING:
-            if ( map->policies.value_policies.on_set_value ) {
-                node->value.vstring = map->policies.value_policies.on_set_value(map, value).vstring;
-            } else {
-                node->value.vstring = map_policy_value_set_default(map, value).vstring;
-            }
-            break;
-        case MAP_TYPE_VOID_PTR:
-            node->value.vvoid_ptr = value.vvoid_ptr;
-            break;
-        case MAP_TYPE_NONE:
-        case MAP_TYPE_NULL:
-        default:
-            node->value.vvoid_ptr = nullptr;
-            break;
+    if (value.value_type == MAP_TYPE_STRING) {
+        if ( map->policies.value_policies.on_set_value ) {
+            node->value.vstring = map->policies.value_policies.on_set_value(map, value).vstring;
+        } else {
+            node->value.vstring = map_policy_value_set_default(map, value).vstring;
+        }
+        node->value.value_type = value.value_type;
+    } else {
+        node->value = value;
     }
-    node->value.value_type = value.value_type;
 }
 
 void map_recalc_load(HashMap *map) {
@@ -690,6 +700,10 @@ void (map_remove)(HashMap map[static 1], const MapKey key) {
     }
 }
 
+size_t map_size(const HashMap map[static 1]) {
+    return map->size;
+}
+
 //// ---------------------------------------------
 ////  repr methods
 //// ---------------------------------------------
@@ -851,9 +865,7 @@ void map_repr_Node(const MapNode node[static 1]) {
     printf(" }\n");
 }
 
-size_t map_size(const HashMap map[static 1]) {
-    return map->size;
-}
+
 
 
 
