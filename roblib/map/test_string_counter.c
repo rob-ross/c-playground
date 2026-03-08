@@ -20,7 +20,7 @@ struct StringCounter {
 // setup and teardown fixtures
 // ----------------------------------------------
 // create a HashMap for use in test cases
-void *  intstr_fixture(const MunitParameter params[], void* user_data) {
+static void *  intstr_fixture(const MunitParameter params[], void* user_data) {
     StringCounter *sct = sct_create(16);
     munit_assert_not_null(sct);
     HashMap *map = sct->map;
@@ -29,7 +29,7 @@ void *  intstr_fixture(const MunitParameter params[], void* user_data) {
 }
 
 // to free the hashmap created by the intstr_fixture after a test
-void hashintstr_free(void * fixture) {
+static void hashintstr_free(void * fixture) {
     sct_destroy((StringCounter*)fixture);
 }
 
@@ -37,7 +37,7 @@ void hashintstr_free(void * fixture) {
 // test cases
 // -------------------------------------------------
 
-MunitResult test_create_and_free(const MunitParameter params[], void* fixture) {
+static MunitResult test_create_and_free(const MunitParameter params[], void* fixture) {
     StringCounter *sct = sct_create(16);
     HashMap *map = sct->map;
     munit_assert_ptr_not_null(map);
@@ -46,7 +46,7 @@ MunitResult test_create_and_free(const MunitParameter params[], void* fixture) {
 }
 
 
-MunitResult test_put_and_get_string(const MunitParameter params[], void* fixture) {
+static MunitResult test_put_and_get_string(const MunitParameter params[], void* fixture) {
     StringCounter *map = fixture;
     sct_put(map, "hello",1);
     long vlong = sct_get_count(map, "hello");
@@ -58,7 +58,7 @@ MunitResult test_put_and_get_string(const MunitParameter params[], void* fixture
     return MUNIT_OK;
 }
 
-MunitResult test_refcount(const MunitParameter params[], void* fixture) {
+static MunitResult test_refcount(const MunitParameter params[], void* fixture) {
     StringCounter *map = fixture;
     sct_ref(map, "hello");
     sct_ref(map, "hello");
@@ -69,7 +69,7 @@ MunitResult test_refcount(const MunitParameter params[], void* fixture) {
     return MUNIT_OK;
 }
 
-MunitResult test_remove_key(const MunitParameter params[], void* fixture) {
+static MunitResult test_remove_key(const MunitParameter params[], void* fixture) {
     StringCounter *map = fixture;
     sct_put(map, "hello",1);
     sct_remove(map, "hello");
@@ -78,7 +78,7 @@ MunitResult test_remove_key(const MunitParameter params[], void* fixture) {
     return MUNIT_OK;
 }
 
-MunitResult test_put_and_get_str_key(const MunitParameter params[], void* fixture) {
+static MunitResult test_put_and_get_str_key(const MunitParameter params[], void* fixture) {
     StringCounter *map = fixture;
 
     sct_put(map, "hello",1);
@@ -93,8 +93,8 @@ MunitResult test_put_and_get_str_key(const MunitParameter params[], void* fixtur
     return MUNIT_OK;
 }
 
-
-MunitResult test_100_string_different(const MunitParameter params[], void* fixture) {
+[[maybe_unused]]
+static MunitResult test_100_string_different(const MunitParameter params[], void* fixture) {
     StringCounter *map = fixture;
     for (int i = 0; i < 100; ++i) {
         char strkey[10]; // max 4 chars for value of i, plus 5 for 'hello', plus terminator
@@ -117,7 +117,7 @@ MunitResult test_100_string_different(const MunitParameter params[], void* fixtu
 }
 
 
-MunitResult test_clear(const MunitParameter params[], void* fixture) {
+static MunitResult test_clear(const MunitParameter params[], void* fixture) {
     StringCounter *map = fixture;
 
     sct_put(map,"dog", 1);
@@ -129,7 +129,7 @@ MunitResult test_clear(const MunitParameter params[], void* fixture) {
     return MUNIT_OK;
 }
 
-MunitResult test_contains_key(const MunitParameter params[], void* fixture) {
+static MunitResult test_contains_key(const MunitParameter params[], void* fixture) {
     StringCounter *map = fixture;
 
     sct_put(map,"dog",1);
@@ -153,7 +153,7 @@ MunitResult test_contains_key(const MunitParameter params[], void* fixture) {
 // ------------------------------------
 
 
-void apply_fixture(MunitTest tests[static 1], MunitTestSetup setup, MunitTestTearDown tear_down) {
+static void apply_fixture(MunitTest tests[static 1], MunitTestSetup setup, MunitTestTearDown tear_down) {
     size_t test_index = 0;
     do {
         MunitTest *test = &tests[test_index++];
@@ -165,8 +165,11 @@ void apply_fixture(MunitTest tests[static 1], MunitTestSetup setup, MunitTestTea
 
 }
 // make
-// clang -std=c23 -fsanitize=address -fsanitize=leak -Wall -Werror -o ./out/test_string_counter.out test_string_counter.c string_counter.c hashmap.c ../munit/munit.c
-int main(int argc, char *argv[argc + 1]) {
+// clang -std=c23 -fsanitize=address -fsanitize=leak -Wall -Werror -o ./out/test_string_counter.out test_string_counter.c string_counter.c hashmap.c ../memory/memory_pool.c ../munit/munit.c
+//
+//  clang -std=c23 -Wall -Werror -o ./out/test_string_counter.out test_string_counter.c string_counter.c hashmap.c ../memory/memory_pool.c ../munit/munit.c
+//
+int main_test_string_counter(int argc, char *argv[argc + 1]) {
     setlocale(LC_NUMERIC, "en_US.UTF-8");   // use user's system locale
 
     MunitTest tests[] = {
@@ -198,3 +201,10 @@ int main(int argc, char *argv[argc + 1]) {
     return result;
 
 }
+
+#ifdef TEST_STRING_COUNTER
+int main(int argc, char *argv[argc + 1]) {
+    return main_test_string_counter(argc, argv);
+
+}
+#endif

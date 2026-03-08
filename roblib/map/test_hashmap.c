@@ -19,14 +19,14 @@
 // setup and teardown fixtures
 // ----------------------------------------------
 // create a HashMap for use in test cases
-void *  hashmap_fixture(const MunitParameter params[], void* user_data) {
-    HashMap *map = map_create(10);
+static void *  hashmap_fixture(const MunitParameter params[], void* user_data) {
+    HashMap *map = map_create();
     munit_assert_not_null(map);
     return map;
 }
 
 // to free the hashmap created by the hashmap_fixture after a test
-void hashmap_free(void * fixture) {
+static void hashmap_free(void * fixture) {
     map_destroy(fixture);
 }
 
@@ -34,14 +34,14 @@ void hashmap_free(void * fixture) {
 // test cases
 // -------------------------------------------------
 
-MunitResult test_create_and_free(const MunitParameter params[], void* fixture) {
+static MunitResult test_create_and_free(const MunitParameter params[], void* fixture) {
     HashMap *map = map_create(10);
     munit_assert_ptr_not_null(map);
     map_destroy(map);
     return MUNIT_OK;
 }
 
-MunitResult test_put_and_get_int(const MunitParameter params[], void* fixture) {
+static MunitResult test_put_and_get_int(const MunitParameter params[], void* fixture) {
     HashMap *map = fixture;
     // printf("test_put_and_get_int: \n");
     map_put(map, 1, 42);
@@ -58,7 +58,7 @@ MunitResult test_put_and_get_int(const MunitParameter params[], void* fixture) {
     return MUNIT_OK;
 }
 
-MunitResult test_put_and_get_string(const MunitParameter params[], void* fixture) {
+static MunitResult test_put_and_get_string(const MunitParameter params[], void* fixture) {
     HashMap *map = fixture;
     map_put(map, 1, "hello");
     MapValue retrieved = map_get(map, 1);
@@ -66,7 +66,7 @@ MunitResult test_put_and_get_string(const MunitParameter params[], void* fixture
     return MUNIT_OK;
 }
 
-MunitResult test_refcount(const MunitParameter params[], void* fixture) {
+static MunitResult test_refcount(const MunitParameter params[], void* fixture) {
     HashMap *map = fixture;
     map_put(map, 1, "hello");
     map_put(map, 1, "world"); // This should free val1 and replace it with val2
@@ -75,7 +75,7 @@ MunitResult test_refcount(const MunitParameter params[], void* fixture) {
     return MUNIT_OK;
 }
 
-MunitResult test_remove_key(const MunitParameter params[], void* fixture) {
+static MunitResult test_remove_key(const MunitParameter params[], void* fixture) {
     HashMap *map = fixture;
     map_put(map, 1, "hello");
     map_remove(map, 1);
@@ -85,7 +85,7 @@ MunitResult test_remove_key(const MunitParameter params[], void* fixture) {
     return MUNIT_OK;
 }
 
-MunitResult test_put_and_get_str_key(const MunitParameter params[], void* fixture) {
+static MunitResult test_put_and_get_str_key(const MunitParameter params[], void* fixture) {
     HashMap *map = fixture;
 
     map_put(map, "hello", "world");
@@ -100,7 +100,7 @@ MunitResult test_put_and_get_str_key(const MunitParameter params[], void* fixtur
     return MUNIT_OK;
 }
 
-MunitResult test_put_and_get_bool_values(const MunitParameter params[], void* fixture) {
+static MunitResult test_put_and_get_bool_values(const MunitParameter params[], void* fixture) {
     HashMap *map = fixture;
     bool b1 = false;
     map_put(map, "false", false);
@@ -115,7 +115,7 @@ MunitResult test_put_and_get_bool_values(const MunitParameter params[], void* fi
     return MUNIT_OK;
 }
 
-MunitResult test_klong_vstring(const MunitParameter params[], void* fixture) {
+static MunitResult test_klong_vstring(const MunitParameter params[], void* fixture) {
     HashMap *map = fixture;
     for (int i = 0; i < 100; ++i) {
         char search_string[10]; // max 4 chars for value of i, plus 5 for 'hello', plus terminator
@@ -134,7 +134,7 @@ MunitResult test_klong_vstring(const MunitParameter params[], void* fixture) {
     return MUNIT_OK;
 }
 
-MunitResult test_generic_put(const MunitParameter params[], void* fixture) {
+static MunitResult test_generic_put(const MunitParameter params[], void* fixture) {
     HashMap *map = fixture;
     map_put(map, 42, "foo");
     map_put(map, "bar", 123);
@@ -150,7 +150,7 @@ MunitResult test_generic_put(const MunitParameter params[], void* fixture) {
     return MUNIT_OK;
 }
 
-MunitResult test_clear(const MunitParameter params[], void* fixture) {
+static MunitResult test_clear(const MunitParameter params[], void* fixture) {
     HashMap *map = fixture;
 
     map_put(map, 1, "dog");
@@ -162,7 +162,7 @@ MunitResult test_clear(const MunitParameter params[], void* fixture) {
     return MUNIT_OK;
 }
 
-MunitResult test_contains_key(const MunitParameter params[], void* fixture) {
+static MunitResult test_contains_key(const MunitParameter params[], void* fixture) {
     HashMap *map = fixture;
 
     map_put(map, 1, "dog");
@@ -181,7 +181,7 @@ MunitResult test_contains_key(const MunitParameter params[], void* fixture) {
 
 }
 
-MunitResult test_contains_value(const MunitParameter params[], void* fixture) {
+static MunitResult test_contains_value(const MunitParameter params[], void* fixture) {
     HashMap *map = fixture;
 
     map_put(map, 1, 1);
@@ -199,7 +199,7 @@ MunitResult test_contains_value(const MunitParameter params[], void* fixture) {
     return MUNIT_OK;
 }
 
-MunitResult test_get_or(const MunitParameter params[], void* fixture) {
+static MunitResult test_get_or(const MunitParameter params[], void* fixture) {
     HashMap *map = fixture;
 
     map_put(map, 1, 1);
@@ -228,7 +228,7 @@ MunitResult test_get_or(const MunitParameter params[], void* fixture) {
     return MUNIT_OK;
 }
 
-MunitResult test_try_get(const MunitParameter params[], void* fixture) {
+static MunitResult test_try_get(const MunitParameter params[], void* fixture) {
     HashMap *map = fixture;
 
     map_put(map, 1, 1);
@@ -254,7 +254,7 @@ MunitResult test_try_get(const MunitParameter params[], void* fixture) {
     return MUNIT_OK;
 }
 
-MunitResult test_size(const MunitParameter params[], void* fixture) {
+static MunitResult test_size(const MunitParameter params[], void* fixture) {
     HashMap *map = fixture;
 
     constexpr size_t n = 20;
@@ -270,11 +270,11 @@ MunitResult test_size(const MunitParameter params[], void* fixture) {
 // end test cases
 // ------------------------------------
 
-MunitResult test_10K_inserts(const MunitParameter params[], void* fixture) ;
-MunitResult test_10K_string_inserts(const MunitParameter params[], void* fixture) ;
+static MunitResult test_10K_inserts(const MunitParameter params[], void* fixture) ;
+static MunitResult test_10K_string_inserts(const MunitParameter params[], void* fixture) ;
 
 
-void apply_fixture(MunitTest tests[static 1], MunitTestSetup setup, MunitTestTearDown tear_down) {
+static void apply_fixture(MunitTest tests[static 1], MunitTestSetup setup, MunitTestTearDown tear_down) {
     size_t test_index = 0;
     do {
         MunitTest *test = &tests[test_index++];
@@ -286,8 +286,10 @@ void apply_fixture(MunitTest tests[static 1], MunitTestSetup setup, MunitTestTea
 
 }
 // make
-// clang -std=c23 -o ./out/test_hashmap.out test_hashmap.c hashmap.c ../munit/munit.c
-int main(int argc, char *argv[argc + 1]) {
+//
+//
+//  clang -std=c23 -Wall -Werror -o ./out/test_hashmap.out test_hashmap.c string_counter.c hashmap.c ../memory/memory_pool.c ../munit/munit.c
+int main_test_hashmap(int argc, char *argv[argc + 1]) {
     setlocale(LC_NUMERIC, "en_US.UTF-8");   // use user's system locale
 
     MunitTest tests[] = {
@@ -323,27 +325,33 @@ int main(int argc, char *argv[argc + 1]) {
 
 
     int result = 0;
-    // result = munit_suite_main(&suite, nullptr, argc, argv);
+    result = munit_suite_main(&suite, nullptr, argc, argv);
 
     // munit spawns a process for each test and that confuses the debugger. To debug a failing test we must run it
     // manually in the main thread. examples:
     // test_put_and_get_string(nullptr, hashmap_fixture(nullptr, nullptr));
-    test_10K_inserts(nullptr, nullptr);
-
-    // test_10K_string_inserts(nullptr, nullptr);
-
+    // test_10K_inserts(nullptr, nullptr);
     // test_put_and_get_int(nullptr, hashmap_fixture(nullptr, nullptr));
+    // test_create_and_free(nullptr, hashmap_fixture(nullptr, nullptr));
+    // test_10K_string_inserts(nullptr, nullptr);
 
 
     return result;
 
 }
 
+#ifdef TEST_HASHMAP
+int main(int argc, char *argv[argc + 1]) {
+    return main_test_hashmap(argc, argv);
+
+}
+#endif
 
 // -------------------------
 // ad hoc tests
 // -------------------------
-void test_repr(void) {
+[[maybe_unused]]
+static void test_repr(void) {
     HashMap *map = map_create(0);
     map_repr_HashMap(map, true, ""); print("");
     map_destroy(map);
@@ -361,10 +369,11 @@ void test_repr(void) {
     map_destroy(map);
 }
 
-MunitResult test_10K_inserts(const MunitParameter params[], void* fixture) {
+[[maybe_unused]]
+static MunitResult test_10K_inserts(const MunitParameter params[], void* fixture) {
     print("test_10K_inserts");
     // constexpr size_t N = 100'000'000;
-    constexpr size_t N = 10'000'000;
+    constexpr size_t N = 1'000'000;
 
     HashMap *map = map_create(0);
     size_t buffer_size = 20;  // max 9 chars for value of i, plus 5 for 'hello', plus terminator
@@ -379,7 +388,7 @@ MunitResult test_10K_inserts(const MunitParameter params[], void* fixture) {
         [[maybe_unused]]MapValue value = map_get(map, i );
         // print("search string = %s, value = %s", search_string, value);
 
-        // munit_assert_string_equal( search_string, value.vstring);
+        munit_assert_string_equal( search_string, value.vstring);
     }
 
     print("");
@@ -397,13 +406,13 @@ MunitResult test_10K_inserts(const MunitParameter params[], void* fixture) {
     return MUNIT_OK;
 }
 
-
-MunitResult test_10K_string_inserts(const MunitParameter params[], void* fixture) {
+[[maybe_unused]]
+static MunitResult test_10K_string_inserts(const MunitParameter params[], void* fixture) {
     print("test_10K_string_inserts");
     constexpr size_t N = 10;
     HashMap *map = map_create_using_stringpool(16);
 
-    StringCounter *string_pool = map->policies.value_policies.context;
+    StringCounter *string_pool = map->data_policies.value_policy.context;
 
     print("map: %p, string_pool: %p", map, string_pool);
 

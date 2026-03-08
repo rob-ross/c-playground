@@ -6,7 +6,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 # Helpful for debugging (CLion usually does this in Debug, but explicit is fine)
 # -fsanitize=address -fsanitize=leak
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g -fno-omit-frame-pointer  -Wall -Werror")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g -fno-omit-frame-pointer -fsanitize=address -fsanitize=leak -Wall -Werror")
 
 # 1. Explicitly define your library/shared code
 add_executable(string_buffer roblib/string_buffer.c roblib/string_buffer.h)
@@ -16,6 +16,17 @@ add_executable(test_hashmap
         roblib/map/test_hashmap.c
         roblib/map/hashmap.c
         roblib/map/string_counter.c
+        roblib/memory/memory_pool.c
+        roblib/munit/munit.c
+)
+target_compile_definitions(test_hashmap PRIVATE TEST_HASHMAP)
+
+add_executable(all_tests
+        roblib/all_tests.c
+        roblib/map/test_hashmap.c
+        roblib/map/hashmap.c
+        roblib/map/string_counter.c
+        roblib/map/test_string_counter.c
         roblib/memory/memory_pool.c
         roblib/munit/munit.c
 )
