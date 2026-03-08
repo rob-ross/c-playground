@@ -37,6 +37,8 @@ struct StringCounter {
 // ------------------------------
 // Key data_policies
 // ------------------------------
+
+//todo strdup needs to use the memory policy
 static MapKey sct_policy_key_add_default(HashMap map[static 1], MapKey key) {
     // default add always make a copy of a string key and we own it
     char *string_copy = strdup(key.kstring);
@@ -169,7 +171,7 @@ const MapValuePolicy MAP_STRING_POOL_VALUE_POLICIES =  (MapValuePolicy){
 // }
 
 StringCounter * (sct_create)(size_t num_buckets, MapDataPolicies data_policies, MemPolicy mem_policy) {
-    HashMap *map = map_create_impl(num_buckets, data_policies, mem_policy);
+    HashMap *map = (map_create)(num_buckets, data_policies, mem_policy);
     if (!map) return nullptr;
     StringCounter *sct = map_alloc_bytes(mem_policy, sizeof(StringCounter));
     if (!sct) {
