@@ -31,11 +31,11 @@ struct StringCounter {
 
 
 //// ------------------------------------------------------------
-////    Default policy functions
+////    Default data policy functions
 //// ------------------------------------------------------------
 
 // ------------------------------
-// Key policies
+// Key data_policies
 // ------------------------------
 static MapKey sct_policy_key_add_default(HashMap map[static 1], MapKey key) {
     // default add always make a copy of a string key and we own it
@@ -49,7 +49,7 @@ static void sct_policy_key_free_default(HashMap map[static 1], MapKey key) {
 }
 
 // -----------------------
-// Value policies
+// Value data_policies
 // -----------------------
 // static void sct_policy_value_free_default(HashMap map[static 1], MapValue value) {
 //     // values are always a long scalar, they don't need to be freed
@@ -57,10 +57,10 @@ static void sct_policy_key_free_default(HashMap map[static 1], MapKey key) {
 // }
 static MapValue map_policy_value_add_to_stringpool(HashMap map[static 1], MapValue value) {
     if (!map) return NULL_MAP_VALUE;
-    StringCounter *sct = map->policies.value_policies.context; // this should be the stringpool
+    StringCounter *sct = map->data_policies.value_policy.context; // this should be the stringpool
     if (!sct) return NULL_MAP_VALUE;
 
-    MapPolicyType valuepolicy = map->policies.value_policies.policy_type;
+    MapPolicyType valuepolicy = map->data_policies.value_policy.policy_type;
 
     if ( value.value_type == MAP_TYPE_STRING &&
         ( valuepolicy == MAP_POLICY_SHARED || valuepolicy == MAP_POLICY_COPY || valuepolicy == MAP_POLICY_NONE )) {
@@ -76,10 +76,10 @@ static MapValue map_policy_value_add_to_stringpool(HashMap map[static 1], MapVal
 }
 static void map_policy_value_free_unref_from_stringpool(HashMap map[static 1], MapValue value) {
     if (!map) return;
-    StringCounter *sct = map->policies.value_policies.context; // this should be the stringpool
+    StringCounter *sct = map->data_policies.value_policy.context; // this should be the stringpool
     if (!sct) return;
 
-    MapPolicyType valuepolicy = map->policies.value_policies.policy_type;
+    MapPolicyType valuepolicy = map->data_policies.value_policy.policy_type;
 
     if ( value.value_type == MAP_TYPE_STRING &&
         ( valuepolicy == MAP_POLICY_SHARED || valuepolicy == MAP_POLICY_COPY || valuepolicy == MAP_POLICY_NONE )) {
@@ -101,30 +101,34 @@ static void map_policy_value_free_context_stringpool(void* context) {
 
 
 
-const MapKeyPolicies   DEFAULT_SCT_KEY_POLICIES = (MapKeyPolicies){
+const MapKeyPolicy   SCT_DEFAULT_KEY_POLICY = (MapKeyPolicy){
     .policy_type   = MAP_POLICY_COPY,
     .on_add_key    = sct_policy_key_add_default,
     .on_free_key   = sct_policy_key_free_default,
 };
 
-const MapValuePolicies DEFAULT_SCT_VALUE_POLICIES = (MapValuePolicies){
+const MapValuePolicy SCT_DEFAULT_VALUE_POLICY = (MapValuePolicy){
     .policy_type     = MAP_POLICY_NONE,
     .on_set_value    = nullptr,
     .on_free_value   = nullptr,
 };
 
+const MapDataPolicies SCT_DEFAULT_DATA_POLICIES = (MapDataPolicies){
+    .key_policy   = SCT_DEFAULT_KEY_POLICY,
+    .value_policy = SCT_DEFAULT_VALUE_POLICY
+};
 
 
-const MapValuePolicies MAP_STRING_POOL_VALUE_POLICIES =  (MapValuePolicies){
+const MapValuePolicy MAP_STRING_POOL_VALUE_POLICIES =  (MapValuePolicy){
     .policy_type     = MAP_POLICY_SHARED,
     .on_set_value    = map_policy_value_add_to_stringpool,
     .on_free_value   = map_policy_value_free_unref_from_stringpool,
     .on_free_context = map_policy_value_free_context_stringpool
 };
 
-//// ------------------------------
-//// End default policy functions
-//// ------------------------------
+//// -----------------------------------
+//// End default data policy functions
+//// -----------------------------------
 
 
 
@@ -136,35 +140,53 @@ const MapValuePolicies MAP_STRING_POOL_VALUE_POLICIES =  (MapValuePolicies){
 ////
 //// ------------------------------------------------------------
 
+//todo we have options for specifying memory policy and member data policy
+// overriden versions:
+// StringCounter * sct_create(); // MIN_CAP buckets, malloc policy, default data policy
+// StringCounter * sct_create(size_t num_buckets);
+// StringCounter * sct_create(size_t num_buckets, data_policies);
+// StringCounter * sct_create(size_t num_buckets, data_policies, mem_policy);
 
-StringCounter * sct_create(const size_t num_buckets) {
-    // 1. Allocate the wrapper struct.
-    StringCounter *sct = malloc(sizeof(StringCounter));
+
+// StringCounter * (sct_create)(const size_t num_buckets) {
+//     // 1. Allocate the wrapper struct.
+//     StringCounter *sct = malloc(sizeof(StringCounter));
+//     if (!sct) {
+//         return nullptr;
+//     }
+//
+//     // 2. Create the delegate HashMap
+//     sct->map = map_create(num_buckets);
+//     if (!sct->map) {
+//         free(sct); // Clean up the wrapper if map creation fails
+//         return nullptr;
+//     }
+//
+//     sct->map->data_policies.key_policy   = SCT_DEFAULT_KEY_POLICY;
+//     sct->map->data_policies.value_policy = SCT_DEFAULT_VALUE_POLICY;
+//
+//     return sct;
+// }
+
+StringCounter * (sct_create)(size_t num_buckets, MapDataPolicies data_policies, MemPolicy mem_policy) {
+    HashMap *map = map_create_impl(num_buckets, data_policies, mem_policy);
+    if (!map) return nullptr;
+    StringCounter *sct = map_alloc_bytes(mem_policy, sizeof(StringCounter));
     if (!sct) {
+        map_free_bytes(mem_policy, map);
         return nullptr;
     }
-    
-    // 2. Create the delegate HashMap
-    sct->map = map_create(num_buckets);
-    if (!sct->map) {
-        free(sct); // Clean up the wrapper if map creation fails
-        return nullptr;
-    }
-
-    sct->map->policies.key_policies   = DEFAULT_SCT_KEY_POLICIES;
-    sct->map->policies.value_policies = DEFAULT_SCT_VALUE_POLICIES;
-
+    sct->map = map;
     return sct;
 }
 
+
 void sct_destroy(StringCounter sct[static 1]) {
     if (!sct->map)  return;
-    
     HashMap *map = sct->map;
-
-    map_destroy(map);
     sct->map = nullptr;
-    free(sct);
+    map_free_bytes(map->mem_policy, sct);
+    map_destroy(map);
 }
 
 

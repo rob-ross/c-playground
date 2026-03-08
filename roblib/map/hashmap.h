@@ -110,7 +110,7 @@ typedef enum MapPolicyType: uint8_t {
     MAP_POLICY_SHARED // HashMap uses value, does not copy,  does not free.
 } MapPolicyType;
 
-typedef struct MapKeyPolicies {
+typedef struct MapKeyPolicy {
     // A context pointer to be passed to the policy functions.
     void* context;
     // Called when a key is added. Returns the key to be stored.
@@ -121,9 +121,9 @@ typedef struct MapKeyPolicies {
     // for any specialized cleanup of the context
     void (*on_free_context)(void* context);
     MapPolicyType policy_type;
-} MapKeyPolicies;
+} MapKeyPolicy;
 
-typedef struct MapValuePolicies {
+typedef struct MapValuePolicy {
     // A context pointer to be passed to the policy functions.
     void* context;
     // Called when a value is added. Returns the value to be stored.
@@ -134,13 +134,13 @@ typedef struct MapValuePolicies {
     // for any specialized cleanup of the context
     void (*on_free_context)(void* context);
     MapPolicyType policy_type;
-} MapValuePolicies;
+} MapValuePolicy;
 
 
-typedef struct MapPolicies {
-    MapKeyPolicies   key_policies;
-    MapValuePolicies value_policies;
-} MapPolicies;
+typedef struct MapDataPolicies {
+    MapKeyPolicy   key_policy;
+    MapValuePolicy value_policy;
+} MapDataPolicies;
 
 
 //Memory Policy.... what are options?
@@ -151,7 +151,8 @@ typedef struct MapPolicies {
 // small individual mallocs.
 typedef enum MemPolicyType: uint8_t {
     MEM_POLICY_NONE,
-    MEM_POLICY_MALLOC,
+    MEM_POLICY_MALLOC_OWN,
+    MEM_POLICY_MALLOC_SHARED,
     MEM_POLICY_ALLOCATOR_OWN,
     MEM_POLICY_ALLOCATOR_SHARED,
 } MemPolicyType;
@@ -160,7 +161,8 @@ typedef enum MemPolicyType: uint8_t {
 typedef struct MemPolicy {
     void * context;
     void * (*alloc)( void * context, size_t num_bytes );
-    void  (*free)( void * context, void * );
+    void   (*free)(  void * context, void * );
+    void   (*free_context)(void * context );
     MemPolicyType policy_type;
 } MemPolicy;
 
@@ -173,15 +175,15 @@ typedef struct HashMap {
     size_t num_buckets;           // must always be a power of 2
     double fill_factor;           // desired load
 
-    MapPolicies     policies;      //todo need a more descriptive name here, data_policies?
+    MapDataPolicies data_policies;
     MemPolicy       mem_policy;
     uint64_t flags; // future use
 } HashMap;
 
 
 
-
-
+extern const MemPolicy MAP_DEFAULT_MALLOC_POLICY;
+extern const MapDataPolicies MAP_DEFAULT_DATA_POLICIES;
 
 //// ------------------------------------------------------------
 ////
@@ -235,7 +237,8 @@ static constexpr double DEFAULT_FILL_FACTOR = 0.75;
 // ---------------------------
 
 // call map_destroy to free all resources
-HashMap *map_create(size_t num_buckets);
+
+HashMap * (map_create)(size_t num_buckets, MapDataPolicies data_policies, MemPolicy mem_policy) ;
 
 // creates and returns a HashMap backed by a string pool that interns all string values. Good when the same string is
 // used for multiple key values. Call map_destroy to free all allocated resources, including the backing string pool.
@@ -336,3 +339,13 @@ MapValue value_for_void_ptr(const void *v);
 #define map_try_get( M, K, V ) map_try_get( (M), MAP_KEY(K), V )
 #define map_put(M, K, V) map_put( (M), MAP_KEY(K), MAP_VALUE(V) )
 #define map_remove( M, K) map_remove( (M), MAP_KEY(K)  )
+
+
+
+#define map_create_0() (map_create)( 0, MAP_DEFAULT_DATA_POLICIES, MAP_DEFAULT_MALLOC_POLICY)
+#define map_create_1(_1) (map_create)(_1, MAP_DEFAULT_DATA_POLICIES, MAP_DEFAULT_MALLOC_POLICY)
+#define map_create_2(_1, _2) (map_create)(_1, _2, MAP_DEFAULT_MALLOC_POLICY)
+#define map_create_3(_1, _2, _3) (map_create)(_1, _2, _3)
+#define map_create_SELECT_(_1, _2, _3, NAME, ...) NAME
+#define map_create(...) \
+map_create_SELECT_(__VA_ARGS__ __VA_OPT__(,) map_create_3, map_create_2, map_create_1, map_create_0 ) (__VA_ARGS__)

@@ -27,12 +27,13 @@
 struct StringCounter;
 typedef struct StringCounter StringCounter;
 
+extern const MapDataPolicies SCT_DEFAULT_DATA_POLICIES;
 
 // ---------------------------
 // Public API methods
 // ---------------------------
 
-StringCounter * sct_create(size_t num_buckets);
+StringCounter * (sct_create)(size_t num_buckets, MapDataPolicies data_policies, MemPolicy mem_policy) ;
 void sct_clear(StringCounter *sct);
 bool sct_contains_key(StringCounter *sct, const char strkey[static 1]);
 void sct_destroy(StringCounter *sct);
@@ -54,3 +55,11 @@ size_t sct_size(StringCounter *sct);
 
 void sct_repr_StringCounter(StringCounter *sct, bool verbose);
 
+StringCounter * (sct_create_impl)(size_t num_buckets, MapDataPolicies data_policies, MemPolicy mem_policy);
+#define sct_create_0() (sct_create)( 0, SCT_DEFAULT_DATA_POLICIES, MAP_DEFAULT_MALLOC_POLICY)
+#define sct_create_1(_1) (sct_create)(_1, SCT_DEFAULT_DATA_POLICIES, MAP_DEFAULT_MALLOC_POLICY)
+#define sct_create_2(_1, _2) (sct_create)(_1, _2, MAP_DEFAULT_MALLOC_POLICY)
+#define sct_create_3(_1, _2, _3) (sct_create)(_1, _2, _3)
+#define sct_create_SELECT_(_1, _2, _3, NAME, ...) NAME
+#define sct_create(...) \
+    sct_create_SELECT_(__VA_ARGS__ __VA_OPT__(,) sct_create_3, sct_create_2, sct_create_1, sct_create_0 ) (__VA_ARGS__)

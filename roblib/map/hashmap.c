@@ -36,7 +36,7 @@ const MapNode  NULL_MAP_NODE  = (MapNode){ .key = NULL_MAP_KEY, .value = NULL_MA
 // We can't include string_counter.h due to circular dependencies
 // -----------------------------------------------------------------
 StringCounter * sct_create(size_t num_buckets);
-extern const MapValuePolicies MAP_STRING_POOL_VALUE_POLICIES;
+extern const MapValuePolicy MAP_STRING_POOL_VALUE_POLICIES;
 
 
 
@@ -61,14 +61,6 @@ static void map_policy_value_free_default(HashMap map[static 1], MapValue value)
 ////
 //// ------------------------------------------------------------
 
-[[maybe_unused]]
-static void * map_alloc_bytes(const MemPolicy mem_policy, const size_t num_bytes) {
-    return mem_policy.alloc(mem_policy.context, num_bytes);
-}
-
-static void  map_free_bytes(const MemPolicy mem_policy, void * bytes) {
-     mem_policy.free(mem_policy.context, bytes);
-}
 
 [[maybe_unused]]
 static MapKey map_copy_MapKey(MapKey map_key) {
@@ -98,7 +90,7 @@ static bool map_equals_double(double d1, double d2) {
     // Optional policy: NaNs are not equal to anything (including NaN)
     if (isnan(d1) || isnan(d2)) return false;
 
-    // Make -0.0 and +0.0 compare equal (matches common hashing policies)
+    // Make -0.0 and +0.0 compare equal (matches common hashing data_policies)
     if (d1 == 0.0) d1 = 0.0;
     if (d2 == 0.0) d2 = 0.0;
 
@@ -134,8 +126,8 @@ static bool map_equals_MapValue(const MapValue v1, const MapValue v2) {
 
 static void map_free_key_if(HashMap map[static 1], const MapNode node[static 1]) {
     if (!map || !node) return;
-    if (map->policies.key_policies.on_free_key) {
-        map->policies.key_policies.on_free_key(map, node->key);
+    if (map->data_policies.key_policy.on_free_key) {
+        map->data_policies.key_policy.on_free_key(map, node->key);
     } else {
         // no key free policy, use default
         map_policy_key_free_default(map, node->key);
@@ -144,8 +136,8 @@ static void map_free_key_if(HashMap map[static 1], const MapNode node[static 1])
 
 static void map_free_value_if(HashMap map[static 1], const MapNode node[static 1]) {
     if (!map || !node) return;
-    if (map->policies.value_policies.on_free_value) {
-        map->policies.value_policies.on_free_value(map, node->value);
+    if (map->data_policies.value_policy.on_free_value) {
+        map->data_policies.value_policy.on_free_value(map, node->value);
     } else {
         map_policy_value_free_default(map, node->value);
     }
@@ -209,7 +201,7 @@ void * map_mempolicy_default_malloc( void* context, size_t num_bytes ) {
 }
 
 void map_mempolicy_default_free( void* context, void * bytes ) {
-    return free( bytes) ;
+    free( bytes) ;
 }
 
 void * map_mempolicy_default_allocator_alloc( void* context, size_t num_bytes ) {
@@ -224,7 +216,7 @@ void  map_mempolicy_default_allocator_free( void * context, void * bytes ) {
 
 const MemPolicy MAP_DEFAULT_MALLOC_POLICY = (MemPolicy){
     .context = nullptr,
-    .policy_type = MEM_POLICY_MALLOC,
+    .policy_type = MEM_POLICY_MALLOC_OWN,
     .alloc = map_mempolicy_default_malloc,
     .free = map_mempolicy_default_free,
 };
@@ -240,18 +232,18 @@ const MemPolicy MAP_DEFAULT_ALLOCATOR_POLICY = (MemPolicy){
 
 //// ------------------------------------------------------------
 ////
-////    Default policy functions
+////    Default data policy functions
 ////
 //// ------------------------------------------------------------
 
 // ------------------------------
-// Key policies
+// Key data_policies
 // ------------------------------
 
 MapKey map_policy_key_add_default(HashMap map[static 1], MapKey key) {
     // default add always make a copy of a string key and we own it
     if (!map) return NULL_MAP_KEY;
-    MapPolicyType keypolicy = map->policies.key_policies.policy_type;
+    MapPolicyType keypolicy = map->data_policies.key_policy.policy_type;
     if (key.key_type == MAP_TYPE_STRING &&  ( keypolicy == MAP_POLICY_COPY || keypolicy == MAP_POLICY_NONE )) {
         char *string_copy = strdup(key.kstring);
         return (MapKey){.key_type = MAP_TYPE_STRING, .kstring = string_copy};
@@ -261,7 +253,7 @@ MapKey map_policy_key_add_default(HashMap map[static 1], MapKey key) {
 
 void map_policy_key_free_default(HashMap map[static 1], MapKey key) {
     if (!map) return;
-    MapPolicyType keypolicy = map->policies.key_policies.policy_type;
+    MapPolicyType keypolicy = map->data_policies.key_policy.policy_type;
     if (key.key_type == MAP_TYPE_STRING &&
         ( keypolicy == MAP_POLICY_COPY || keypolicy == MAP_POLICY_TAKE || keypolicy == MAP_POLICY_NONE )) {
         map_free_bytes(map->mem_policy, key.kstring);  //we own it.
@@ -269,13 +261,13 @@ void map_policy_key_free_default(HashMap map[static 1], MapKey key) {
 }
 
 // -----------------------
-// Value policies
+// Value data_policies
 // -----------------------
 
 static MapValue map_policy_value_set_default(HashMap map[static 1], MapValue value) {
     // default add always make a copy of a string key and we own it
     if (!map) return NULL_MAP_VALUE;
-    MapPolicyType valuepolicy = map->policies.value_policies.policy_type;
+    MapPolicyType valuepolicy = map->data_policies.value_policy.policy_type;
     if ( value.value_type == MAP_TYPE_STRING &&
         ( valuepolicy == MAP_POLICY_COPY || valuepolicy == MAP_POLICY_NONE )) {
         char *string_copy = strdup(value.vstring);
@@ -290,7 +282,7 @@ static MapValue map_policy_value_set_default(HashMap map[static 1], MapValue val
 
 static void map_policy_value_free_default(HashMap map[static 1], MapValue value) {
     if (!map) return;
-    MapPolicyType valuepolicy = map->policies.value_policies.policy_type;
+    MapPolicyType valuepolicy = map->data_policies.value_policy.policy_type;
     if ( value.value_type == MAP_TYPE_STRING &&
         ( valuepolicy == MAP_POLICY_COPY || valuepolicy == MAP_POLICY_TAKE || valuepolicy == MAP_POLICY_NONE )) {
         map_free_bytes(map->mem_policy, value.vstring);  //we own it.
@@ -300,22 +292,27 @@ static void map_policy_value_free_default(HashMap map[static 1], MapValue value)
     }
 }
 
-const MapKeyPolicies   DEFAULT_MAP_KEY_POLICIES = (MapKeyPolicies){
+const MapKeyPolicy   MAP_DEFAULT_KEY_POLICY = (MapKeyPolicy){
     .policy_type   = MAP_POLICY_COPY,
     .on_add_key    = map_policy_key_add_default,
     .on_free_key   = map_policy_key_free_default,
     .on_free_context = nullptr,
 };
 
-const MapValuePolicies DEFAULT_MAP_VALUE_POLICIES = (MapValuePolicies){
+const MapValuePolicy MAP_DEFAULT_VALUE_POLICY = (MapValuePolicy){
     .policy_type     = MAP_POLICY_COPY,
     .on_set_value    = map_policy_value_set_default,
     .on_free_value   = map_policy_value_free_default,
     .on_free_context = nullptr,
 };
 
+const MapDataPolicies MAP_DEFAULT_DATA_POLICIES = (MapDataPolicies){
+    .key_policy   = MAP_DEFAULT_KEY_POLICY,
+    .value_policy = MAP_DEFAULT_VALUE_POLICY
+};
+
 //// ------------------------------
-//// End default policy functions
+//// End default data policy functions
 //// ------------------------------
 
 
@@ -327,6 +324,14 @@ const MapValuePolicies DEFAULT_MAP_VALUE_POLICIES = (MapValuePolicies){
 ////
 ////    declared in hashmap_private.h
 //// ------------------------------------------------------------
+
+void * map_alloc_bytes(const MemPolicy mem_policy, const size_t num_bytes) {
+    return mem_policy.alloc(mem_policy.context, num_bytes);
+}
+
+void  map_free_bytes(const MemPolicy mem_policy, void * bytes) {
+    mem_policy.free(mem_policy.context, bytes);
+}
 
 size_t map_calc_bucket_index(const size_t hashcode, const size_t num_buckets) {
     return hashcode & (num_buckets - 1);  // works because num_buckets is a power of 2
@@ -350,8 +355,8 @@ MapNode * map_create_node(HashMap map[static 1], const size_t hashcode, const Ma
             break;
         case MAP_TYPE_STRING: {
             MapKey copy;
-            if ( map->policies.key_policies.on_add_key ) {
-                copy = map->policies.key_policies.on_add_key(map, key);
+            if ( map->data_policies.key_policy.on_add_key ) {
+                copy = map->data_policies.key_policy.on_add_key(map, key);
             } else {
                 copy = map_policy_key_add_default(map, key);
             }
@@ -498,8 +503,8 @@ MapNode * map_node_for(const HashMap map[static 1], const MapKey key) {
 
 void map_set_value(HashMap map[static 1], MapNode node[static 1], const MapValue value ) {
     if (value.value_type == MAP_TYPE_STRING) {
-        if ( map->policies.value_policies.on_set_value ) {
-            node->value.vstring = map->policies.value_policies.on_set_value(map, value).vstring;
+        if ( map->data_policies.value_policy.on_set_value ) {
+            node->value.vstring = map->data_policies.value_policy.on_set_value(map, value).vstring;
         } else {
             node->value.vstring = map_policy_value_set_default(map, value).vstring;
         }
@@ -527,35 +532,33 @@ void map_recalc_load(HashMap *map) {
 //// ------------------------------------------------------------
 
 
-
 // returns nullptr on failure. if num_buckets == 0, uses 16 as initial bucket size.
 // num_buckets is clamped to smallest power of two that is greater than num_buckets.
 // number of buckets doubles when fill capacity is reached (75% full by default).
 // 16 buckets provides adequate sizing for 12 items before growing HashMap capacity
-HashMap *map_create(size_t num_buckets) {
+HashMap * (map_create)(size_t num_buckets, MapDataPolicies data_policies, MemPolicy mem_policy) {
 
-    //todo initial pool size depends on num_buckets, from which we get fill_capacity, which we multiply by sizeof(MapNode),
-    // and add sizeof(HashMap)
-    // MemoryPool *pool = pool_create(DEFAULT_PAGE_SIZE);
 
     if (!num_buckets) {
         num_buckets = MIN_CAP;
     } else if ( num_buckets > (SIZE_MAX >> 1) + 1) {
-       num_buckets = (SIZE_MAX >> 1) + 1;
+        num_buckets = (SIZE_MAX >> 1) + 1;
     } else {
         num_buckets = map_next_power_of_two(num_buckets);
     }
 
-    size_t initial_pool_size = sizeof(HashMap) +  num_buckets * sizeof(MapNode *) + num_buckets * sizeof(MapNode)*2;
-    MemoryPool *pool = pool_create(initial_pool_size * 3);
-    if (!pool) {
-        return nullptr;
-    }
-
-    MemPolicy mem_policy;
-    // mem_policy = MAP_DEFAULT_MALLOC_POLICY;
-    mem_policy = MAP_DEFAULT_ALLOCATOR_POLICY;
-    mem_policy.context = pool;
+    //todo move this outside the create function. Either the caller provides a pool or we have a helper method that
+    // creates one for the caller to be passed in as a mem_policy.
+    // size_t initial_pool_size = sizeof(HashMap) +  num_buckets * sizeof(MapNode *) + num_buckets * sizeof(MapNode)*2;
+    // MemoryPool *pool = pool_create(initial_pool_size * 3);
+    // if (!pool) {
+    //     return nullptr;
+    // }
+    //
+    // MemPolicy mem_policy;
+    // // mem_policy = MAP_DEFAULT_MALLOC_POLICY;
+    // mem_policy = MAP_DEFAULT_ALLOCATOR_POLICY;
+    // mem_policy.context = pool;
 
     HashMap *map = (HashMap *)map_alloc_bytes(mem_policy, sizeof(HashMap));
 
@@ -573,22 +576,79 @@ HashMap *map_create(size_t num_buckets) {
     HashMap prototype = (HashMap){
         .buckets = buckets,
         .size = 0,
-        // todo fill_capacity calculation probably needs to use num_buckets and not MIN_CAP here?
         .fill_capacity = (size_t)( num_buckets * (long double)DEFAULT_FILL_FACTOR ),
         .load = 0,
         .num_buckets = num_buckets,
         .fill_factor = DEFAULT_FILL_FACTOR,
+        .data_policies= data_policies,
         .mem_policy  = mem_policy,
         .flags = 0 };
-
-    prototype.policies.key_policies   = DEFAULT_MAP_KEY_POLICIES;
-    prototype.policies.value_policies = DEFAULT_MAP_VALUE_POLICIES;
 
     memcpy(map, &prototype, sizeof(HashMap));
     // printf("returnin from map_create: "); map_repr_HashMap(map, false, ""); printf("\n");
 
     return map;
 }
+
+
+//
+// HashMap *(map_create)(size_t num_buckets) {
+//
+//     //todo initial pool size depends on num_buckets, from which we get fill_capacity, which we multiply by sizeof(MapNode),
+//     // and add sizeof(HashMap)
+//     // MemoryPool *pool = pool_create(DEFAULT_PAGE_SIZE);
+//
+//     if (!num_buckets) {
+//         num_buckets = MIN_CAP;
+//     } else if ( num_buckets > (SIZE_MAX >> 1) + 1) {
+//        num_buckets = (SIZE_MAX >> 1) + 1;
+//     } else {
+//         num_buckets = map_next_power_of_two(num_buckets);
+//     }
+//
+//     size_t initial_pool_size = sizeof(HashMap) +  num_buckets * sizeof(MapNode *) + num_buckets * sizeof(MapNode)*2;
+//     MemoryPool *pool = pool_create(initial_pool_size * 3);
+//     if (!pool) {
+//         return nullptr;
+//     }
+//
+//     MemPolicy mem_policy;
+//     // mem_policy = MAP_DEFAULT_MALLOC_POLICY;
+//     mem_policy = MAP_DEFAULT_ALLOCATOR_POLICY;
+//     mem_policy.context = pool;
+//
+//     HashMap *map = (HashMap *)map_alloc_bytes(mem_policy, sizeof(HashMap));
+//
+//     if (map == nullptr) {
+//         return nullptr;
+//     }
+//
+//
+//     MapNode **buckets = (MapNode **)map_alloc_bytes(mem_policy, num_buckets * sizeof(MapNode *));
+//     if (!buckets) {
+//         map_free_bytes(mem_policy, map);
+//         return nullptr;
+//     }
+//
+//     HashMap prototype = (HashMap){
+//         .buckets = buckets,
+//         .size = 0,
+//         // todo fill_capacity calculation probably needs to use num_buckets and not MIN_CAP here?
+//         .fill_capacity = (size_t)( num_buckets * (long double)DEFAULT_FILL_FACTOR ),
+//         .load = 0,
+//         .num_buckets = num_buckets,
+//         .fill_factor = DEFAULT_FILL_FACTOR,
+//         .mem_policy  = mem_policy,
+//         .flags = 0 };
+//
+//     prototype.data_policies.key_policy   = MAP_DEFAULT_KEY_POLICY;
+//     prototype.data_policies.value_policy = MAP_DEFAULT_VALUE_POLICY;
+//
+//     memcpy(map, &prototype, sizeof(HashMap));
+//     // printf("returnin from map_create: "); map_repr_HashMap(map, false, ""); printf("\n");
+//
+//     return map;
+// }
 
 HashMap *map_create_using_stringpool(size_t num_buckets) {
     HashMap *map = map_create(num_buckets);
@@ -601,11 +661,11 @@ HashMap *map_create_using_stringpool(size_t num_buckets) {
         return nullptr;
     }
 
-    map->policies.key_policies = DEFAULT_MAP_KEY_POLICIES;
-    map->policies.value_policies = MAP_STRING_POOL_VALUE_POLICIES;
+    map->data_policies.key_policy = MAP_DEFAULT_KEY_POLICY;
+    map->data_policies.value_policy = MAP_STRING_POOL_VALUE_POLICIES;
 
-    //add the string pool map as the context for the parent HashMap's value policy
-    map->policies.value_policies.context = sct;
+    //add the string pool map as the context for the enclosing HashMap's value policy
+    map->data_policies.value_policy.context = sct;
 
     return map;
 }
@@ -620,26 +680,34 @@ void map_destroy(HashMap map[static 1]) {
 
     map_clear(map);
 
-    // free any policy contexts that exist
-    if (map->policies.key_policies.on_free_context) {
-        map->policies.key_policies.on_free_context(map->policies.key_policies.context);
+    // free any data policy contexts that exist
+    if (map->data_policies.key_policy.on_free_context) {
+        map->data_policies.key_policy.on_free_context(map->data_policies.key_policy.context);
     }
-    map->policies.key_policies.context = nullptr;
+    map->data_policies.key_policy.context = nullptr;
 
-    if (map->policies.value_policies.on_free_context) {
-        map->policies.value_policies.on_free_context(map->policies.value_policies.context);
+    if (map->data_policies.value_policy.on_free_context) {
+        map->data_policies.value_policy.on_free_context(map->data_policies.value_policy.context);
     }
-    map->policies.value_policies.context = nullptr;
+    map->data_policies.value_policy.context = nullptr;
 
     map_free_bytes(map->mem_policy, map->buckets);
     map->buckets = nullptr;
 
+    MemPolicy mem_policy = map->mem_policy;
+
     map_free_bytes(map->mem_policy, map);
 
-    if (map->mem_policy.context) {
-        //todo mem_policy should contain the destructor method for the context(pool) in case it's part of a larger
-        // pool structure. For now we just free it since we allocated the pool ourselves.
-        free(map->mem_policy.context);
+    if (mem_policy.context ) {
+        if (mem_policy.free_context) {
+            if (mem_policy.policy_type == MEM_POLICY_ALLOCATOR_OWN) {
+                mem_policy.free_context(mem_policy.context);
+            }
+        } else {
+            if (mem_policy.policy_type == MEM_POLICY_MALLOC_OWN) {
+                free(mem_policy.context);
+            }
+        }
     }
 }
 
