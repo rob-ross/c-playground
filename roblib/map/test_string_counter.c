@@ -11,7 +11,6 @@
 #include "string_counter.h"
 #include "../testing_utils.h"
 #include "hashmap.h"
-#include "../../bootdev/munit/munit_overrides.h"
 
 struct StringCounter {
     HashMap *map;
