@@ -161,7 +161,7 @@ typedef enum MemPolicyType: uint8_t {
 typedef struct MemPolicy {
     void * context;
     void * (*alloc)( void * context, size_t num_bytes );
-    void   (*free)(  void * context, void * );
+    void   (*free)(  void * context, void * bytes );
     void   (*free_context)(void * context );
     MemPolicyType policy_type;
 } MemPolicy;

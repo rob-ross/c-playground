@@ -38,6 +38,7 @@ void sct_clear(StringCounter *sct);
 bool sct_contains_key(StringCounter *sct, const char strkey[static 1]);
 void sct_destroy(StringCounter *sct);
 
+MapValue sct_get(const StringCounter *sct, MapKey key);
 long sct_get_count(const StringCounter *sct, const char string[static 1]);
 bool sct_is_empty(StringCounter *sct);
 void sct_put(StringCounter *sct, const char string[static 1], long value);
@@ -50,12 +51,14 @@ void sct_unref(StringCounter *sct, const char string[static 1] );
 
 //Removes the mapping for a key from this map if it is present
 //Returns the value to which this map previously associated the key, or null if the map contained no mapping for the key.
+// we can't return a value that we aren't managing until we implement global reference counting or garbage collecting or
+// a formal protocol between callers/callees in general for passing references.
 void sct_remove(StringCounter *sct, const char string[static 1] );
 size_t sct_size(StringCounter *sct);
 
 void sct_repr_StringCounter(StringCounter *sct, bool verbose);
 
-StringCounter * (sct_create_impl)(size_t num_buckets, MapDataPolicies data_policies, MemPolicy mem_policy);
+
 #define sct_create_0() (sct_create)( 0, SCT_DEFAULT_DATA_POLICIES, MAP_DEFAULT_MALLOC_POLICY)
 #define sct_create_1(_1) (sct_create)(_1, SCT_DEFAULT_DATA_POLICIES, MAP_DEFAULT_MALLOC_POLICY)
 #define sct_create_2(_1, _2) (sct_create)(_1, _2, MAP_DEFAULT_MALLOC_POLICY)

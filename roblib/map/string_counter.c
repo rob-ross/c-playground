@@ -206,7 +206,9 @@ bool sct_contains_key(StringCounter sct[static 1], const char strkey[static 1]) 
     return (map_contains_key)(sct->map, key_for_string(strkey));
 }
 
-
+MapValue sct_get(const StringCounter sct[static 1], const MapKey key) {
+    return (map_get)(sct->map, key);
+}
 
 // returns the count for the argument string. If the string does not exist in the map, returns 0.
 long sct_get_count(const StringCounter sct[static 1], const char string[static 1]) {
