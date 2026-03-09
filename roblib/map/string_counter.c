@@ -6,15 +6,12 @@
 // Created 2026/03/03 18:22:02 PST
 
 //
-// Created by Rob Ross on 3/3/26.
+// Wraps and delegates to HashMap. Adds specialized functions to act as a StringCounter.
 //
-
-#include "string_counter.h"
-
 #include <stdio.h>
 #include <stdlib.h>
-#include <_string.h>
 
+#include "string_counter.h"
 #include "hashmap_private.h"
 
 //// ------------------------------------------------------------
@@ -38,10 +35,9 @@ struct StringCounter {
 // Key data_policies
 // ------------------------------
 
-//todo strdup needs to use the memory policy
 static MapKey sct_policy_key_add_default(HashMap map[static 1], MapKey key) {
     // default add always make a copy of a string key and we own it
-    char *string_copy = strdup(key.kstring);
+    char * string_copy = map_strdup(map->mem_policy,key.kstring);
     return (MapKey){.key_type = MAP_TYPE_STRING, .kstring = string_copy};
 }
 
@@ -142,33 +138,6 @@ const MapValuePolicy MAP_STRING_POOL_VALUE_POLICIES =  (MapValuePolicy){
 ////
 //// ------------------------------------------------------------
 
-//todo we have options for specifying memory policy and member data policy
-// overriden versions:
-// StringCounter * sct_create(); // MIN_CAP buckets, malloc policy, default data policy
-// StringCounter * sct_create(size_t num_buckets);
-// StringCounter * sct_create(size_t num_buckets, data_policies);
-// StringCounter * sct_create(size_t num_buckets, data_policies, mem_policy);
-
-
-// StringCounter * (sct_create)(const size_t num_buckets) {
-//     // 1. Allocate the wrapper struct.
-//     StringCounter *sct = malloc(sizeof(StringCounter));
-//     if (!sct) {
-//         return nullptr;
-//     }
-//
-//     // 2. Create the delegate HashMap
-//     sct->map = map_create(num_buckets);
-//     if (!sct->map) {
-//         free(sct); // Clean up the wrapper if map creation fails
-//         return nullptr;
-//     }
-//
-//     sct->map->data_policies.key_policy   = SCT_DEFAULT_KEY_POLICY;
-//     sct->map->data_policies.value_policy = SCT_DEFAULT_VALUE_POLICY;
-//
-//     return sct;
-// }
 
 StringCounter * (sct_create)(size_t num_buckets, MapDataPolicies data_policies, MemPolicy mem_policy) {
     HashMap *map = (map_create)(num_buckets, data_policies, mem_policy);

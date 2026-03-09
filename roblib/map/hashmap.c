@@ -61,31 +61,6 @@ static void map_policy_value_free_default(HashMap map[static 1], MapValue value)
 ////
 //// ------------------------------------------------------------
 
-
-[[maybe_unused]]
-static MapKey map_copy_MapKey(MapKey map_key) {
-    // todo without a refcounting memory manager we can't give out object references. We can only return copies.
-    // for now HashMap only supports scalar keys, or strings.
-    if (map_key.key_type == MAP_TYPE_STRING) {
-        char *string = nullptr;
-        string = strdup(map_key.kstring);
-        return (MapKey){.key_type = map_key.key_type, .kstring = string};
-    }
-    return map_key;  // todo this leaks the duplicated string if caller doesn't free it!
-}
-
-[[maybe_unused]]
-static MapValue map_copy_MapValue(MapValue map_value) {
-    // todo without a refcounting memory manager we can't give out object references. We can only return copies.
-    // for now HashMap only supports scalar keys, or strings.
-    if (map_value.value_type == MAP_TYPE_STRING) {
-        char *string = nullptr;
-        string = strdup(map_value.vstring);
-        return (MapValue){.value_type = map_value.value_type, .vstring = string};
-    }
-    return map_value; // todo this leaks the duplicated string if caller doesn't free it!
-}
-
 static bool map_equals_double(double d1, double d2) {
     // Optional policy: NaNs are not equal to anything (including NaN)
     if (isnan(d1) || isnan(d2)) return false;
@@ -245,7 +220,7 @@ MapKey map_policy_key_add_default(HashMap map[static 1], MapKey key) {
     if (!map) return NULL_MAP_KEY;
     MapPolicyType keypolicy = map->data_policies.key_policy.policy_type;
     if (key.key_type == MAP_TYPE_STRING &&  ( keypolicy == MAP_POLICY_COPY || keypolicy == MAP_POLICY_NONE )) {
-        char *string_copy = strdup(key.kstring);
+        char *string_copy = map_strdup(map->mem_policy, key.kstring);
         return (MapKey){.key_type = MAP_TYPE_STRING, .kstring = string_copy};
     }
     return key;
@@ -270,7 +245,7 @@ static MapValue map_policy_value_set_default(HashMap map[static 1], MapValue val
     MapPolicyType valuepolicy = map->data_policies.value_policy.policy_type;
     if ( value.value_type == MAP_TYPE_STRING &&
         ( valuepolicy == MAP_POLICY_COPY || valuepolicy == MAP_POLICY_NONE )) {
-        char *string_copy = strdup(value.vstring);
+        char *string_copy = map_strdup(map->mem_policy, value.vstring);
         return (MapValue){.value_type = MAP_TYPE_STRING, .vstring = string_copy};
     }
     if ( value.value_type == MAP_TYPE_VOID_PTR ) {
@@ -517,6 +492,14 @@ void map_set_value(HashMap map[static 1], MapNode node[static 1], const MapValue
 void map_recalc_load(HashMap *map) {
     map->load =  (double) ((long double)map->size / map->num_buckets);
 }
+
+char * map_strdup(MemPolicy mem_policy, char const * string) {
+    const size_t str_len = strlen(string)+1;
+    char *dupe = map_alloc_bytes(mem_policy, strlen(string)+1);
+    memcpy(dupe, string, str_len);
+    return dupe;
+}
+
 //// ------------------------------------------------------------
 ////    End 'Package-private' / 'friend' API methods
 //// ------------------------------------------------------------

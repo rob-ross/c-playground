@@ -31,3 +31,6 @@ MapNode * map_node_for(const HashMap map[static 1], MapKey key);
 void map_recalc_load(HashMap *map);
 void map_set_value(HashMap *top_map, MapNode *node, MapValue value );
 
+//this probably belongs in  memory.c
+char * map_strdup(MemPolicy mem_policy, char const * string) ;
+
