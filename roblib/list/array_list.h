@@ -45,6 +45,8 @@ typedef struct ListValue {
     ListTypeEnum  value_type;
 } ListValue;
 
+constexpr ListValue NULL_LIST_VALUE = (ListValue){.vlong = 0, .value_type = LIST_TYPE_NULL};
+
 struct List;
 
 // defines we treat values passed to the List to store.
@@ -110,10 +112,13 @@ void list_destroy(List list[static 1]);
 // Returns the element at the specified position in this list.
 ListValue list_get(const List list[static 1], size_t index);
 
-void list_insert(List list[static 1], ListValue value, size_t index);
+CollectionsError list_insert(List list[static 1], size_t index, ListValue value );
 bool list_is_empty(const List list[static 1]);
 
-void list_remove(List list[static 1], size_t index);
+//Removes the element at the specified position in this list
+//Shifts any subsequent elements to the left (subtracts one from their indices).
+//Returns the element that was removed from the list.
+ListValue list_remove(List list[static 1], size_t index);
 
 // Returns the number of elements in this List
 size_t list_size(const List *list);

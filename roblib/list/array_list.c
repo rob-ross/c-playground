@@ -83,6 +83,28 @@ static CollectionsError list_ensure_capacity(List list[static 1], const size_t w
     return COL_OK;
 }
 
+static bool list_equals_ListValue(const ListValue a, const ListValue b) {
+    if (a.value_type != b.value_type) {
+        return false;
+    }
+
+    switch (a.value_type) {
+        case LIST_TYPE_LONG:
+            return a.vlong == b.vlong;
+        case LIST_TYPE_DOUBLE:
+            return a.vdouble == b.vdouble;
+        case LIST_TYPE_STRING:
+            return strcmp(a.vstring, b.vstring) == 0;
+        case LIST_TYPE_VOID_PTR:
+            return a.vvoid_ptr == b.vvoid_ptr;
+        case LIST_TYPE_NULL:
+        case LIST_TYPE_NONE:
+            return true;
+    }
+
+    return false;
+}
+
 //// ------------------------------------------------------------
 ////
 ////    Public API methods
@@ -116,6 +138,16 @@ void list_clear(List list[static 1]) {
 }
 
 
+bool list_contains(List list[static 1], ListValue value) {
+    size_t size = list->size;
+    for (int i=0; i < size; ++i) {
+        if ( list_equals_ListValue(list->elements[i].value, value )) {
+            return true;
+        }
+    }
+    return false;
+}
+
 // Returns nullptr on failure.
 List * (list_create)( size_t capacity, ListValuePolicy value_policy, MemPolicy mem_policy) {
 
@@ -127,7 +159,7 @@ List * (list_create)( size_t capacity, ListValuePolicy value_policy, MemPolicy m
         return nullptr;
     }
 
-    ListElement *elements = (ListElement *)mem_alloc_bytes(mem_policy, capacity * sizeof(ListElement *));
+    ListElement *elements = (ListElement *)mem_calloc_bytes(mem_policy, capacity, sizeof(ListElement));
     if (!elements) {
         mem_free_bytes(mem_policy, list);
         return nullptr;
@@ -157,14 +189,14 @@ void list_destroy(List list[static 1]) {
     list->value_policy.context = nullptr;
 
     ListElement * elements = list->elements;
-    printf("list->elements = %p, temp = %p\n", list->elements, elements);
+    // printf("list->elements = %p, temp = %p\n", list->elements, elements);
     list->elements = nullptr;
 
     mem_free_bytes(list->mem_policy, elements);
     MemPolicy mem_policy = list->mem_policy;
 
 
-    printf("list->elements = %p, temp = %p\n", list->elements, elements);
+    // printf("list->elements = %p, temp = %p\n", list->elements, elements);
 
     mem_free_bytes(list->mem_policy, list);
 
@@ -182,8 +214,25 @@ void list_destroy(List list[static 1]) {
 }
 
 ListValue list_get(const List list[static 1], const size_t index) {
-    //todo bounds checking
+    if (index >= list->size) return NULL_LIST_VALUE;
     return list->elements[index].value;
+}
+
+CollectionsError list_insert(List list[static 1], const size_t index, const ListValue value ) {
+    if ( !list ) return COL_ERR_NULL_ARG;
+    if ( index > list->size )   return COL_ERR_INDEX_OUT_OF_RANGE;
+
+    CollectionsError result = list_ensure_capacity(list, list->size);
+    if ( result != COL_OK ) return result;
+    size_t size = list->size;
+    ListElement *elements = list->elements;
+    for (size_t i = size; i > index; --i ) {
+        elements[i] = elements[i - 1];
+    }
+
+    elements[index] = (ListElement){.value= value};
+    list->size++;
+    return COL_OK;
 }
 
 
@@ -191,6 +240,44 @@ bool list_is_empty(const List list[static 1]) {
     return list->size == 0;
 }
 
+ListValue list_remove(List list[static 1], const size_t index) {
+    if ( ( list->size == 0 && index > 0 ) ||
+        (list->size == index) ||
+        (index > list->size - 1 )) return NULL_LIST_VALUE;
+
+    // todo bounds checking, error return code?
+    const ListValue result = list->elements[index].value;
+
+    // if (index == list->size - 1 ) {
+    //     list->size--;
+    //     return result;
+    // }
+    size_t size = list->size;
+    ListElement *elements = list->elements;
+    // copy all indexes > index to previous index
+    for (size_t i = index + 1; i < size; ++i ) {
+        elements[i - 1] = elements[i];
+    }
+    list->size--;
+    return result;
+}
+
 size_t list_size(const List *list) {
     return list->size;
+}
+
+
+void list_repr_List(const List list[static 1], bool verbose, const char* type_str) {
+    if (!type_str || type_str[0] == '\0') type_str = "ArrayList";
+    if (!list) {
+        printf("(%s)nullptr",type_str);
+        return;
+    }
+    // ReSharper disable CppPrintfBadFormat
+    // ReSharper disable CppPrintfExtraArg
+    printf( "(%s){ .size=%'zu, .capacity=%'zu, .value_policy=%hhd, "
+         ".mem_policy_type = %hhd"
+        "}", type_str,  list->size, list->capacity, list->value_policy.policy_type,
+         list->mem_policy.policy_type);
+
 }
