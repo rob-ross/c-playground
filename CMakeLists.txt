@@ -19,7 +19,18 @@ add_executable(test_hashmap
         roblib/memory/memory_pool.c
         roblib/munit/munit.c
 )
+
 target_compile_definitions(test_hashmap PRIVATE TEST_HASHMAP)
+
+add_executable(test_array_list
+        roblib/list/test_array_list.c
+        roblib/list/array_list.c
+        roblib/memory/memory_pool.c
+        roblib/munit/munit.c
+)
+
+target_compile_definitions(test_array_list PRIVATE TEST_ARRAY_LIST)
+
 
 add_executable(all_tests
         roblib/all_tests.c
