@@ -34,7 +34,7 @@ static void hashmap_free(void * fixture) {
 // test cases
 // -------------------------------------------------
 
-static MunitResult test_create_0(const MunitParameter params[], void* fixture) {
+static MunitResult test_create_3(const MunitParameter params[], void* fixture) {
     HashMap *map = map_create(10);
     munit_assert_ptr_not_null(map);
     map_destroy(map);
@@ -282,7 +282,7 @@ int main_test_hashmap(int argc, char *argv[argc + 1]) {
     setlocale(LC_NUMERIC, "en_US.UTF-8");   // use user's system locale
 
     MunitTest tests[] = {
-        munit_test(test_create_0),
+        munit_test(test_create_3),
         munit_test("/test_put_and_get_int", test_put_and_get_int),
         munit_test(test_put_and_get_string),
         munit_test(test_refcount),
@@ -321,8 +321,10 @@ int main_test_hashmap(int argc, char *argv[argc + 1]) {
     // test_put_and_get_string(nullptr, hashmap_fixture(nullptr, nullptr));
     // test_10K_inserts(nullptr, nullptr);
     // test_put_and_get_int(nullptr, hashmap_fixture(nullptr, nullptr));
-    // test_create_0(nullptr, hashmap_fixture(nullptr, nullptr));
+    // test_create_3(nullptr, hashmap_fixture(nullptr, nullptr));
     // test_10K_string_inserts(nullptr, nullptr);
+
+    // test_klong_vstring(nullptr, hashmap_fixture(nullptr, nullptr));
 
 
     return result;

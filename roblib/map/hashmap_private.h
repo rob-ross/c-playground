@@ -13,8 +13,6 @@
 
 #include <stddef.h> // For size_t
 
-void * map_alloc_bytes( MemPolicy mem_policy, size_t num_bytes);
-void   map_free_bytes( MemPolicy mem_policy, void * bytes);
 
 size_t map_calc_bucket_index(size_t hashcode, size_t num_buckets);
 MapNode * map_create_node(HashMap map[static 1], size_t hashcode, MapKey key) ;

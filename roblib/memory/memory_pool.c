@@ -35,33 +35,59 @@ static void destroy_page(MemoryPage *page) {
     }
 }
 
-// --- API Implementation ---
+
+
 
 //// ------------------------------------------------------------
 ////
 ////    Default memory policy functions
 ////
 //// ------------------------------------------------------------
-void * mem_alloc_bytes(const MemPolicy mem_policy, const size_t num_bytes) {
-    return mem_policy.alloc(mem_policy.context, num_bytes);
+
+
+// standard malloc methods
+
+
+void * mem_mempolicy_default_malloc( void* context, const size_t num_bytes ) {
+    // return calloc( 1, num_bytes );
+    return malloc( num_bytes );
 }
 
-void  mem_free_bytes(const MemPolicy mem_policy, void * bytes) {
-    mem_policy.free(mem_policy.context, bytes);
+void * mem_mempolicy_default_calloc( void* context, const size_t element_count, const size_t element_size ) {
+    return calloc(element_count, element_size);
 }
 
-void * mem_mempolicy_default_malloc( void* context, size_t num_bytes ) {
-    // todo - do we need a mempolicy calloc method separate from malloc for performance?
-    return calloc(1, num_bytes);
+void * mem_mempolicy_default_realloc( void* context, void * pointer, const size_t old_byte_count, const size_t new_byte_count ) {
+    return realloc( pointer, new_byte_count );
 }
 
 void mem_mempolicy_default_free( void* context, void * bytes ) {
     free( bytes) ;
 }
 
+// allocator methods
+
 void * mem_mempolicy_default_allocator_alloc( void* context, size_t num_bytes ) {
     MemoryPool *pool = context;
     return pool_alloc(pool, num_bytes);
+}
+
+void * mem_mempolicy_default_allocator_calloc( void* context, const size_t element_count, const size_t element_size  ) {
+    MemoryPool *pool = context;
+    size_t alloc_size = element_count * element_size;
+    void *bytes =  pool_alloc(pool, alloc_size);
+    if (!bytes) return nullptr;
+
+    memset(bytes, 0, alloc_size);
+    return bytes;
+}
+void * mem_mempolicy_default_allocator_realloc( void* context, void * pointer, const size_t old_byte_count, const size_t new_byte_count  ) {
+    MemoryPool *pool = context;
+    void *bytes = pool_alloc(pool, new_byte_count);
+    if (!bytes) return nullptr;
+    memset(bytes, 0, new_byte_count);
+    memcpy(bytes, pointer, old_byte_count);
+    return bytes;
 }
 
 void  mem_mempolicy_default_allocator_free( void * context, void * bytes ) {
@@ -73,6 +99,8 @@ const MemPolicy MEM_DEFAULT_MALLOC_POLICY = (MemPolicy){
     .context = nullptr,
     .policy_type = MEM_POLICY_MALLOC_OWN,
     .alloc = mem_mempolicy_default_malloc,
+    .calloc = mem_mempolicy_default_calloc,
+    .realloc = mem_mempolicy_default_realloc,
     .free = mem_mempolicy_default_free,
 };
 
@@ -80,10 +108,30 @@ const MemPolicy MEM_DEFAULT_ALLOCATOR_POLICY = (MemPolicy){
     .context = nullptr,  // context gets filled in by actual memory_pool
     .policy_type = MEM_POLICY_ALLOCATOR_OWN,
     .alloc = mem_mempolicy_default_allocator_alloc,
+    .calloc = mem_mempolicy_default_allocator_calloc,
+    .realloc = mem_mempolicy_default_allocator_realloc,
     .free = mem_mempolicy_default_allocator_free
 };
 
 
+// --- API Implementation ---
+
+
+void * mem_alloc_bytes(const MemPolicy mem_policy, const size_t num_bytes) {
+    return mem_policy.alloc(mem_policy.context, num_bytes);
+}
+
+void * mem_calloc_bytes( MemPolicy mem_policy,  size_t element_count, size_t element_size) {
+    return mem_policy.calloc(mem_policy.context, element_count, element_size);
+}
+
+void * mem_realloc_bytes( MemPolicy mem_policy, void * pointer,  size_t old_byte_count, size_t new_byte_count) {
+    return mem_policy.realloc(mem_policy.context, pointer, old_byte_count, new_byte_count);
+}
+
+void  mem_free_bytes(const MemPolicy mem_policy, void * bytes) {
+    mem_policy.free(mem_policy.context, bytes);
+}
 
 
 MemoryPool *pool_create(size_t default_page_size) {

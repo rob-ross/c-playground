@@ -14,6 +14,16 @@
 #include "../memory/memory_pool.h"
 
 
+typedef enum CollectionsError {
+    COL_OK = 0,
+    COL_ERR_NULL_ARG,
+    COL_ERR_ZERO_CAP,
+    COL_ERR_OVERFLOW,
+    COL_ERR_OUT_OF_MEM,
+    COL_ERR_EMPTY,
+    COL_ERR_INDEX_OUT_OF_RANGE
+} CollectionsError;
+
 // like HashMap, we first support long, double, string, and void*.
 // like HashMap, the base List implementation is heterogenius
 typedef enum ListTypeEnum: unsigned char {
@@ -68,7 +78,7 @@ typedef struct ListElement {
 
 typedef struct List {
     ListElement *elements;
-    size_t size;     //the number of elements in this list.
+    size_t size;     //the current number of elements in this list.
     size_t capacity; // max number of elements this List can hold before needed to resize
     
     ListValuePolicy value_policy;
@@ -78,14 +88,15 @@ typedef struct List {
 
 
 extern const MemPolicy LIST_DEFAULT_MALLOC_POLICY;
-extern const ListValuePolicy LIST_DEFAULT_VALUE_POLICY;
+
+static constexpr size_t LIST_MIN_CAPACITY = 16;
 
 // ---------------------------
 // Public API methods
 // ---------------------------
 
 // adds the value to the end of the list
-void list_append(List list[static 1], ListValue value) ;
+CollectionsError list_append(List list[static 1], ListValue value);
 
 //Removes all the elements from this list. After call, size == 0.
 void list_clear(List list[static 1]);

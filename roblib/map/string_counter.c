@@ -142,9 +142,9 @@ const MapValuePolicy MAP_STRING_POOL_VALUE_POLICIES =  (MapValuePolicy){
 StringCounter * (sct_create)(size_t num_buckets, MapDataPolicies data_policies, MemPolicy mem_policy) {
     HashMap *map = (map_create)(num_buckets, data_policies, mem_policy);
     if (!map) return nullptr;
-    StringCounter *sct = map_alloc_bytes(mem_policy, sizeof(StringCounter));
+    StringCounter *sct = mem_alloc_bytes(mem_policy, sizeof(StringCounter));
     if (!sct) {
-        map_free_bytes(mem_policy, map);
+        mem_free_bytes(mem_policy, map);
         return nullptr;
     }
     sct->map = map;
@@ -156,7 +156,7 @@ void sct_destroy(StringCounter sct[static 1]) {
     if (!sct->map)  return;
     HashMap *map = sct->map;
     sct->map = nullptr;
-    map_free_bytes(map->mem_policy, sct);
+    mem_free_bytes(map->mem_policy, sct);
     map_destroy(map);
 }
 

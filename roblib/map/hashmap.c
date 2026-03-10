@@ -192,7 +192,7 @@ void map_policy_key_free_default(HashMap map[static 1], MapKey key) {
     MapPolicyType keypolicy = map->data_policies.key_policy.policy_type;
     if (key.key_type == MAP_TYPE_STRING &&
         ( keypolicy == MAP_POLICY_COPY || keypolicy == MAP_POLICY_TAKE || keypolicy == MAP_POLICY_NONE )) {
-        map_free_bytes(map->mem_policy, key.kstring);  //we own it.
+        mem_free_bytes(map->mem_policy, key.kstring);  //we own it.
     }
 }
 
@@ -221,7 +221,7 @@ static void map_policy_value_free_default(HashMap map[static 1], MapValue value)
     MapPolicyType valuepolicy = map->data_policies.value_policy.policy_type;
     if ( value.value_type == MAP_TYPE_STRING &&
         ( valuepolicy == MAP_POLICY_COPY || valuepolicy == MAP_POLICY_TAKE || valuepolicy == MAP_POLICY_NONE )) {
-        map_free_bytes(map->mem_policy, value.vstring);  //we own it.
+        mem_free_bytes(map->mem_policy, value.vstring);  //we own it.
     } else if ( value.value_type == MAP_TYPE_VOID_PTR ) {
         // invoke the pointer's free method
         //todo deal with void* types
@@ -261,21 +261,13 @@ const MapDataPolicies MAP_DEFAULT_DATA_POLICIES = (MapDataPolicies){
 ////    declared in hashmap_private.h
 //// ------------------------------------------------------------
 
-void * map_alloc_bytes(const MemPolicy mem_policy, const size_t num_bytes) {
-    return mem_policy.alloc(mem_policy.context, num_bytes);
-}
-
-void  map_free_bytes(const MemPolicy mem_policy, void * bytes) {
-    mem_policy.free(mem_policy.context, bytes);
-}
-
 size_t map_calc_bucket_index(const size_t hashcode, const size_t num_buckets) {
     return hashcode & (num_buckets - 1);  // works because num_buckets is a power of 2
 }
 
 MapNode * map_create_node(HashMap map[static 1], const size_t hashcode, const MapKey key) {
 
-    MapNode *new_node = (MapNode *)map_alloc_bytes(map->mem_policy, sizeof(MapNode));
+    MapNode *new_node = (MapNode *)mem_alloc_bytes(map->mem_policy, sizeof(MapNode));
     if (new_node == nullptr) {
         // Handle allocation failure (in a real app, maybe return status)
         return nullptr;
@@ -316,7 +308,7 @@ MapNode * map_create_node(HashMap map[static 1], const size_t hashcode, const Ma
 void map_destroy_node(HashMap map[static 1], MapNode node[static 1]) {
     map_free_key_if(map, node);
     map_free_value_if(map, node);
-    map_free_bytes(map->mem_policy, node);
+    mem_free_bytes(map->mem_policy, node);
 }
 
 void map_ensure_capacity(HashMap map[static 1]) {
@@ -325,7 +317,7 @@ void map_ensure_capacity(HashMap map[static 1]) {
         return; // Can't grow anymore
     }
 
-    MapNode **new_buckets = (MapNode **)map_alloc_bytes(map->mem_policy, new_num_buckets * sizeof(MapNode *));
+    MapNode **new_buckets = (MapNode **)mem_calloc_bytes(map->mem_policy, new_num_buckets,  sizeof(MapNode *));
     if (!new_buckets) {
         return; // Allocation failed, keep old map
     }
@@ -347,7 +339,7 @@ void map_ensure_capacity(HashMap map[static 1]) {
         }
     }
 
-    map_free_bytes(map->mem_policy, map->buckets);
+    mem_free_bytes(map->mem_policy, map->buckets);
     map->buckets = new_buckets;
     map->num_buckets = new_num_buckets;
     map->fill_capacity = (size_t)(new_num_buckets * (long double)map->fill_factor);
@@ -456,7 +448,7 @@ void map_recalc_load(HashMap *map) {
 
 char * map_strdup(MemPolicy mem_policy, char const * string) {
     const size_t str_len = strlen(string)+1;
-    char *dupe = map_alloc_bytes(mem_policy, strlen(string)+1);
+    char *dupe = mem_alloc_bytes(mem_policy, strlen(string)+1);
     memcpy(dupe, string, str_len);
     return dupe;
 }
@@ -504,16 +496,16 @@ HashMap * (map_create)(size_t num_buckets, MapDataPolicies data_policies, MemPol
     // mem_policy = MAP_DEFAULT_ALLOCATOR_POLICY;
     // mem_policy.context = pool;
 
-    HashMap *map = (HashMap *)map_alloc_bytes(mem_policy, sizeof(HashMap));
+    HashMap *map = (HashMap *)mem_alloc_bytes(mem_policy, sizeof(HashMap));
 
     if (map == nullptr) {
         return nullptr;
     }
 
 
-    MapNode **buckets = (MapNode **)map_alloc_bytes(mem_policy, num_buckets * sizeof(MapNode *));
+    MapNode **buckets = (MapNode **)mem_calloc_bytes(mem_policy, num_buckets, sizeof(MapNode *));
     if (!buckets) {
-        map_free_bytes(mem_policy, map);
+        mem_free_bytes(mem_policy, map);
         return nullptr;
     }
 
@@ -576,12 +568,12 @@ void map_destroy(HashMap map[static 1]) {
     }
     map->data_policies.value_policy.context = nullptr;
 
-    map_free_bytes(map->mem_policy, map->buckets);
+    mem_free_bytes(map->mem_policy, map->buckets);
     map->buckets = nullptr;
 
     MemPolicy mem_policy = map->mem_policy;
 
-    map_free_bytes(map->mem_policy, map);
+    mem_free_bytes(map->mem_policy, map);
 
     if (mem_policy.context ) {
         if (mem_policy.free_context) {

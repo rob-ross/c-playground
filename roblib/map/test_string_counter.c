@@ -19,8 +19,8 @@ struct StringCounter {
 // -----------------------------------------------
 // setup and teardown fixtures
 // ----------------------------------------------
-// create a HashMap for use in test cases
-static void *  intstr_fixture(const MunitParameter params[], void* user_data) {
+// create a StringCounter for use in test cases
+static void *  sct_fixture(const MunitParameter params[], void* user_data) {
     StringCounter *sct = sct_create(16);
     munit_assert_not_null(sct);
     HashMap *map = sct->map;
@@ -28,8 +28,8 @@ static void *  intstr_fixture(const MunitParameter params[], void* user_data) {
     return sct;
 }
 
-// to free the hashmap created by the intstr_fixture after a test
-static void hashintstr_free(void * fixture) {
+// to free the StringCounter created by the sct_fixture after a test
+static void sct_free(void * fixture) {
     sct_destroy((StringCounter*)fixture);
 }
 
@@ -139,13 +139,18 @@ static MapDataPolicies data_policy_fixture() {
 }
 
 void * dummy_alloc( void * context, size_t num_bytes ) { return calloc(1, num_bytes); }
+void * dummy_calloc( void * context, size_t element_count, size_t element_size ) { return calloc(element_count, element_size); }
+void * dummy_realloc( void * context, void * pointer, const size_t old_num_bytes, const size_t new_num_bytes ) {
+    return realloc( pointer, new_num_bytes);
+}
 void dummy_free(  void * context, void * bytes){ free(bytes); }
 void dummy_free_context(void * context ) {}
 
 
 static MemPolicy mem_policy_fixture() {
     return (MemPolicy){
-        .context = dummy_context, .alloc = dummy_alloc, .free = dummy_free, .free_context = dummy_free_context,
+        .context = dummy_context, .alloc = dummy_alloc, .calloc = dummy_calloc, .realloc = dummy_realloc,
+        .free = dummy_free, .free_context = dummy_free_context,
         .policy_type = MEM_POLICY_MALLOC_SHARED
     };
 }
@@ -390,7 +395,7 @@ int main_test_string_counter(int argc, char *argv[argc + 1]) {
         MUNIT_NULL_TEST,
     };
 
-    apply_fixture(tests, intstr_fixture, hashintstr_free);
+    apply_fixture(tests, sct_fixture, sct_free);
 
 [[maybe_unused]]
      MunitSuite suite = {

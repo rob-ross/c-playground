@@ -26,8 +26,10 @@ typedef enum MemPolicyType: uint8_t {
 // --- Structures ---
 typedef struct MemPolicy {
     void * context;
-    void * (*alloc)( void * context, size_t num_bytes );
-    void   (*free)(  void * context, void * bytes );
+    void * (*alloc)(   void * context, const size_t num_bytes );
+    void * (*calloc)(  void * context, const size_t element_count, const size_t element_size);
+    void * (*realloc)( void * context, void * pointer, size_t old_byte_count, const size_t new_byte_count );
+    void   (*free)(    void * context, void * pointer );
     void   (*free_context)(void * context );
     MemPolicyType policy_type;
 } MemPolicy;
@@ -58,6 +60,8 @@ extern const MemPolicy MEM_DEFAULT_MALLOC_POLICY;
 
 // Calls the mem_policy's `alloc` function
 void * mem_alloc_bytes( MemPolicy mem_policy,  size_t num_bytes);
+void * mem_calloc_bytes( MemPolicy mem_policy,  size_t element_count, size_t element_size);
+void * mem_realloc_bytes( MemPolicy mem_policy, void * pointer,  size_t old_byte_count, size_t new_byte_count);
 // Calls the mem_policy's `free` function
 void  mem_free_bytes( MemPolicy mem_policy, void * bytes);
 
