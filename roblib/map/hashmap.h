@@ -9,6 +9,8 @@
 #include <stddef.h> // For size_t
 #include <stdint.h> // For uint8_t
 
+#include "../memory/memory_pool.h"
+
 
 // we can support arbitrary objects via a void* key, but we'll save that for later
 // for values we should support all the the scalar types, which we can do via int/long and double.
@@ -149,22 +151,23 @@ typedef struct MapDataPolicies {
 // To start, HashMap will manage the lifecycle of its allocator (create, use, destroy).
 // inital memory manager algorithm will be wasteful with memory but more efficent that
 // small individual mallocs.
-typedef enum MemPolicyType: uint8_t {
-    MEM_POLICY_NONE,
-    MEM_POLICY_MALLOC_OWN,
-    MEM_POLICY_MALLOC_SHARED,
-    MEM_POLICY_ALLOCATOR_OWN,
-    MEM_POLICY_ALLOCATOR_SHARED,
-} MemPolicyType;
-
-
-typedef struct MemPolicy {
-    void * context;
-    void * (*alloc)( void * context, size_t num_bytes );
-    void   (*free)(  void * context, void * bytes );
-    void   (*free_context)(void * context );
-    MemPolicyType policy_type;
-} MemPolicy;
+// typedef enum MemPolicyType: uint8_t {
+//     MEM_POLICY_NONE,
+//     MEM_POLICY_MALLOC_OWN,
+//     MEM_POLICY_MALLOC_SHARED,
+//     MEM_POLICY_ALLOCATOR_OWN,
+//     MEM_POLICY_ALLOCATOR_SHARED,
+// } MemPolicyType;
+//
+// //todo refactor to move MemPolicy into memory_pool.h
+//
+// typedef struct MemPolicy {
+//     void * context;
+//     void * (*alloc)( void * context, size_t num_bytes );
+//     void   (*free)(  void * context, void * bytes );
+//     void   (*free_context)(void * context );
+//     MemPolicyType policy_type;
+// } MemPolicy;
 
 // ?? bytes
 typedef struct HashMap {
@@ -181,8 +184,6 @@ typedef struct HashMap {
 } HashMap;
 
 
-
-extern const MemPolicy MAP_DEFAULT_MALLOC_POLICY;
 extern const MapDataPolicies MAP_DEFAULT_DATA_POLICIES;
 
 //// ------------------------------------------------------------
@@ -237,8 +238,8 @@ static constexpr double DEFAULT_FILL_FACTOR = 0.75;
 // ---------------------------
 
 // call map_destroy to free all resources
-
 HashMap * (map_create)(size_t num_buckets, MapDataPolicies data_policies, MemPolicy mem_policy) ;
+void map_destroy(HashMap map[static 1]);
 
 // creates and returns a HashMap backed by a string pool that interns all string values. Good when the same string is
 // used for multiple key values. Call map_destroy to free all allocated resources, including the backing string pool.
@@ -251,7 +252,7 @@ void map_clear(HashMap map[static 1]);
 bool map_contains_key(HashMap map[static 1], MapKey key) ;
 //  Returns true if this map contains a mapping for the specified key. Currently O(N)
 bool map_contains_value(HashMap map[static 1], MapValue value);
-void map_destroy(HashMap map[static 1]);
+
 
 /**
  * Returns the value associated with the given key.
@@ -342,8 +343,8 @@ MapValue value_for_void_ptr(const void *v);
 
 
 
-#define map_create_0() (map_create)( 0, MAP_DEFAULT_DATA_POLICIES, MAP_DEFAULT_MALLOC_POLICY)
-#define map_create_1(_1) (map_create)(_1, MAP_DEFAULT_DATA_POLICIES, MAP_DEFAULT_MALLOC_POLICY)
+#define map_create_0() (map_create)( 0, MAP_DEFAULT_DATA_POLICIES, MEM_DEFAULT_MALLOC_POLICY)
+#define map_create_1(_1) (map_create)(_1, MAP_DEFAULT_DATA_POLICIES, MEM_DEFAULT_MALLOC_POLICY)
 #define map_create_2(_1, _2) (map_create)(_1, _2, MAP_DEFAULT_MALLOC_POLICY)
 #define map_create_3(_1, _2, _3) (map_create)(_1, _2, _3)
 #define map_create_SELECT_(_1, _2, _3, NAME, ...) NAME

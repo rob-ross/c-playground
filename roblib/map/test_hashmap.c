@@ -274,17 +274,6 @@ static MunitResult test_10K_inserts(const MunitParameter params[], void* fixture
 static MunitResult test_10K_string_inserts(const MunitParameter params[], void* fixture) ;
 
 
-static void apply_fixture(MunitTest tests[static 1], MunitTestSetup setup, MunitTestTearDown tear_down) {
-    size_t test_index = 0;
-    do {
-        MunitTest *test = &tests[test_index++];
-        // ReSharper disable once CppIncompatiblePointerConversion
-        test->setup = setup;
-        test->tear_down = tear_down;
-    } while ( tests[test_index].name != nullptr );
-
-
-}
 // make
 //
 //

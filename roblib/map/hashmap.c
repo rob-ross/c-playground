@@ -165,45 +165,6 @@ static size_t map_next_power_of_two(size_t n) {
     return n + 1;
 }
 
-//// ------------------------------------------------------------
-////
-////    Default memory policy functions
-////
-//// ------------------------------------------------------------
-
-void * map_mempolicy_default_malloc( void* context, size_t num_bytes ) {
-    return calloc(1, num_bytes);
-}
-
-void map_mempolicy_default_free( void* context, void * bytes ) {
-    free( bytes) ;
-}
-
-void * map_mempolicy_default_allocator_alloc( void* context, size_t num_bytes ) {
-    MemoryPool *pool = context;
-    return pool_alloc(pool, num_bytes);
-}
-
-void  map_mempolicy_default_allocator_free( void * context, void * bytes ) {
-    MemoryPool *pool = context;
-    pool_free(pool, bytes);
-}
-
-const MemPolicy MAP_DEFAULT_MALLOC_POLICY = (MemPolicy){
-    .context = nullptr,
-    .policy_type = MEM_POLICY_MALLOC_OWN,
-    .alloc = map_mempolicy_default_malloc,
-    .free = map_mempolicy_default_free,
-};
-
-const MemPolicy MAP_DEFAULT_ALLOCATOR_POLICY = (MemPolicy){
-    .context = nullptr,  // context gets filled in by actual memory_pool
-    .policy_type = MEM_POLICY_ALLOCATOR_OWN,
-    .alloc = map_mempolicy_default_allocator_alloc,
-    .free = map_mempolicy_default_allocator_free
-};
-
-
 
 //// ------------------------------------------------------------
 ////
@@ -573,65 +534,6 @@ HashMap * (map_create)(size_t num_buckets, MapDataPolicies data_policies, MemPol
     return map;
 }
 
-
-//
-// HashMap *(map_create)(size_t num_buckets) {
-//
-//     //todo initial pool size depends on num_buckets, from which we get fill_capacity, which we multiply by sizeof(MapNode),
-//     // and add sizeof(HashMap)
-//     // MemoryPool *pool = pool_create(DEFAULT_PAGE_SIZE);
-//
-//     if (!num_buckets) {
-//         num_buckets = MIN_CAP;
-//     } else if ( num_buckets > (SIZE_MAX >> 1) + 1) {
-//        num_buckets = (SIZE_MAX >> 1) + 1;
-//     } else {
-//         num_buckets = map_next_power_of_two(num_buckets);
-//     }
-//
-//     size_t initial_pool_size = sizeof(HashMap) +  num_buckets * sizeof(MapNode *) + num_buckets * sizeof(MapNode)*2;
-//     MemoryPool *pool = pool_create(initial_pool_size * 3);
-//     if (!pool) {
-//         return nullptr;
-//     }
-//
-//     MemPolicy mem_policy;
-//     // mem_policy = MAP_DEFAULT_MALLOC_POLICY;
-//     mem_policy = MAP_DEFAULT_ALLOCATOR_POLICY;
-//     mem_policy.context = pool;
-//
-//     HashMap *map = (HashMap *)map_alloc_bytes(mem_policy, sizeof(HashMap));
-//
-//     if (map == nullptr) {
-//         return nullptr;
-//     }
-//
-//
-//     MapNode **buckets = (MapNode **)map_alloc_bytes(mem_policy, num_buckets * sizeof(MapNode *));
-//     if (!buckets) {
-//         map_free_bytes(mem_policy, map);
-//         return nullptr;
-//     }
-//
-//     HashMap prototype = (HashMap){
-//         .buckets = buckets,
-//         .size = 0,
-//         // todo fill_capacity calculation probably needs to use num_buckets and not MIN_CAP here?
-//         .fill_capacity = (size_t)( num_buckets * (long double)DEFAULT_FILL_FACTOR ),
-//         .load = 0,
-//         .num_buckets = num_buckets,
-//         .fill_factor = DEFAULT_FILL_FACTOR,
-//         .mem_policy  = mem_policy,
-//         .flags = 0 };
-//
-//     prototype.data_policies.key_policy   = MAP_DEFAULT_KEY_POLICY;
-//     prototype.data_policies.value_policy = MAP_DEFAULT_VALUE_POLICY;
-//
-//     memcpy(map, &prototype, sizeof(HashMap));
-//     // printf("returnin from map_create: "); map_repr_HashMap(map, false, ""); printf("\n");
-//
-//     return map;
-// }
 
 HashMap *map_create_using_stringpool(size_t num_buckets) {
     HashMap *map = map_create(num_buckets);

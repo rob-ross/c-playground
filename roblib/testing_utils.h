@@ -22,3 +22,15 @@ static constexpr MunitTest MUNIT_NULL_TEST = { nullptr, nullptr, nullptr, nullpt
         putchar('\n');                  \
     } while (0)
 #endif
+
+[[maybe_unused]]
+static void apply_fixture(MunitTest tests[static 1], MunitTestSetup setup, MunitTestTearDown tear_down) {
+    size_t test_index = 0;
+    do {
+        MunitTest *test = &tests[test_index++];
+        // ReSharper disable once CppIncompatiblePointerConversion
+        test->setup = setup;
+        test->tear_down = tear_down;
+    } while ( tests[test_index].name != nullptr );
+
+}

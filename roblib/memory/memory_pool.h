@@ -8,9 +8,29 @@
 #pragma once
 
 #include <stddef.h>
-#include <stdbool.h>
+#include <stdint.h>
+//Memory Policy.... what are options?
+// stdlib vs allocator?
+// maybe always use an allocator, and the default allocator just makes malloc calls?
+// To start, HashMap will manage the lifecycle of its allocator (create, use, destroy).
+// inital memory manager algorithm will be wasteful with memory but more efficent that
+// small individual mallocs.
+typedef enum MemPolicyType: uint8_t {
+    MEM_POLICY_NONE,
+    MEM_POLICY_MALLOC_OWN,
+    MEM_POLICY_MALLOC_SHARED,
+    MEM_POLICY_ALLOCATOR_OWN,
+    MEM_POLICY_ALLOCATOR_SHARED,
+} MemPolicyType;
 
 // --- Structures ---
+typedef struct MemPolicy {
+    void * context;
+    void * (*alloc)( void * context, size_t num_bytes );
+    void   (*free)(  void * context, void * bytes );
+    void   (*free_context)(void * context );
+    MemPolicyType policy_type;
+} MemPolicy;
 
 // A single page of memory.
 // 32 bytes
@@ -28,12 +48,18 @@ typedef struct MemoryPool {
     size_t default_page_size;    // Default size for new pages.
 } MemoryPool;
 
-// static constexpr size_t DEFAULT_PAGE_SIZE = 4096;
+static constexpr size_t DEFAULT_PAGE_SIZE = 4096;
 
-static constexpr size_t DEFAULT_PAGE_SIZE = 64 * 1024 * 1024; //64 MB
+// static constexpr size_t DEFAULT_PAGE_SIZE = 64 * 1024 * 1024; //64 MB
 
+extern const MemPolicy MEM_DEFAULT_MALLOC_POLICY;
 
 // --- API Functions ---
+
+// Calls the mem_policy's `alloc` function
+void * mem_alloc_bytes( MemPolicy mem_policy,  size_t num_bytes);
+// Calls the mem_policy's `free` function
+void  mem_free_bytes( MemPolicy mem_policy, void * bytes);
 
 /**
  * @brief Creates a new memory pool.

@@ -79,7 +79,7 @@ static MunitResult test_create_0(const MunitParameter params[], void* fixture) {
     // expect SCT_DEFAULT_DATA_POLICIES == map->data_policies
     munit_assert_true(equals_data_policies(SCT_DEFAULT_DATA_POLICIES, map->data_policies));
     // expect == map->mem_policy
-    munit_assert_true(equals_mem_policy(MAP_DEFAULT_MALLOC_POLICY, map->mem_policy));
+    munit_assert_true(equals_mem_policy(MEM_DEFAULT_MALLOC_POLICY, map->mem_policy));
     sct_destroy(sct);
     return MUNIT_OK;
 }
@@ -90,20 +90,20 @@ static MunitResult test_create_1(const MunitParameter params[], void* fixture) {
     sct = sct_create(0);
     munit_assert_int(16, ==, sct->map->num_buckets);
     munit_assert_true(equals_data_policies(SCT_DEFAULT_DATA_POLICIES, sct->map->data_policies));
-    munit_assert_true(equals_mem_policy(MAP_DEFAULT_MALLOC_POLICY, sct->map->mem_policy));
+    munit_assert_true(equals_mem_policy(MEM_DEFAULT_MALLOC_POLICY, sct->map->mem_policy));
 
     sct_destroy(sct);
 
     sct = sct_create(10);  //closest power of 2 is 16
     munit_assert_int(16, ==, sct->map->num_buckets);
     munit_assert_true(equals_data_policies(SCT_DEFAULT_DATA_POLICIES, sct->map->data_policies));
-    munit_assert_true(equals_mem_policy(MAP_DEFAULT_MALLOC_POLICY, sct->map->mem_policy));
+    munit_assert_true(equals_mem_policy(MEM_DEFAULT_MALLOC_POLICY, sct->map->mem_policy));
     sct_destroy(sct);
 
     sct = sct_create(20);  //closest power of 2 is 32
     munit_assert_int(32, ==, sct->map->num_buckets);
     munit_assert_true(equals_data_policies(SCT_DEFAULT_DATA_POLICIES, sct->map->data_policies));
-    munit_assert_true(equals_mem_policy(MAP_DEFAULT_MALLOC_POLICY, sct->map->mem_policy));
+    munit_assert_true(equals_mem_policy(MEM_DEFAULT_MALLOC_POLICY, sct->map->mem_policy));
     sct_destroy(sct);
 
     return MUNIT_OK;
@@ -157,7 +157,7 @@ static MunitResult test_create_2(const MunitParameter params[], void* fixture) {
     sct = sct_create(0, data_policy);
     munit_assert_int(16, ==, sct->map->num_buckets);
     munit_assert_true(equals_data_policies(data_policy, sct->map->data_policies));
-    munit_assert_true(equals_mem_policy(MAP_DEFAULT_MALLOC_POLICY, sct->map->mem_policy));
+    munit_assert_true(equals_mem_policy(MEM_DEFAULT_MALLOC_POLICY, sct->map->mem_policy));
     sct_destroy(sct);
 
     return MUNIT_OK;
@@ -363,17 +363,6 @@ static MunitResult test_100_string_different(const MunitParameter params[], void
 // ------------------------------------
 
 
-static void apply_fixture(MunitTest tests[static 1], MunitTestSetup setup, MunitTestTearDown tear_down) {
-    size_t test_index = 0;
-    do {
-        MunitTest *test = &tests[test_index++];
-        // ReSharper disable once CppIncompatiblePointerConversion
-        test->setup = setup;
-        test->tear_down = tear_down;
-    } while ( tests[test_index].name != nullptr );
-
-
-}
 // make
 // clang -std=c23 -fsanitize=address -fsanitize=leak -Wall -Werror -o ./out/test_string_counter.out test_string_counter.c string_counter.c hashmap.c ../memory/memory_pool.c ../munit/munit.c
 //

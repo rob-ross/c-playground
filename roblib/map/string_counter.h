@@ -59,9 +59,9 @@ size_t sct_size(StringCounter *sct);
 void sct_repr_StringCounter(StringCounter *sct, bool verbose);
 
 
-#define sct_create_0() (sct_create)( 0, SCT_DEFAULT_DATA_POLICIES, MAP_DEFAULT_MALLOC_POLICY)
-#define sct_create_1(_1) (sct_create)(_1, SCT_DEFAULT_DATA_POLICIES, MAP_DEFAULT_MALLOC_POLICY)
-#define sct_create_2(_1, _2) (sct_create)(_1, _2, MAP_DEFAULT_MALLOC_POLICY)
+#define sct_create_0() (sct_create)( 0, SCT_DEFAULT_DATA_POLICIES, MEM_DEFAULT_MALLOC_POLICY)
+#define sct_create_1(_1) (sct_create)(_1, SCT_DEFAULT_DATA_POLICIES, MEM_DEFAULT_MALLOC_POLICY)
+#define sct_create_2(_1, _2) (sct_create)(_1, _2, MEM_DEFAULT_MALLOC_POLICY)
 #define sct_create_3(_1, _2, _3) (sct_create)(_1, _2, _3)
 #define sct_create_SELECT_(_1, _2, _3, NAME, ...) NAME
 #define sct_create(...) \
