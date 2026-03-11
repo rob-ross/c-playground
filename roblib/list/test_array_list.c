@@ -50,7 +50,7 @@ static MunitResult test_create_0(const MunitParameter params[], void* fixture) {
     // expect LIST_DEFAULT_VALUE_POLICY == list->value_policy
     munit_assert_true(equals_ListValuePolicy(LIST_DEFAULT_VALUE_POLICY, list->value_policy));
     // expect == list->mem_policy
-    munit_assert_true(equals_MemPolicy(MEM_DEFAULT_MALLOC_POLICY, list->mem_policy));
+    munit_assert_true(mem_equals_MemPolicy(MEM_DEFAULT_MALLOC_POLICY, list->mem_policy));
     list_destroy(list);
     return MUNIT_OK;
 }
@@ -66,7 +66,7 @@ static MunitResult test_create_1(const MunitParameter params[], void* fixture) {
     // expect LIST_DEFAULT_VALUE_POLICY == list->value_policy
     munit_assert_true(equals_ListValuePolicy(LIST_DEFAULT_VALUE_POLICY, list->value_policy));
     // expect == list->mem_policy
-    munit_assert_true(equals_MemPolicy(MEM_DEFAULT_MALLOC_POLICY, list->mem_policy));
+    munit_assert_true(mem_equals_MemPolicy(MEM_DEFAULT_MALLOC_POLICY, list->mem_policy));
     list_destroy(list);
     return MUNIT_OK;
 }
@@ -82,7 +82,7 @@ static MunitResult test_create_2(const MunitParameter params[], void* fixture) {
     // expect LIST_DEFAULT_VALUE_POLICY == list->value_policy
     munit_assert_true(equals_ListValuePolicy(LIST_DEFAULT_VALUE_POLICY, list->value_policy));
     // expect == list->mem_policy
-    munit_assert_true(equals_MemPolicy(MEM_DEFAULT_MALLOC_POLICY, list->mem_policy));
+    munit_assert_true(mem_equals_MemPolicy(MEM_DEFAULT_MALLOC_POLICY, list->mem_policy));
     list_destroy(list);
     return MUNIT_OK;
 }
@@ -101,7 +101,7 @@ static MunitResult test_create_3(const MunitParameter params[], void* fixture) {
     // expect LIST_DEFAULT_VALUE_POLICY == list->value_policy
     munit_assert_true(equals_ListValuePolicy(LIST_DEFAULT_VALUE_POLICY, list->value_policy));
     // expect == list->mem_policy
-    munit_assert_true(equals_MemPolicy(MEM_DEFAULT_MALLOC_POLICY, list->mem_policy));
+    munit_assert_true(mem_equals_MemPolicy(MEM_DEFAULT_MALLOC_POLICY, list->mem_policy));
     list_destroy(list);
 
     return MUNIT_OK;

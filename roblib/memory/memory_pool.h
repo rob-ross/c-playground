@@ -21,6 +21,7 @@ typedef enum MemPolicyType: uint8_t {
     MEM_POLICY_MALLOC_SHARED,
     MEM_POLICY_ALLOCATOR_OWN,
     MEM_POLICY_ALLOCATOR_SHARED,
+    MEM_POLICY_NULL,
 } MemPolicyType;
 
 // --- Structures ---
@@ -52,11 +53,14 @@ typedef struct MemoryPool {
     size_t default_page_size;    // Default size for new pages.
 } MemoryPool;
 
-static constexpr size_t DEFAULT_PAGE_SIZE = 4096;
+// static constexpr size_t DEFAULT_PAGE_SIZE = 4096;
 
-// static constexpr size_t DEFAULT_PAGE_SIZE = 64 * 1024 * 1024; //64 MB
+
+static constexpr size_t DEFAULT_PAGE_SIZE = 64L * 1024 * 1024; // 64 MB
 
 extern const MemPolicy MEM_DEFAULT_MALLOC_POLICY;
+extern const MemPolicy MEM_DEFAULT_ALLOCATOR_POLICY;
+extern const MemPolicy NULL_MEM_POLICY;
 
 // --- API Functions ---
 
@@ -68,7 +72,9 @@ char * mem_strdup(MemPolicy mem_policy, char const * string) ;
 // Calls the mem_policy's `free` function
 void  mem_free_bytes( MemPolicy mem_policy, void * bytes);
 
-bool equals_MemPolicy( MemPolicy o1,  MemPolicy o2);
+MemPolicy mem_create_default_allocator( size_t default_page_size);
+
+bool mem_equals_MemPolicy( MemPolicy o1,  MemPolicy o2);
 /**
  * @brief Creates a new memory pool.
  *

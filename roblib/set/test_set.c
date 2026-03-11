@@ -15,7 +15,7 @@
 
 
 
-bool equals_MemPolicy(MemPolicy o1, MemPolicy o2) {
+bool mem_equals_MemPolicy(MemPolicy o1, MemPolicy o2) {
     if ( o1.policy_type == o2.policy_type && o1.context == o2.context && o1.alloc == o2.alloc &&
         o1.calloc == o2.calloc && o1.realloc == o2.realloc && o1.free == o2.free &&
         o1.free_context == o2.free_context) {

@@ -403,7 +403,7 @@ static MunitResult test_10K_inserts(const MunitParameter params[], void* fixture
 static MunitResult test_10K_string_inserts(const MunitParameter params[], void* fixture) {
     print("test_10K_string_inserts");
     constexpr size_t N = 10;
-    HashMap *map = map_create_using_stringpool(16);
+    HashMap *map = map_create_using_stringpool(16, nullptr);
 
     StringCounter *string_pool = map->data_policies.value_policy.context;
 

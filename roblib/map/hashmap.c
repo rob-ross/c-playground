@@ -31,9 +31,9 @@ const MapNode  NULL_MAP_NODE  = (MapNode){ .key = NULL_MAP_KEY, .value = NULL_CO
 //
 // We can't include string_counter.h due to circular dependencies
 // -----------------------------------------------------------------
-StringCounter * sct_create(size_t num_buckets);
+StringCounter * (sct_create)(size_t num_buckets, MapDataPolicies data_policies, MemPolicy mem_policy);
 extern const MapValuePolicy MAP_STRING_POOL_VALUE_POLICIES;
-
+extern const MapDataPolicies SCT_DEFAULT_DATA_POLICIES;  // need for map_create_using_stringpool()
 
 
 // -----------------------------------------------------------------
@@ -82,8 +82,10 @@ static bool map_equals_MapValue(const ColValue v1, const ColValue v2) {
             return v1.vlong == v2.vlong;
         case COL_TYPE_DOUBLE:
             return map_equals_double(v1.vdouble, v2.vdouble);
-        case COL_TYPE_STRING:
+        case COL_TYPE_STRING: {
+            if (v1.vstring == v2.vstring) return true;
             return strcmp(v1.vstring, v2.vstring) == 0;
+        }
         case COL_TYPE_VOID_PTR:
             // this requires the caller to have defined an equal function for this blob.
             // todo implement
@@ -270,6 +272,7 @@ void map_destroy_node(HashMap map[static 1], MapNode node[static 1]) {
 }
 
 void map_ensure_capacity(HashMap map[static 1]) {
+    // printf("map_ensure_capacity: buckets: %'zu->%'zu\n", map->num_buckets, map->num_buckets * 2);
     const size_t new_num_buckets = map->num_buckets * 2;
     if (new_num_buckets > MAX_POW2) {
         return; // Can't grow anymore
@@ -359,8 +362,10 @@ bool map_equals_MapKey(const MapKey k1, const MapKey k2) {
             return k1.klong == k2.klong;
         case COL_TYPE_DOUBLE:
             return map_equals_double(k1.kdouble, k2.kdouble);
-        case COL_TYPE_STRING:
+        case COL_TYPE_STRING: {
+            if (k1.kstring == k2.kstring) return true;
             return strcmp(k1.kstring, k2.kstring) == 0;
+        }
         case COL_TYPE_VOID_PTR:
             // this requires the caller to have defined an equal function for this blob.
             // todo implement
@@ -425,8 +430,6 @@ void map_recalc_load(HashMap *map) {
 // number of buckets doubles when fill capacity is reached (75% full by default).
 // 16 buckets provides adequate sizing for 12 items before growing HashMap capacity
 HashMap * (map_create)(size_t num_buckets, MapDataPolicies data_policies, MemPolicy mem_policy) {
-
-
     if (!num_buckets) {
         num_buckets = MIN_CAP;
     } else if ( num_buckets > (SIZE_MAX >> 1) + 1) {
@@ -434,19 +437,6 @@ HashMap * (map_create)(size_t num_buckets, MapDataPolicies data_policies, MemPol
     } else {
         num_buckets = col_next_power_of_two(num_buckets, MIN_CAP);
     }
-
-    //todo move this outside the create function. Either the caller provides a pool or we have a helper method that
-    // creates one for the caller to be passed in as a mem_policy.
-    // size_t initial_pool_size = sizeof(HashMap) +  num_buckets * sizeof(MapNode *) + num_buckets * sizeof(MapNode)*2;
-    // MemoryPool *pool = pool_create(initial_pool_size * 3);
-    // if (!pool) {
-    //     return nullptr;
-    // }
-    //
-    // MemPolicy mem_policy;
-    // // mem_policy = MAP_DEFAULT_MALLOC_POLICY;
-    // mem_policy = MAP_DEFAULT_ALLOCATOR_POLICY;
-    // mem_policy.context = pool;
 
     HashMap *map = (HashMap *)mem_alloc_bytes(mem_policy, sizeof(HashMap));
 
@@ -478,17 +468,28 @@ HashMap * (map_create)(size_t num_buckets, MapDataPolicies data_policies, MemPol
     return map;
 }
 
+// convenience method that creates a HashMap backed by a StringCounter to use as a string pool for sharing string
+// instances, if there are many duplicate string values. MemPolicy can be nullptr, or a valid allocator.
+HashMap *map_create_using_stringpool(size_t num_buckets, const MemPolicy *mem_policy) {
+    if ( !mem_policy ) mem_policy = &MEM_DEFAULT_MALLOC_POLICY;
 
-HashMap *map_create_using_stringpool(size_t num_buckets) {
-    HashMap *map = map_create(num_buckets);
+    HashMap *map = map_create(num_buckets, MAP_DEFAULT_DATA_POLICIES, *mem_policy);
     if (!map) return nullptr;
 
-    StringCounter *sct = sct_create(num_buckets);
+    // the StringCounter is subordinate to the HashMap in `map`. It must not free the memory pool when destroyed.
+    MemPolicy mp = *mem_policy;
+    if (mp.policy_type == MEM_POLICY_ALLOCATOR_OWN) {
+        mp.policy_type = MEM_POLICY_ALLOCATOR_SHARED;
+    } else if (mp.policy_type == MEM_POLICY_MALLOC_OWN ) {
+        mp.policy_type = MEM_POLICY_ALLOCATOR_SHARED;
+    }
 
+    StringCounter *sct = sct_create(num_buckets , SCT_DEFAULT_DATA_POLICIES, mp);
     if (!sct) {
         map_destroy(map);
         return nullptr;
     }
+
 
     map->data_policies.key_policy = MAP_DEFAULT_KEY_POLICY;
     map->data_policies.value_policy = MAP_STRING_POOL_VALUE_POLICIES;
@@ -496,42 +497,37 @@ HashMap *map_create_using_stringpool(size_t num_buckets) {
     //add the string pool map as the context for the enclosing HashMap's value policy
     map->data_policies.value_policy.context = sct;
 
+
     return map;
 }
 
 
 void map_destroy(HashMap map[static 1]) {
     if (!map) return;
-
-    map_clear(map);
-
-    // free any data policy contexts that exist
-    if (map->data_policies.key_policy.on_free_context) {
-        map->data_policies.key_policy.on_free_context(map->data_policies.key_policy.context);
-    }
-    map->data_policies.key_policy.context = nullptr;
-
-    if (map->data_policies.value_policy.on_free_context) {
-        map->data_policies.value_policy.on_free_context(map->data_policies.value_policy.context);
-    }
-    map->data_policies.value_policy.context = nullptr;
-
-    mem_free_bytes(map->mem_policy, map->buckets);
-    map->buckets = nullptr;
-
     MemPolicy mem_policy = map->mem_policy;
+    if (mem_policy.free_context && mem_policy.policy_type == MEM_POLICY_ALLOCATOR_OWN) {
+        mem_policy.free_context(mem_policy.context);
+    } else {
+        map_clear(map);
 
-    mem_free_bytes(map->mem_policy, map);
+        // free any data policy contexts that exist
+        if (map->data_policies.key_policy.on_free_context) {
+            map->data_policies.key_policy.on_free_context(map->data_policies.key_policy.context);
+        }
+        map->data_policies.key_policy.context = nullptr;
 
-    if (mem_policy.context ) {
-        if (mem_policy.free_context) {
-            if (mem_policy.policy_type == MEM_POLICY_ALLOCATOR_OWN) {
-                mem_policy.free_context(mem_policy.context);
-            }
-        } else {
-            if (mem_policy.policy_type == MEM_POLICY_MALLOC_OWN) {
-                free(mem_policy.context);
-            }
+        if (map->data_policies.value_policy.on_free_context) {
+            map->data_policies.value_policy.on_free_context(map->data_policies.value_policy.context);
+        }
+        map->data_policies.value_policy.context = nullptr;
+
+        mem_free_bytes(mem_policy, map->buckets);
+        map->buckets = nullptr;
+
+        mem_free_bytes(mem_policy, map);
+
+        if (mem_policy.policy_type == MEM_POLICY_MALLOC_OWN) {
+            free(mem_policy.context);
         }
     }
 }

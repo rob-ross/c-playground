@@ -160,7 +160,7 @@ void map_destroy(HashMap map[static 1]);
 
 // creates and returns a HashMap backed by a string pool that interns all string values. Good when the same string is
 // used for multiple key values. Call map_destroy to free all allocated resources, including the backing string pool.
-HashMap *map_create_using_stringpool(size_t num_buckets);
+HashMap *map_create_using_stringpool(size_t num_buckets, const MemPolicy *mem_policy) ;
 
 //Removes all the mappings from this map. Keeps existing buckets. After call, size == 0.
 void map_clear(HashMap map[static 1]);

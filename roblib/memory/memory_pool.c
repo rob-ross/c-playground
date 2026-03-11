@@ -10,6 +10,7 @@
 
 
 
+
 // --- Helper Functions ---
 
 static MemoryPage *create_page(size_t size) {
@@ -46,7 +47,6 @@ static void destroy_page(MemoryPage *page) {
 
 
 // standard malloc methods
-
 
 void * mem_mempolicy_default_malloc( void* context, const size_t num_bytes ) {
     // return calloc( 1, num_bytes );
@@ -95,6 +95,11 @@ void  mem_mempolicy_default_allocator_free( void * context, void * bytes ) {
     pool_free(pool, bytes);
 }
 
+void mem_mempolicy_default_allocator_free_context(void * context) {
+    MemoryPool *pool = context;
+    pool_destroy(pool);
+}
+
 const MemPolicy MEM_DEFAULT_MALLOC_POLICY = (MemPolicy){
     .context = nullptr,
     .policy_type = MEM_POLICY_MALLOC_OWN,
@@ -110,12 +115,19 @@ const MemPolicy MEM_DEFAULT_ALLOCATOR_POLICY = (MemPolicy){
     .alloc = mem_mempolicy_default_allocator_alloc,
     .calloc = mem_mempolicy_default_allocator_calloc,
     .realloc = mem_mempolicy_default_allocator_realloc,
-    .free = mem_mempolicy_default_allocator_free
+    .free = mem_mempolicy_default_allocator_free,
+    .free_context = mem_mempolicy_default_allocator_free_context
+
 };
 
+constexpr MemPolicy NULL_MEM_POLICY = (MemPolicy){ .policy_type = MEM_POLICY_NULL };
 
-// --- API Implementation ---
 
+//// ------------------------------------------------------------
+////
+////    Public API Implementation
+////
+//// ------------------------------------------------------------
 
 void * mem_alloc_bytes(const MemPolicy mem_policy, const size_t num_bytes) {
     return mem_policy.alloc(mem_policy.context, num_bytes);
@@ -135,7 +147,7 @@ char * mem_strdup(MemPolicy mem_policy, char const * string) {
     memcpy(dupe, string, str_len);
     return dupe;
 }
-bool equals_MemPolicy(const MemPolicy o1, const MemPolicy o2) {
+bool mem_equals_MemPolicy(const MemPolicy o1, const MemPolicy o2) {
     if ( o1.policy_type == o2.policy_type && o1.context == o2.context && o1.alloc == o2.alloc &&
         o1.calloc == o2.calloc && o1.realloc == o2.realloc && o1.free == o2.free &&
         o1.free_context == o2.free_context) {
@@ -147,6 +159,23 @@ bool equals_MemPolicy(const MemPolicy o1, const MemPolicy o2) {
 
 void  mem_free_bytes(const MemPolicy mem_policy, void * bytes) {
     mem_policy.free(mem_policy.context, bytes);
+}
+
+// Creates a new memory pool and attaches it to a default allocator MemPolicy.
+// Uses MEM_DEFAULT_ALLOCATOR_POLICY as the prototype. The policy_type is MEM_POLICY_ALLOCATOR_OWN.
+// Because of this, any collection for which this pool is attached will destroy the pool when that collection is
+// destroyed.
+// This is intended to be a convenience method when creating collections (HashMap, StringCounter, Set, etc).
+// The returned value of this function can be used as the MemPolicy argument
+// in the various collections create() functions.
+MemPolicy mem_create_default_allocator(const size_t default_page_size) {
+    size_t initial_pool_size = default_page_size < DEFAULT_PAGE_SIZE ? DEFAULT_PAGE_SIZE : default_page_size;
+    MemoryPool *pool = pool_create(initial_pool_size);
+    if (!pool) return NULL_MEM_POLICY;
+
+    MemPolicy mem_policy = MEM_DEFAULT_ALLOCATOR_POLICY;
+    mem_policy.context = pool;
+    return mem_policy;
 }
 
 

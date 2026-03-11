@@ -24,6 +24,17 @@ add_executable(test_hashmap
 
 target_compile_definitions(test_hashmap PRIVATE TEST_HASHMAP)
 
+add_executable(string_counter
+        roblib/map/test_string_counter.c
+        roblib/map/string_counter.c
+        roblib/collections.c
+        roblib/munit/munit.c
+        roblib/memory/memory_pool.c
+        roblib/map/test_hashmap.c
+        roblib/map/hashmap.c
+)
+target_compile_definitions(string_counter PRIVATE TEST_STRING_COUNTER)
+
 add_executable(test_array_list
         roblib/list/test_array_list.c
         roblib/collections.c

@@ -43,7 +43,12 @@ static MapKey sct_policy_key_add_default(HashMap map[static 1], MapKey key) {
 
 static void sct_policy_key_free_default(HashMap map[static 1], MapKey key) {
     // default-add always make a copy of a string key and we own it, so we must free it
-    free(key.kstring);
+    if (map->mem_policy.free) {
+        map->mem_policy.free(map->mem_policy.context, key.kstring);
+    } else {
+        free(key.kstring);
+    }
+
 }
 
 // -----------------------
@@ -156,8 +161,17 @@ void sct_destroy(StringCounter sct[static 1]) {
     if (!sct->map)  return;
     HashMap *map = sct->map;
     sct->map = nullptr;
-    mem_free_bytes(map->mem_policy, sct);
-    map_destroy(map);
+
+    // If we're using an allocator that we own, we just free the allocator. We don't need to free individual nodes
+    //  or keys.
+    if (map->mem_policy.free_context) {
+        if (map->mem_policy.policy_type == MEM_POLICY_ALLOCATOR_OWN) {
+            map->mem_policy.free_context(map->mem_policy.context);
+        }
+    } else {
+        mem_free_bytes(map->mem_policy, sct);
+        map_destroy(map);
+    }
 }
 
 

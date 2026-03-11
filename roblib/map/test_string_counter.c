@@ -5,8 +5,12 @@
 //
 // Created 2026/03/03 22:32:05 PST
 
+// ReSharper disable CppJoinDeclarationAndAssignment
+
+
 #include <locale.h>
 #include <stdio.h>
+#include <time.h>
 
 #include "string_counter.h"
 #include "../testing_utils.h"
@@ -53,16 +57,6 @@ static bool equals_data_policies(const MapDataPolicies o1, const MapDataPolicies
     return true;
 }
 
-static bool equals_mem_policy(const MemPolicy o1, const MemPolicy o2) {
-    if (o1.context != o2.context ||
-        o1.alloc != o2.alloc ||
-        o1.free != o2.free ||
-        o1.free_context != o2.free_context ||
-        o1.policy_type != o2.policy_type ) {
-        return false;
-    }
-    return true;
-}
 
 // -------------------------------------------------
 // test cases
@@ -79,7 +73,7 @@ static MunitResult test_create_0(const MunitParameter params[], void* fixture) {
     // expect SCT_DEFAULT_DATA_POLICIES == map->data_policies
     munit_assert_true(equals_data_policies(SCT_DEFAULT_DATA_POLICIES, map->data_policies));
     // expect == map->mem_policy
-    munit_assert_true(equals_mem_policy(MEM_DEFAULT_MALLOC_POLICY, map->mem_policy));
+    munit_assert_true(mem_equals_MemPolicy(MEM_DEFAULT_MALLOC_POLICY, map->mem_policy));
     sct_destroy(sct);
     return MUNIT_OK;
 }
@@ -90,20 +84,20 @@ static MunitResult test_create_1(const MunitParameter params[], void* fixture) {
     sct = sct_create(0);
     munit_assert_int(16, ==, sct->map->num_buckets);
     munit_assert_true(equals_data_policies(SCT_DEFAULT_DATA_POLICIES, sct->map->data_policies));
-    munit_assert_true(equals_mem_policy(MEM_DEFAULT_MALLOC_POLICY, sct->map->mem_policy));
+    munit_assert_true(mem_equals_MemPolicy(MEM_DEFAULT_MALLOC_POLICY, sct->map->mem_policy));
 
     sct_destroy(sct);
 
     sct = sct_create(10);  //closest power of 2 is 16
     munit_assert_int(16, ==, sct->map->num_buckets);
     munit_assert_true(equals_data_policies(SCT_DEFAULT_DATA_POLICIES, sct->map->data_policies));
-    munit_assert_true(equals_mem_policy(MEM_DEFAULT_MALLOC_POLICY, sct->map->mem_policy));
+    munit_assert_true(mem_equals_MemPolicy(MEM_DEFAULT_MALLOC_POLICY, sct->map->mem_policy));
     sct_destroy(sct);
 
     sct = sct_create(20);  //closest power of 2 is 32
     munit_assert_int(32, ==, sct->map->num_buckets);
     munit_assert_true(equals_data_policies(SCT_DEFAULT_DATA_POLICIES, sct->map->data_policies));
-    munit_assert_true(equals_mem_policy(MEM_DEFAULT_MALLOC_POLICY, sct->map->mem_policy));
+    munit_assert_true(mem_equals_MemPolicy(MEM_DEFAULT_MALLOC_POLICY, sct->map->mem_policy));
     sct_destroy(sct);
 
     return MUNIT_OK;
@@ -162,7 +156,7 @@ static MunitResult test_create_2(const MunitParameter params[], void* fixture) {
     sct = sct_create(0, data_policy);
     munit_assert_int(16, ==, sct->map->num_buckets);
     munit_assert_true(equals_data_policies(data_policy, sct->map->data_policies));
-    munit_assert_true(equals_mem_policy(MEM_DEFAULT_MALLOC_POLICY, sct->map->mem_policy));
+    munit_assert_true(mem_equals_MemPolicy(MEM_DEFAULT_MALLOC_POLICY, sct->map->mem_policy));
     sct_destroy(sct);
 
     return MUNIT_OK;
@@ -177,12 +171,35 @@ static MunitResult test_create_3(const MunitParameter params[], void* fixture) {
     sct = sct_create(0, data_policy, mem_policy);
     munit_assert_int(16, ==, sct->map->num_buckets);
     munit_assert_true(equals_data_policies(data_policy, sct->map->data_policies));
-    munit_assert_true(equals_mem_policy(mem_policy, sct->map->mem_policy));
+    munit_assert_true(mem_equals_MemPolicy(mem_policy, sct->map->mem_policy));
     sct_destroy(sct);
 
     return MUNIT_OK;
 }
 
+static MunitResult test_create_with_mempolicy(const MunitParameter params[], void* fixture) {
+    // test passing num_buckets, MapDataPolicies, and MemPolicy arguments
+    const MapDataPolicies data_policy = data_policy_fixture();
+    const MemPolicy       mem_policy = mem_create_default_allocator(0);
+
+    StringCounter *sct;
+    sct = sct_create(0, data_policy, mem_policy);
+    munit_assert_ptr_not_null(sct);
+    HashMap *map = sct->map;
+    munit_assert_ptr_not_null(map);
+
+    munit_assert_int(16, ==, map->num_buckets);
+    munit_assert_true(equals_data_policies(data_policy, sct->map->data_policies));
+    munit_assert_true(mem_equals_MemPolicy(mem_policy, sct->map->mem_policy));
+
+    sct_put(sct, "first", 1);
+    sct_put(sct, "second", 1);
+    sct_put(sct, "third", 1);
+
+    sct_destroy(sct);
+
+    return MUNIT_OK;
+}
 static MunitResult test_clear(const MunitParameter params[], void* fixture) {
     StringCounter *map = fixture;
 
@@ -339,26 +356,143 @@ static MunitResult test_size(const MunitParameter params[], void* fixture) {
     return MUNIT_OK;
 }
 
+static void create_1M_unique_strings(StringCounter *sct) {
+    //put 1M unique strigs into the StringCounter.
+    int n = 1'000'000; // 1M
+    for (int i = 0; i < n; ++i) {
+        char strkey[15]; // max 7 chars for value of i, plus 5 for 'hello', plus terminator = 13
+        snprintf(strkey, 15, "hello%d",i);
+        sct_put( sct, strkey, i );
+        long vlong = sct_get_count(sct, strkey );
+        munit_assert_int( i, ==, vlong);
+    }
+
+}
+
+static double elapsed_seconds(struct timespec start, struct timespec end) {
+    return (double)(end.tv_sec - start.tv_sec)
+         + (double)(end.tv_nsec - start.tv_nsec) / 1e9;
+}
+
+[[maybe_unused]]
+static void print_elapsed(const char *label, const struct timespec start, const struct timespec end) {
+    printf("%s: %.6f seconds\n", label, elapsed_seconds(start, end));
+}
 
 // this should be part of a performance test, i.e., complete method in under X time.
 [[maybe_unused]]
-static MunitResult test_100_string_different(const MunitParameter params[], void* fixture) {
-    StringCounter *map = fixture;
-    for (int i = 0; i < 100; ++i) {
-        char strkey[10]; // max 4 chars for value of i, plus 5 for 'hello', plus terminator
-        snprintf(strkey, 10, "hello%d",i+1);
-        sct_put(map, strkey, i );
+static MunitResult time_put_1M_unique_strings(const MunitParameter params[], void* fixture) {
+    struct timespec start;
+    struct timespec end;
+
+    StringCounter *sct_malloc = sct_create();
+    double put_time;
+    double destroy_time;
+    //start timer
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    create_1M_unique_strings(sct_malloc);
+    //stop timer and display time
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    put_time = elapsed_seconds(start, end);
+
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    sct_destroy(sct_malloc);
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    destroy_time = elapsed_seconds(start, end);
+    // print_elapsed("malloc policy", start, end);
+    printf("malloc policy: put: %.6g s, destroy: %.6g s\n", put_time, destroy_time);
+
+
+    // now create a StringCounter that uses a memory pool
+    const MapDataPolicies data_policy = SCT_DEFAULT_DATA_POLICIES;
+    const MemPolicy       mem_policy = mem_create_default_allocator(0);
+    StringCounter *sct_allocator = sct_create(0, data_policy, mem_policy);
+
+    //start timer
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    create_1M_unique_strings(sct_allocator);
+    //stop timer and display time
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    put_time = elapsed_seconds(start, end);
+
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    sct_destroy(sct_allocator);
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    destroy_time = elapsed_seconds(start, end);
+    // print_elapsed("allocator policy", start, end);
+
+    printf("allocator policy: put: %.6g s, destroy: %.6g s\n", put_time, destroy_time);
+
+
+    return MUNIT_OK;
+}
+
+// todo test StringCounter as string pool for a HashMap.
+
+
+static void create_1M_identical_strings(HashMap *map) {
+
+    constexpr size_t N = 10'000'000;
+    constexpr char value_str[] = "hello world";
+    // ColValue initial_value;
+
+    // map_put(map, 0, value_str );
+    // initial_value = map_get(map, 0);  //this value should be the same every time we put this string
+    // printf("initial_value.vstring = '%s', vstring ptr: %p\n", initial_value.vstring, initial_value.vstring);
+    //
+    // map_put(map, 1, value_str );
+    // initial_value = map_get(map, 1);  //this value should be the same every time we put this string
+    // printf("initial_value.vstring = '%s', vstring ptr: %p\n", initial_value.vstring, initial_value.vstring);
+
+    for (int i = 0; i < N; ++i) {
+        map_put(map, i, value_str );
+        ColValue cv = map_get(map, i);
+        // printf("cv.vstring = '%s', vstring ptr: %p\n", cv.vstring, cv.vstring);
+        munit_assert_string_equal( value_str, cv.vstring);
+        // munit_assert_ptr_equal(initial_value.vstring, cv.vstring);
     }
-    munit_assert_int(100, ==, sct_size(map));
+}
 
-    for (int i=0; i< 100; ++i) {
-        char search_string[10]; // max 4 chars for value of i, plus 5 for 'hello', plus terminator
-        snprintf(search_string,10, "hello%d",i+1);
+[[maybe_unused]]
+static MunitResult time_put_1M_identical_strings(const MunitParameter params[], void* fixture) {
+    struct timespec start;
+    struct timespec end;
 
-        long vlong = sct_get_count(map, search_string );
+    double put_time;
+    double destroy_time;
+    HashMap *map = map_create();
+    //start timer
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    create_1M_identical_strings(map);
+    //stop timer and display time
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    put_time = elapsed_seconds(start, end);
 
-        munit_assert_int( 1, ==, vlong);
-    }
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    map_destroy(map);
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    destroy_time = elapsed_seconds(start, end);
+    printf("\nmalloc policy: put: %.6g s, destroy: %.6g s\n", put_time, destroy_time);
+
+
+    // now create a HashMap backed by a StringCounter string pool
+    // const MapDataPolicies data_policy = SCT_DEFAULT_DATA_POLICIES;
+    const MemPolicy       mem_policy = mem_create_default_allocator(0);
+    // StringCounter *sct_allocator = sct_create(0, data_policy, mem_policy);
+    HashMap *sp_map = map_create_using_stringpool(10'000'000, &mem_policy);
+    //start timer
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    create_1M_identical_strings(sp_map);
+    //stop timer and display time
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    put_time = elapsed_seconds(start, end);
+
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    map_destroy(sp_map);
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    destroy_time = elapsed_seconds(start, end);
+
+    printf("\nStrincCounter string pool: put: %.6g s, destroy: %.6g s\n", put_time, destroy_time);
 
     return MUNIT_OK;
 }
@@ -381,6 +515,7 @@ int main_test_string_counter(int argc, char *argv[argc + 1]) {
         munit_test(test_create_1),
         munit_test(test_create_2),
         munit_test(test_create_3),
+        munit_test(test_create_with_mempolicy),
         munit_test(test_clear),
         munit_test(test_contains_key),
         munit_test(test_get),
@@ -411,8 +546,8 @@ int main_test_string_counter(int argc, char *argv[argc + 1]) {
     result = munit_suite_main(&suite, nullptr, argc, argv);
 
 
-    // test_create_3(nullptr, nullptr);
-
+    // time_put_1M_unique_strings(nullptr, nullptr);
+    // time_put_1M_identical_strings(nullptr, nullptr);
 
     return result;
 
