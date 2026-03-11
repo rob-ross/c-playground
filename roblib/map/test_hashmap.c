@@ -45,7 +45,7 @@ static MunitResult test_put_and_get_int(const MunitParameter params[], void* fix
     HashMap *map = fixture;
     // printf("test_put_and_get_int: \n");
     map_put(map, 1, 42);
-    MapValue retrieved = map_get(map, 1);
+    ColValue retrieved = map_get(map, 1);
     munit_assert_int(retrieved.vlong, ==, 42);
 
     int foo = 2;
@@ -61,7 +61,7 @@ static MunitResult test_put_and_get_int(const MunitParameter params[], void* fix
 static MunitResult test_put_and_get_string(const MunitParameter params[], void* fixture) {
     HashMap *map = fixture;
     map_put(map, 1, "hello");
-    MapValue retrieved = map_get(map, 1);
+    ColValue retrieved = map_get(map, 1);
     munit_assert_string_equal(retrieved.vstring, "hello");
     return MUNIT_OK;
 }
@@ -70,7 +70,7 @@ static MunitResult test_refcount(const MunitParameter params[], void* fixture) {
     HashMap *map = fixture;
     map_put(map, 1, "hello");
     map_put(map, 1, "world"); // This should free val1 and replace it with val2
-    MapValue retrieved = map_get(map, 1);
+    ColValue retrieved = map_get(map, 1);
     munit_assert_string_equal(retrieved.vstring, "world");
     return MUNIT_OK;
 }
@@ -79,8 +79,8 @@ static MunitResult test_remove_key(const MunitParameter params[], void* fixture)
     HashMap *map = fixture;
     map_put(map, 1, "hello");
     map_remove(map, 1);
-    MapValue retrieved = map_get(map, 1);
-    munit_assert_int(retrieved.value_type, ==, MAP_TYPE_NULL);
+    ColValue retrieved = map_get(map, 1);
+    munit_assert_int(retrieved.value_type, ==, COL_TYPE_NULL);
     munit_assert_ptr_null(retrieved.vvoid_ptr);
     return MUNIT_OK;
 }
@@ -90,11 +90,11 @@ static MunitResult test_put_and_get_str_key(const MunitParameter params[], void*
 
     map_put(map, "hello", "world");
     map_put(map, "good", "morning");
-    MapValue got_char = map_get(map, "hello");
+    ColValue got_char = map_get(map, "hello");
     munit_assert_string_equal("world", got_char.vstring);
 
     map_remove(map, "good");
-    MapValue retrieved = map_get(map, "good");
+    ColValue retrieved = map_get(map, "good");
     munit_assert_ptr_null(retrieved.vstring);
 
     return MUNIT_OK;
@@ -106,8 +106,8 @@ static MunitResult test_put_and_get_bool_values(const MunitParameter params[], v
     map_put(map, "false", false);
     map_put(map, "true", !b1);
 
-    MapValue result1 = map_get(map, "false");
-    MapValue result2 = map_get(map, "true");
+    ColValue result1 = map_get(map, "false");
+    ColValue result2 = map_get(map, "true");
 
     munit_assert_true(result2.vlong);
     munit_assert_false(result1.vlong);
@@ -126,7 +126,7 @@ static MunitResult test_klong_vstring(const MunitParameter params[], void* fixtu
         char search_string[10]; // max 4 chars for value of i, plus 5 for 'hello', plus terminator
         snprintf(search_string,10, "hello%d",i+1);
 
-        MapValue value = map_get(map, i );
+        ColValue value = map_get(map, i );
 
         munit_assert_string_equal( search_string, value.vstring);
     }
@@ -141,10 +141,10 @@ static MunitResult test_generic_put(const MunitParameter params[], void* fixture
     map_put(map, (short)67, "short!");
     map_put(map, (float)67.767, "float!");
 
-    MapValue retrieved_str = map_get(map, 42);
+    ColValue retrieved_str = map_get(map, 42);
     munit_assert_string_equal(retrieved_str.vstring, "foo");
 
-    MapValue retrieved_long = map_get(map, "bar");
+    ColValue retrieved_long = map_get(map, "bar");
     munit_assert_long(retrieved_long.vlong, ==, 123);
 
     return MUNIT_OK;
@@ -209,7 +209,7 @@ static MunitResult test_get_or(const MunitParameter params[], void* fixture) {
     void * vptr = (void *)&int1;
     map_put(map, vptr, vptr );
 
-    MapValue result = map_get_or(map, 76, 67);
+    ColValue result = map_get_or(map, 76, 67);
 
     munit_assert_int(67, ==, result.vlong );
     result = map_get_or(map, 7.6, 6.7);
@@ -238,7 +238,7 @@ static MunitResult test_try_get(const MunitParameter params[], void* fixture) {
     void * vptr = (void *)&int1;
     map_put(map, vptr, vptr );
 
-    MapValue mv = {};
+    ColValue mv = {};
     munit_assert_true(map_try_get(map, 1, &mv));
     munit_assert_int(1, ==, mv.vlong);
     munit_assert_true(map_try_get(map, 2.0, &mv));
@@ -249,7 +249,7 @@ static MunitResult test_try_get(const MunitParameter params[], void* fixture) {
     munit_assert_int(42, ==, *(int*)mv.vvoid_ptr);
 
     munit_assert_false(map_try_get(map, 22, &mv));
-    munit_assert_int(MAP_TYPE_NULL, ==, mv.value_type);
+    munit_assert_int(COL_TYPE_NULL, ==, mv.value_type);
 
     return MUNIT_OK;
 }
@@ -326,6 +326,8 @@ int main_test_hashmap(int argc, char *argv[argc + 1]) {
 
     // test_klong_vstring(nullptr, hashmap_fixture(nullptr, nullptr));
 
+    // display_type_sizes();
+
 
     return result;
 
@@ -376,7 +378,7 @@ static MunitResult test_10K_inserts(const MunitParameter params[], void* fixture
     for (int i=0; i< N; ++i) {
         char search_string[buffer_size] = {}; // max 4 chars for value of i, plus 5 for 'hello', plus terminator
         snprintf(search_string,buffer_size, "hello%d",i+1);
-        [[maybe_unused]]MapValue value = map_get(map, i );
+        [[maybe_unused]]ColValue value = map_get(map, i );
         // print("search string = %s, value = %s", search_string, value);
 
         munit_assert_string_equal( search_string, value.vstring);
@@ -416,7 +418,7 @@ static MunitResult test_10K_string_inserts(const MunitParameter params[], void* 
     print("done with map_put");
 
     for (int i=0; i < N; ++i) {
-        MapValue value = map_get(map, i );
+        ColValue value = map_get(map, i );
         printf("\nmap_get(map, %d) ", i);
         map_repr_MapValue(value, true);
         fflush(stdout);

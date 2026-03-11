@@ -118,11 +118,11 @@ static void dummy_on_free_key(HashMap *map, MapKey key) {}
 static void dummy_on_free_context(void* context) {}
 
 
-static MapValue dummy_on_set_value(HashMap *map, MapValue value) {
-    return (MapValue){};
+static ColValue dummy_on_set_value(HashMap *map, ColValue value) {
+    return (ColValue){};
 }
 
-static void dummy_on_free_value(HashMap *map, MapValue value){}
+static void dummy_on_free_value(HashMap *map, ColValue value){}
 
 int dummy_int = 42;
 void * dummy_context = &dummy_int;
@@ -131,10 +131,10 @@ static MapDataPolicies data_policy_fixture() {
     return (MapDataPolicies){
         .key_policy={
             .context = dummy_context, .on_add_key   = dummy_on_add_key, .on_free_key = dummy_on_free_key,
-                .on_free_context = dummy_on_free_context, .policy_type = MAP_POLICY_SHARED},
+                .on_free_context = dummy_on_free_context, .policy_type = COL_VALUE_POLICY_SHARED},
         .value_policy ={
             .context = dummy_context, .on_set_value = dummy_on_set_value,  .on_free_value = dummy_on_free_value,
-            .on_free_context = dummy_on_free_context, .policy_type = MAP_POLICY_SHARED}
+            .on_free_context = dummy_on_free_context, .policy_type = COL_VALUE_POLICY_SHARED}
     };
 }
 
@@ -212,7 +212,7 @@ static MunitResult test_contains_key(const MunitParameter params[], void* fixtur
 
 static MunitResult test_get(const MunitParameter params[], void* fixture) {
     StringCounter *map = fixture;
-    MapValue value;
+    ColValue value;
 
     sct_put(map,"dog",1);
     value = sct_get(map, key_for_string("dog"));

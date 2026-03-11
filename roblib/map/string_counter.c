@@ -37,8 +37,8 @@ struct StringCounter {
 
 static MapKey sct_policy_key_add_default(HashMap map[static 1], MapKey key) {
     // default add always make a copy of a string key and we own it
-    char * string_copy = map_strdup(map->mem_policy,key.kstring);
-    return (MapKey){.key_type = MAP_TYPE_STRING, .kstring = string_copy};
+    char * string_copy = mem_strdup(map->mem_policy,key.kstring);
+    return (MapKey){.key_type = COL_TYPE_STRING, .kstring = string_copy};
 }
 
 static void sct_policy_key_free_default(HashMap map[static 1], MapKey key) {
@@ -49,43 +49,43 @@ static void sct_policy_key_free_default(HashMap map[static 1], MapKey key) {
 // -----------------------
 // Value data_policies
 // -----------------------
-// static void sct_policy_value_free_default(HashMap map[static 1], MapValue value) {
+// static void sct_policy_value_free_default(HashMap map[static 1], ColValue value) {
 //     // values are always a long scalar, they don't need to be freed
 //     // no-op
 // }
-static MapValue map_policy_value_add_to_stringpool(HashMap map[static 1], MapValue value) {
-    if (!map) return NULL_MAP_VALUE;
+static ColValue map_policy_value_add_to_stringpool(HashMap map[static 1], ColValue value) {
+    if (!map) return NULL_COL_VALUE;
     StringCounter *sct = map->data_policies.value_policy.context; // this should be the stringpool
-    if (!sct) return NULL_MAP_VALUE;
+    if (!sct) return NULL_COL_VALUE;
 
-    MapPolicyType valuepolicy = map->data_policies.value_policy.policy_type;
+    ColValuePolicyType valuepolicy = map->data_policies.value_policy.policy_type;
 
-    if ( value.value_type == MAP_TYPE_STRING &&
-        ( valuepolicy == MAP_POLICY_SHARED || valuepolicy == MAP_POLICY_COPY || valuepolicy == MAP_POLICY_NONE )) {
+    if ( value.value_type == COL_TYPE_STRING &&
+        ( valuepolicy == COL_VALUE_POLICY_SHARED || valuepolicy == COL_VALUE_POLICY_COPY || valuepolicy == COL_VALUE_POLICY_NONE )) {
         const char *strref = sct_ref(sct, value.vstring);
-        return (MapValue){ .value_type = MAP_TYPE_STRING, .vstring = (char *)strref };
+        return (ColValue){ .value_type = COL_TYPE_STRING, .vstring = (char *)strref };
         }
-    if ( value.value_type == MAP_TYPE_VOID_PTR ) {
+    if ( value.value_type == COL_TYPE_VOID_PTR ) {
         // invoke the pointer's free method
         //todo deal with void* types
     }
 
     return value;
 }
-static void map_policy_value_free_unref_from_stringpool(HashMap map[static 1], MapValue value) {
+static void map_policy_value_free_unref_from_stringpool(HashMap map[static 1], ColValue value) {
     if (!map) return;
     StringCounter *sct = map->data_policies.value_policy.context; // this should be the stringpool
     if (!sct) return;
 
-    MapPolicyType valuepolicy = map->data_policies.value_policy.policy_type;
+    ColValuePolicyType valuepolicy = map->data_policies.value_policy.policy_type;
 
-    if ( value.value_type == MAP_TYPE_STRING &&
-        ( valuepolicy == MAP_POLICY_SHARED || valuepolicy == MAP_POLICY_COPY || valuepolicy == MAP_POLICY_NONE )) {
+    if ( value.value_type == COL_TYPE_STRING &&
+        ( valuepolicy == COL_VALUE_POLICY_SHARED || valuepolicy == COL_VALUE_POLICY_COPY || valuepolicy == COL_VALUE_POLICY_NONE )) {
         sct_unref(sct, value.vstring);
         return;
         }
 
-    if ( value.value_type == MAP_TYPE_VOID_PTR ) {
+    if ( value.value_type == COL_TYPE_VOID_PTR ) {
         // invoke the pointer's free method
         //todo deal with void* types
     }
@@ -100,13 +100,13 @@ static void map_policy_value_free_context_stringpool(void* context) {
 
 
 const MapKeyPolicy   SCT_DEFAULT_KEY_POLICY = (MapKeyPolicy){
-    .policy_type   = MAP_POLICY_COPY,
+    .policy_type   = COL_VALUE_POLICY_COPY,
     .on_add_key    = sct_policy_key_add_default,
     .on_free_key   = sct_policy_key_free_default,
 };
 
 const MapValuePolicy SCT_DEFAULT_VALUE_POLICY = (MapValuePolicy){
-    .policy_type     = MAP_POLICY_NONE,
+    .policy_type     = COL_VALUE_POLICY_NONE,
     .on_set_value    = nullptr,
     .on_free_value   = nullptr,
 };
@@ -118,7 +118,7 @@ const MapDataPolicies SCT_DEFAULT_DATA_POLICIES = (MapDataPolicies){
 
 
 const MapValuePolicy MAP_STRING_POOL_VALUE_POLICIES =  (MapValuePolicy){
-    .policy_type     = MAP_POLICY_SHARED,
+    .policy_type     = COL_VALUE_POLICY_SHARED,
     .on_set_value    = map_policy_value_add_to_stringpool,
     .on_free_value   = map_policy_value_free_unref_from_stringpool,
     .on_free_context = map_policy_value_free_context_stringpool
@@ -175,7 +175,7 @@ bool sct_contains_key(StringCounter sct[static 1], const char strkey[static 1]) 
     return (map_contains_key)(sct->map, key_for_string(strkey));
 }
 
-MapValue sct_get(const StringCounter sct[static 1], const MapKey key) {
+ColValue sct_get(const StringCounter sct[static 1], const MapKey key) {
     return (map_get)(sct->map, key);
 }
 
@@ -184,7 +184,7 @@ long sct_get_count(const StringCounter sct[static 1], const char string[static 1
     if (!sct->map) {
         return 0;
     }
-    const MapValue mv = (map_get)(sct->map, key_for_string(string));
+    const ColValue mv = (map_get)(sct->map, key_for_string(string));
     return mv.vlong;
 }
 
@@ -194,7 +194,7 @@ long sct_get_count(const StringCounter sct[static 1], const char string[static 1
 const char* sct_ref(StringCounter sct[static 1], char string[static 1]) {
     if (!sct->map) return nullptr;
 
-    const MapKey key = (MapKey){.kstring = string, .key_type = MAP_TYPE_STRING};
+    const MapKey key = (MapKey){.kstring = string, .key_type = COL_TYPE_STRING};
     MapNode * node = map_node_for(sct->map, key);
     if (!node) {
         // first time string is encountered

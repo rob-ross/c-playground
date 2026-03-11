@@ -11,70 +11,32 @@
 
 #pragma once
 
+#include "../collections.h"
 #include "../memory/memory_pool.h"
 
 
-typedef enum CollectionsError {
-    COL_OK = 0,
-    COL_ERR_NULL_ARG,
-    COL_ERR_ZERO_CAP,
-    COL_ERR_OVERFLOW,
-    COL_ERR_OUT_OF_MEM,
-    COL_ERR_EMPTY,
-    COL_ERR_INDEX_OUT_OF_RANGE
-} CollectionsError;
-
 // like HashMap, we first support long, double, string, and void*.
-// like HashMap, the base List implementation is heterogenius
-typedef enum ListTypeEnum: unsigned char {
-    LIST_TYPE_NONE,
-    LIST_TYPE_LONG,
-    LIST_TYPE_DOUBLE,
-    LIST_TYPE_STRING,
-    LIST_TYPE_VOID_PTR,
-    LIST_TYPE_NULL
-} ListTypeEnum;
+// like HashMap, the base List implementation is heterogenous
 
-typedef struct ListValue {
-    union {
-        long   vlong;
-        double vdouble;
-        char  *vstring;
-        void  *vvoid_ptr;
-    };
-    ListTypeEnum  value_type;
-} ListValue;
 
-constexpr ListValue NULL_LIST_VALUE = (ListValue){.vlong = 0, .value_type = LIST_TYPE_NULL};
-
-struct List;
-
-// defines we treat values passed to the List to store.
-typedef enum ListPolicyType: uint8_t {
-    LIST_POLICY_NONE, // default ininitialized value
-    LIST_POLICY_COPY, // List makes a copy and owns the copy. List frees owned copy
-    LIST_POLICY_TAKE, // List takes ownership and does not make a copy. List frees
-    //todo must implement reference counting for shared policy
-    LIST_POLICY_SHARED // List uses value, does not copy,  does not free.
-} ListPolicyType;
+typedef struct List List;
 
 typedef struct ListValuePolicy {
     // A context pointer to be passed to the policy functions.
     void* context;
     // Called when a value is added. Returns the value to be stored.
     // Can be used for copying, interning, or reference counting.
-    ListValue (*on_add_value)(struct List *list, ListValue value);
+    ColValue (*on_add_value)(List *list, ColValue value);
     // Called when a value is freed.
-    void (*on_free_value)(struct List *list, ListValue value);
+    void (*on_free_value)(List *list, ColValue value);
     // for any specialized cleanup of the context
     void (*on_free_context)(void* context);
-    ListPolicyType policy_type;
+    ColValuePolicyType policy_type;
 } ListValuePolicy;
 
-extern const ListValuePolicy LIST_DEFAULT_VALUE_POLICY;
 
 typedef struct ListElement {
-    ListValue   value;
+    ColValue   value;
 } ListElement;
 
 
@@ -89,36 +51,39 @@ typedef struct List {
 } List;
 
 
+constexpr ColValue NULL_LIST_VALUE = (ColValue){.vlong = 0, .value_type = COL_TYPE_NULL};
+constexpr size_t LIST_MIN_CAPACITY = 16;
+
+extern const ListValuePolicy LIST_DEFAULT_VALUE_POLICY;
 extern const MemPolicy LIST_DEFAULT_MALLOC_POLICY;
 
-static constexpr size_t LIST_MIN_CAPACITY = 16;
 
 // ---------------------------
 // Public API methods
 // ---------------------------
 
 // adds the value to the end of the list
-CollectionsError list_append(List list[static 1], ListValue value);
+CollectionsError list_append(List list[static 1], ColValue value);
 
 //Removes all the elements from this list. After call, size == 0.
 void list_clear(List list[static 1]);
 
 // Returns true if the list contains the value, otherwise returns false.
-bool list_contains(List list[static 1], ListValue value);
+bool list_contains(List list[static 1], ColValue value);
 // call list_destroy to free all resources
-List * (list_create)(size_t capacity, ListValuePolicy value_policy, MemPolicy mem_policy) ;
+List * (list_create)(size_t initial_capacity, ListValuePolicy value_policy, MemPolicy mem_policy) ;
 void list_destroy(List list[static 1]);
 
 // Returns the element at the specified position in this list.
-ListValue list_get(const List list[static 1], size_t index);
+ColValue list_get(const List list[static 1], size_t index);
 
-CollectionsError list_insert(List list[static 1], size_t index, ListValue value );
+CollectionsError list_insert(List list[static 1], size_t index, ColValue value );
 bool list_is_empty(const List list[static 1]);
 
 //Removes the element at the specified position in this list
 //Shifts any subsequent elements to the left (subtracts one from their indices).
 //Returns the element that was removed from the list.
-ListValue list_remove(List list[static 1], size_t index);
+ColValue list_remove(List list[static 1], size_t index);
 
 // Returns the number of elements in this List
 size_t list_size(const List *list);
@@ -126,3 +91,16 @@ size_t list_size(const List *list);
 ////  repr methods
 //// ---------------------------------------------
 void list_repr_List(const List list[static 1], bool verbose, const char* type_str);
+
+
+
+
+
+
+#define list_create_0() (list_create)( 0, LIST_DEFAULT_VALUE_POLICY, MEM_DEFAULT_MALLOC_POLICY)
+#define list_create_1(_1) (list_create)(_1, LIST_DEFAULT_VALUE_POLICY, MEM_DEFAULT_MALLOC_POLICY)
+#define list_create_2(_1, _2) (list_create)(_1, _2, MEM_DEFAULT_MALLOC_POLICY)
+#define list_create_3(_1, _2, _3) (list_create)(_1, _2, _3)
+#define list_create_SELECT_(_1, _2, _3, NAME, ...) NAME
+#define list_create(...) \
+list_create_SELECT_(__VA_ARGS__ __VA_OPT__(,) list_create_3, list_create_2, list_create_1, list_create_0 ) (__VA_ARGS__)

@@ -12,7 +12,7 @@
 // map as a Python Counter or a Bag/Multiset.
 // It is a collection where elements are stored as map keys and their counts are stored as map values.
 // Counts are allowed to be any integer value including zero or negative counts.
-// map_get() returns the count for a key as a MapValue
+// map_get() returns the count for a key as a ColValue
 // sct.get_count() returns the count for a key as a long
 // sct.ref() adds the key if not present, or increments the count if present.
 // sct.unref() reduces the count by one. When count == 0, the key is removed from the map and freed.
@@ -24,8 +24,6 @@
 // Forward-declare the struct to make it an opaque type.
 // Users can only have pointers to it, not instances.
 // Full definition in string_counter.c
-struct StringCounter;
-typedef struct StringCounter StringCounter;
 
 extern const MapDataPolicies SCT_DEFAULT_DATA_POLICIES;
 
@@ -38,7 +36,7 @@ void sct_clear(StringCounter *sct);
 bool sct_contains_key(StringCounter *sct, const char strkey[static 1]);
 void sct_destroy(StringCounter *sct);
 
-MapValue sct_get(const StringCounter *sct, MapKey key);
+ColValue sct_get(const StringCounter *sct, MapKey key);
 long sct_get_count(const StringCounter *sct, const char string[static 1]);
 bool sct_is_empty(StringCounter *sct);
 void sct_put(StringCounter *sct, const char string[static 1], long value);

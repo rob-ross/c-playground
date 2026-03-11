@@ -21,7 +21,7 @@ typedef struct SetItem {
     MapKey item;
 } SetItem;
 
-static const MapValue DUMMY_VALUE = (MapValue){ .vlong = 0, .value_type = MAP_TYPE_LONG};
+static const ColValue DUMMY_VALUE = (ColValue){ .vlong = 0, .value_type = COL_TYPE_LONG};
 
 // ----------------------------------
 // API functions

@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <sys/errno.h>
+
 #include "./munit/munit.h"
 #include "./munit/munit_overrides.h"
 
@@ -34,3 +36,29 @@ static void apply_fixture(MunitTest tests[static 1], MunitTestSetup setup, Munit
     } while ( tests[test_index].name != nullptr );
 
 }
+
+[[maybe_unused]]
+static inline void * (xcalloc)(const size_t n, const size_t size, char const *file, char const *func, const int line)
+{
+    void *ret = calloc(n, size);
+    if (!ret) {
+        fprintf(stderr, "%s:%d:%s: calloc: %s\n", file, line, func, strerror(errno));
+        abort();
+    }
+    return ret;
+}
+
+[[maybe_unused]]
+static inline void * (xmalloc)(const size_t size, char const *file, char const *func, const int line)
+{
+    void *ret = malloc(size);
+    if (!ret) {
+        fprintf(stderr, "%s:%d:%s: malloc: %s\n", file, line, func, strerror(errno));
+        abort();
+    }
+    return ret;
+}
+
+// wrapper macro for passing the source file name, line number, and function name to the actual wrapper function
+#define xcalloc(a, b) (xcalloc)((a), (b), __FILE__, __func__, __LINE__)
+#define xmalloc(a, b) (xmalloc)((a), __FILE__, __func__, __LINE__)

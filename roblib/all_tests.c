@@ -13,10 +13,13 @@
 
 int main_test_hashmap(int argc, char *argv[argc + 1]);
 int main_test_string_counter(int argc, char *argv[argc + 1]) ;
+int main_test_array_list(int argc, char *argv[argc + 1]) ;
 
 int main(int argc, char *argv[argc + 1]) {
     main_test_hashmap(argc, argv);
     optind = 1;
     main_test_string_counter(argc, argv);
+    optind = 1;
+    main_test_array_list(argc, argv);
     optind = 1;
 }

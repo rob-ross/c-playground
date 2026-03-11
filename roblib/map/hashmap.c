@@ -8,25 +8,21 @@
 // DO NOT INCLUDE string_counter.h. There is a cyclic dependency between that header file and hashmap.h.
 // the declarations needed by both string_counter.c and hashmap.c are in hashmap_private.h.
 
+
+#include <string.h> // Required for memcpy
+#include <math.h>
+#include <stdlib.h>
+#include <stdio.h>
+
 #include "hashmap.h"
 #include "hashmap_private.h"
 #include "../memory/memory_pool.h"
 
 
-#include <math.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h> // Required for memcpy
-
-
-
-
 static constexpr size_t MIN_CAP  = 16;
-static constexpr size_t MAX_POW2 = (SIZE_MAX >> 1) + 1;
 
-const MapKey   NULL_MAP_KEY   = (MapKey){  .kvoid_ptr = nullptr, .key_type   = MAP_TYPE_NULL};
-const MapValue NULL_MAP_VALUE = (MapValue){ .vvoid_ptr = nullptr, .value_type = MAP_TYPE_NULL};
-const MapNode  NULL_MAP_NODE  = (MapNode){ .key = NULL_MAP_KEY, .value = NULL_MAP_VALUE, .hash = 0, .next = nullptr};
+const MapKey   NULL_MAP_KEY   = (MapKey){  .kvoid_ptr = nullptr, .key_type   = COL_TYPE_NULL};
+const MapNode  NULL_MAP_NODE  = (MapNode){ .key = NULL_MAP_KEY, .value = NULL_COL_VALUE, .hash = 0, .next = nullptr};
 
 
 
@@ -49,8 +45,8 @@ static bool map_equals_double(double d1, double d2);
 static void map_free_key_if(HashMap map[static 1], const MapNode node[static 1]);
 static void map_free_value_if(HashMap map[static 1], const MapNode *node);
 static size_t map_hash_mix64(size_t x);
-static MapValue map_policy_value_set_default(HashMap map[static 1], MapValue value);
-static void map_policy_value_free_default(HashMap map[static 1], MapValue value) ;
+static ColValue map_policy_value_set_default(HashMap map[static 1], ColValue value);
+static void map_policy_value_free_default(HashMap map[static 1], ColValue value) ;
 
 
 
@@ -75,24 +71,24 @@ static bool map_equals_double(double d1, double d2) {
     return ua == ub;
 }
 
-static bool map_equals_MapValue(const MapValue v1, const MapValue v2) {
+static bool map_equals_MapValue(const ColValue v1, const ColValue v2) {
 
     if (v1.value_type != v2.value_type) return false;
 
     switch (v1.value_type) {
-        case MAP_TYPE_NONE:
+        case COL_TYPE_NONE:
             return false;
-        case MAP_TYPE_LONG:
+        case COL_TYPE_LONG:
             return v1.vlong == v2.vlong;
-        case MAP_TYPE_DOUBLE:
+        case COL_TYPE_DOUBLE:
             return map_equals_double(v1.vdouble, v2.vdouble);
-        case MAP_TYPE_STRING:
+        case COL_TYPE_STRING:
             return strcmp(v1.vstring, v2.vstring) == 0;
-        case MAP_TYPE_VOID_PTR:
+        case COL_TYPE_VOID_PTR:
             // this requires the caller to have defined an equal function for this blob.
             // todo implement
             return v1.vvoid_ptr == v2.vvoid_ptr;
-        case MAP_TYPE_NULL:
+        case COL_TYPE_NULL:
             return true; // both value_types are null
         default:
             return false;
@@ -141,30 +137,6 @@ static size_t map_hash_string(const char *str) {
     return (size_t)hash;
 }
 
-static size_t map_next_power_of_two(size_t n) {
-    // Clamp lower bound
-    if (n < MIN_CAP) return MIN_CAP;
-
-    // Clamp upper bound
-    if (n >= MAX_POW2) return MAX_POW2;
-
-    // Round up to next power of two
-    // -----------------------------
-    // Subtract 1 so exact powers of two don’t round up.
-    // Fill all bits below the highest 1 with 1s.
-    // Add 1.
-    n--;  // clears the lowest set bit and turns all lower bits into 1.
-    n |= n >> 1;
-    n |= n >> 2;
-    n |= n >> 4;
-    n |= n >> 8;
-    n |= n >> 16;
-#if SIZE_MAX > 0xffffffff
-    n |= n >> 32;
-#endif
-    return n + 1;
-}
-
 
 //// ------------------------------------------------------------
 ////
@@ -179,19 +151,19 @@ static size_t map_next_power_of_two(size_t n) {
 MapKey map_policy_key_add_default(HashMap map[static 1], MapKey key) {
     // default add always make a copy of a string key and we own it
     if (!map) return NULL_MAP_KEY;
-    MapPolicyType keypolicy = map->data_policies.key_policy.policy_type;
-    if (key.key_type == MAP_TYPE_STRING &&  ( keypolicy == MAP_POLICY_COPY || keypolicy == MAP_POLICY_NONE )) {
-        char *string_copy = map_strdup(map->mem_policy, key.kstring);
-        return (MapKey){.key_type = MAP_TYPE_STRING, .kstring = string_copy};
+    ColValuePolicyType keypolicy = map->data_policies.key_policy.policy_type;
+    if (key.key_type == COL_TYPE_STRING &&  ( keypolicy == COL_VALUE_POLICY_COPY || keypolicy == COL_VALUE_POLICY_NONE )) {
+        char *string_copy = mem_strdup(map->mem_policy, key.kstring);
+        return (MapKey){.key_type = COL_TYPE_STRING, .kstring = string_copy};
     }
     return key;
 }
 
 void map_policy_key_free_default(HashMap map[static 1], MapKey key) {
     if (!map) return;
-    MapPolicyType keypolicy = map->data_policies.key_policy.policy_type;
-    if (key.key_type == MAP_TYPE_STRING &&
-        ( keypolicy == MAP_POLICY_COPY || keypolicy == MAP_POLICY_TAKE || keypolicy == MAP_POLICY_NONE )) {
+    ColValuePolicyType keypolicy = map->data_policies.key_policy.policy_type;
+    if (key.key_type == COL_TYPE_STRING &&
+        ( keypolicy == COL_VALUE_POLICY_COPY || keypolicy == COL_VALUE_POLICY_TAKE || keypolicy == COL_VALUE_POLICY_NONE )) {
         mem_free_bytes(map->mem_policy, key.kstring);  //we own it.
     }
 }
@@ -200,43 +172,29 @@ void map_policy_key_free_default(HashMap map[static 1], MapKey key) {
 // Value data_policies
 // -----------------------
 
-static MapValue map_policy_value_set_default(HashMap map[static 1], MapValue value) {
+static ColValue map_policy_value_set_default(HashMap map[static 1], ColValue value) {
     // default add always make a copy of a string key and we own it
-    if (!map) return NULL_MAP_VALUE;
-    MapPolicyType valuepolicy = map->data_policies.value_policy.policy_type;
-    if ( value.value_type == MAP_TYPE_STRING &&
-        ( valuepolicy == MAP_POLICY_COPY || valuepolicy == MAP_POLICY_NONE )) {
-        char *string_copy = map_strdup(map->mem_policy, value.vstring);
-        return (MapValue){.value_type = MAP_TYPE_STRING, .vstring = string_copy};
-    }
-    if ( value.value_type == MAP_TYPE_VOID_PTR ) {
-        // invoke the pointer's add method?
-        //todo deal with void* types
-    }
-    return value;
+    if (!map) return NULL_COL_VALUE;
+    ColValue result = col_policy_value_set_default(map, value, map->data_policies.value_policy.policy_type, map->mem_policy);
+    return result;
 }
 
-static void map_policy_value_free_default(HashMap map[static 1], MapValue value) {
+static void map_policy_value_free_default(HashMap map[static 1], ColValue value) {
     if (!map) return;
-    MapPolicyType valuepolicy = map->data_policies.value_policy.policy_type;
-    if ( value.value_type == MAP_TYPE_STRING &&
-        ( valuepolicy == MAP_POLICY_COPY || valuepolicy == MAP_POLICY_TAKE || valuepolicy == MAP_POLICY_NONE )) {
-        mem_free_bytes(map->mem_policy, value.vstring);  //we own it.
-    } else if ( value.value_type == MAP_TYPE_VOID_PTR ) {
-        // invoke the pointer's free method
-        //todo deal with void* types
-    }
+    col_policy_value_free_default(map, value, map->data_policies.value_policy.policy_type, map->mem_policy);
 }
 
 const MapKeyPolicy   MAP_DEFAULT_KEY_POLICY = (MapKeyPolicy){
-    .policy_type   = MAP_POLICY_COPY,
-    .on_add_key    = map_policy_key_add_default,
-    .on_free_key   = map_policy_key_free_default,
+    .context         = nullptr,
+    .policy_type     = COL_VALUE_POLICY_COPY,
+    .on_add_key      = map_policy_key_add_default,
+    .on_free_key     = map_policy_key_free_default,
     .on_free_context = nullptr,
 };
 
 const MapValuePolicy MAP_DEFAULT_VALUE_POLICY = (MapValuePolicy){
-    .policy_type     = MAP_POLICY_COPY,
+    .context         = nullptr,
+    .policy_type     = COL_VALUE_POLICY_COPY,
     .on_set_value    = map_policy_value_set_default,
     .on_free_value   = map_policy_value_free_default,
     .on_free_context = nullptr,
@@ -275,26 +233,26 @@ MapNode * map_create_node(HashMap map[static 1], const size_t hashcode, const Ma
 
     MapNode *temp_node;
     switch (key.key_type) {
-        case MAP_TYPE_LONG:
-            temp_node = &(MapNode){ .hash = hashcode, .key.klong = key.klong, .key.key_type = MAP_TYPE_LONG };
+        case COL_TYPE_LONG:
+            temp_node = &(MapNode){ .hash = hashcode, .key.klong = key.klong, .key.key_type = COL_TYPE_LONG };
             break;
-        case MAP_TYPE_DOUBLE:
-            temp_node = &(MapNode){ .hash = hashcode, .key.kdouble = key.kdouble, .key.key_type = MAP_TYPE_DOUBLE };
+        case COL_TYPE_DOUBLE:
+            temp_node = &(MapNode){ .hash = hashcode, .key.kdouble = key.kdouble, .key.key_type = COL_TYPE_DOUBLE };
             break;
-        case MAP_TYPE_STRING: {
+        case COL_TYPE_STRING: {
             MapKey copy;
             if ( map->data_policies.key_policy.on_add_key ) {
                 copy = map->data_policies.key_policy.on_add_key(map, key);
             } else {
                 copy = map_policy_key_add_default(map, key);
             }
-            temp_node = &(MapNode){ .hash = hashcode, .key.kstring = copy.kstring, .key.key_type = MAP_TYPE_STRING };
+            temp_node = &(MapNode){ .hash = hashcode, .key.kstring = copy.kstring, .key.key_type = COL_TYPE_STRING };
             break;
         }
-        case MAP_TYPE_VOID_PTR:
-            temp_node = &(MapNode){ .hash = hashcode, .key.kvoid_ptr = key.kvoid_ptr, .key.key_type = MAP_TYPE_VOID_PTR };
+        case COL_TYPE_VOID_PTR:
+            temp_node = &(MapNode){ .hash = hashcode, .key.kvoid_ptr = key.kvoid_ptr, .key.key_type = COL_TYPE_VOID_PTR };
             break;
-        case MAP_TYPE_NONE:
+        case COL_TYPE_NONE:
         default:
             temp_node = &(MapNode){};
             break;
@@ -349,7 +307,7 @@ void map_ensure_capacity(HashMap map[static 1]) {
 size_t map_hash_function(const MapKey key) {
     size_t raw_hash;
     switch (key.key_type) {
-        case MAP_TYPE_LONG: {
+        case COL_TYPE_LONG: {
             // For integer keys, especially sequential ones, we multiply by a large
             // prime to spread the bits out across the 64-bit range. This ensures that
             // the mixer step works effectively. 0x9e3779b97f4a7c15 is a
@@ -357,7 +315,7 @@ size_t map_hash_function(const MapKey key) {
             raw_hash =  key.klong * 0x9e3779b97f4a7c15ULL;
             break;
         }
-        case MAP_TYPE_DOUBLE: {
+        case COL_TYPE_DOUBLE: {
             double d = key.kdouble;
             // Normalize -0.0 to 0.0 so they hash to the same bucket
             if (d == 0.0) d = 0.0;
@@ -374,16 +332,16 @@ size_t map_hash_function(const MapKey key) {
             raw_hash = hash;
             break;
         }
-        case MAP_TYPE_STRING: {
+        case COL_TYPE_STRING: {
             raw_hash = map_hash_string((char*)key.kstring);
             break;
         }
-        case MAP_TYPE_VOID_PTR: {
+        case COL_TYPE_VOID_PTR: {
             // this requires the caller to have defined a hash function for this blob.
             raw_hash = (unsigned long)key.kvoid_ptr;
             break;
         }
-        case MAP_TYPE_NONE:
+        case COL_TYPE_NONE:
         default:
             raw_hash = 0;
     }
@@ -395,19 +353,19 @@ bool map_equals_MapKey(const MapKey k1, const MapKey k2) {
     if (k1.key_type != k2.key_type) return false;
 
     switch (k1.key_type) {
-        case MAP_TYPE_NONE:
+        case COL_TYPE_NONE:
             return false;
-        case MAP_TYPE_LONG:
+        case COL_TYPE_LONG:
             return k1.klong == k2.klong;
-        case MAP_TYPE_DOUBLE:
+        case COL_TYPE_DOUBLE:
             return map_equals_double(k1.kdouble, k2.kdouble);
-        case MAP_TYPE_STRING:
+        case COL_TYPE_STRING:
             return strcmp(k1.kstring, k2.kstring) == 0;
-        case MAP_TYPE_VOID_PTR:
+        case COL_TYPE_VOID_PTR:
             // this requires the caller to have defined an equal function for this blob.
             // todo implement
             return k1.kvoid_ptr == k2.kvoid_ptr;
-        case MAP_TYPE_NULL:
+        case COL_TYPE_NULL:
             return true; // both key_types are null
         default:
             return false;
@@ -429,8 +387,8 @@ MapNode * map_node_for(const HashMap map[static 1], const MapKey key) {
     return nullptr; // Key not found
 }
 
-void map_set_value(HashMap map[static 1], MapNode node[static 1], const MapValue value ) {
-    if (value.value_type == MAP_TYPE_STRING) {
+void map_set_value(HashMap map[static 1], MapNode node[static 1], const ColValue value ) {
+    if (value.value_type == COL_TYPE_STRING) {
         if ( map->data_policies.value_policy.on_set_value ) {
             node->value.vstring = map->data_policies.value_policy.on_set_value(map, value).vstring;
         } else {
@@ -446,12 +404,6 @@ void map_recalc_load(HashMap *map) {
     map->load =  (double) ((long double)map->size / map->num_buckets);
 }
 
-char * map_strdup(MemPolicy mem_policy, char const * string) {
-    const size_t str_len = strlen(string)+1;
-    char *dupe = mem_alloc_bytes(mem_policy, strlen(string)+1);
-    memcpy(dupe, string, str_len);
-    return dupe;
-}
 
 //// ------------------------------------------------------------
 ////    End 'Package-private' / 'friend' API methods
@@ -480,7 +432,7 @@ HashMap * (map_create)(size_t num_buckets, MapDataPolicies data_policies, MemPol
     } else if ( num_buckets > (SIZE_MAX >> 1) + 1) {
         num_buckets = (SIZE_MAX >> 1) + 1;
     } else {
-        num_buckets = map_next_power_of_two(num_buckets);
+        num_buckets = col_next_power_of_two(num_buckets, MIN_CAP);
     }
 
     //todo move this outside the create function. Either the caller provides a pool or we have a helper method that
@@ -547,10 +499,6 @@ HashMap *map_create_using_stringpool(size_t num_buckets) {
     return map;
 }
 
-[[maybe_unused]]
-HashMap *map_create_using_allocator(size_t num_buckets) {
-    return nullptr;
-}
 
 void map_destroy(HashMap map[static 1]) {
     if (!map) return;
@@ -606,13 +554,13 @@ void map_clear(HashMap map[static 1]) {
 }
 
 bool (map_contains_key)(HashMap map[static 1], const MapKey key) {
-    MapValue unused;
+    ColValue unused;
     return (map_try_get)(map, key, &unused);
 }
 
 
 // initial implementation is O(N)
-bool (map_contains_value)(HashMap map[static 1], const MapValue value) {
+bool (map_contains_value)(HashMap map[static 1], const ColValue value) {
     const size_t num_buckets = map->num_buckets;
     for ( size_t index = 0; index < num_buckets; ++index ) {
         const MapNode *current = map->buckets[index];
@@ -627,8 +575,8 @@ bool (map_contains_value)(HashMap map[static 1], const MapValue value) {
 }
 
 
-MapValue (map_get)(const HashMap map[static 1], const MapKey key) {
-    if (map == nullptr) return NULL_MAP_VALUE;
+ColValue (map_get)(const HashMap map[static 1], const MapKey key) {
+    if (map == nullptr) return NULL_COL_VALUE;
     const size_t index = map_calc_bucket_index(map_hash_function(key), map->num_buckets);
 
     MapNode const *current = map->buckets[index];
@@ -639,21 +587,21 @@ MapValue (map_get)(const HashMap map[static 1], const MapKey key) {
         }
         current = current->next;
     }
-    return NULL_MAP_VALUE; // Key not found
+    return NULL_COL_VALUE; // Key not found
 }
 
-MapValue (map_get_or)(const HashMap map[static 1], const MapKey key, const MapValue fallback) {
-    const MapValue value = (map_get)(map, key);
-    if (value.value_type == MAP_TYPE_NULL) {
+ColValue (map_get_or)(const HashMap map[static 1], const MapKey key, const ColValue fallback) {
+    const ColValue value = (map_get)(map, key);
+    if (value.value_type == COL_TYPE_NULL) {
         return fallback;
     }
     return value;
 }
 
-bool (map_try_get)(const HashMap map[static 1], const MapKey key, MapValue *out) {
-    const MapValue value = (map_get)(map, key);
-    if (value.value_type == MAP_TYPE_NULL) {
-        *out = NULL_MAP_VALUE;
+bool (map_try_get)(const HashMap map[static 1], const MapKey key, ColValue *out) {
+    const ColValue value = (map_get)(map, key);
+    if (value.value_type == COL_TYPE_NULL) {
+        *out = NULL_COL_VALUE;
         return false;
     }
     *out = value;
@@ -665,7 +613,7 @@ bool map_is_empty(const HashMap map[static 1]) {
 }
 
 // if key or value are strings, they are copied so the map can be free them independently of the original arguments.
-void (map_put)(HashMap map[static 1], const MapKey key, const MapValue value) {
+void (map_put)(HashMap map[static 1], const MapKey key, const ColValue value) {
     if (map == nullptr) return;
 
     if (map->size >= map->fill_capacity) {
@@ -728,6 +676,8 @@ void (map_remove)(HashMap map[static 1], const MapKey key) {
 size_t map_size(const HashMap map[static 1]) {
     return map->size;
 }
+
+
 
 //// ---------------------------------------------
 ////  repr methods
@@ -803,28 +753,28 @@ void map_repr_HashMap(const HashMap map[static 1], const bool verbose, const cha
 
 void map_repr_MapKey(const MapKey map_key, bool verbose) {
 
-    if (map_key.key_type == MAP_TYPE_NONE) {
-        printf("(MapKey){ MAP_TYPE_NONE }");
+    if (map_key.key_type == COL_TYPE_NONE) {
+        printf("(MapKey){ COL_TYPE_NONE }");
         return;
     }
-    if (map_key.key_type == MAP_TYPE_NULL) {
-        printf("(MapKey){ MAP_TYPE_NULL }");
+    if (map_key.key_type == COL_TYPE_NULL) {
+        printf("(MapKey){ COL_TYPE_NULL }");
         return;
     }
     if (verbose) {
         printf("(MapKey){ ");
     }
     switch (map_key.key_type) {
-        case MAP_TYPE_LONG:
+        case COL_TYPE_LONG:
             printf(".klong=%5lu", map_key.klong);
             break;
-        case MAP_TYPE_DOUBLE:
+        case COL_TYPE_DOUBLE:
             printf(".kdouble=%5g", map_key.kdouble);
             break;
-        case MAP_TYPE_STRING:
+        case COL_TYPE_STRING:
             printf(".kstring='%5s'", map_key.kstring);
             break;
-        case MAP_TYPE_VOID_PTR:
+        case COL_TYPE_VOID_PTR:
             printf(".kvoid_ptr=%14p", map_key.kvoid_ptr);
             break;
         default:
@@ -839,36 +789,36 @@ void map_repr_MapKey(const MapKey map_key, bool verbose) {
     }
 }
 
-void map_repr_MapValue(const MapValue map_value, const bool verbose) {
-    if (map_value.value_type == MAP_TYPE_NONE) {
-        printf("(MapValue){ MAP_TYPE_NONE }");
+void map_repr_MapValue(const ColValue map_value, const bool verbose) {
+    if (map_value.value_type == COL_TYPE_NONE) {
+        printf("(ColValue){ COL_TYPE_NONE }");
         return;
     }
-    if (map_value.value_type == MAP_TYPE_NULL) {
-        printf("(MapValue){ MAP_TYPE_NULL }");
+    if (map_value.value_type == COL_TYPE_NULL) {
+        printf("(ColValue){ COL_TYPE_NULL }");
         return;
     }
     if (verbose) {
-        printf("(MapValue){ ");
+        printf("(ColValue){ ");
     }
     switch (map_value.value_type) {
-        case MAP_TYPE_LONG:
+        case COL_TYPE_LONG:
             printf(".vlong=%5lu", map_value.vlong);
             break;
-        case MAP_TYPE_DOUBLE:
+        case COL_TYPE_DOUBLE:
             printf(".vdouble=%5g", map_value.vdouble);
             break;
-        case MAP_TYPE_STRING:
+        case COL_TYPE_STRING:
             printf(".vstring='%5s'", map_value.vstring);
             break;
-        case MAP_TYPE_VOID_PTR:
+        case COL_TYPE_VOID_PTR:
             printf(".vvoid_ptr=%14p", map_value.vvoid_ptr);
             break;
         default:
             if (verbose) {
                 printf("unknown");
             } else {
-                printf("(MapValue){ unknown }");
+                printf("(ColValue){ unknown }");
             }
     }
     if (verbose) {
@@ -897,37 +847,41 @@ void map_repr_Node(const MapNode node[static 1]) {
 //// -----------------------------------------------------
 ////    Converters for generic map function arguments
 ////
-////    these convert expressions to a MapKey or MapValue
+////    these convert expressions to a MapKey or ColValue
 //// -----------------------------------------------------
 
 MapKey key_for_long(const long k) {
-    return (MapKey){.klong = k, .key_type = MAP_TYPE_LONG};
+    return (MapKey){.klong = k, .key_type = COL_TYPE_LONG};
 }
 
 MapKey key_for_double(const double k) {
-    return (MapKey){.kdouble = k, .key_type = MAP_TYPE_DOUBLE};
+    return (MapKey){.kdouble = k, .key_type = COL_TYPE_DOUBLE};
 }
 
 MapKey key_for_string(const char * k) {
-    return (MapKey){.kstring = (char*)k, .key_type = MAP_TYPE_STRING};
+    return (MapKey){.kstring = (char*)k, .key_type = COL_TYPE_STRING};
 }
 
 MapKey key_for_void_ptr(const void * k) {
-    return (MapKey){.kvoid_ptr = (void*)k, .key_type = MAP_TYPE_VOID_PTR};
+    return (MapKey){.kvoid_ptr = (void*)k, .key_type = COL_TYPE_VOID_PTR};
 }
 
-MapValue value_for_long(const long v) {
-    return (MapValue){.vlong = v, .value_type = MAP_TYPE_LONG};
-}
 
-MapValue value_for_double(const double v) {
-    return (MapValue){.vdouble = v, .value_type = MAP_TYPE_DOUBLE};
-}
+#include "../base.h"
+// utility methods
+void display_type_sizes() {
+    print("\nhashmap.h data types");
+    print("------------------------");
+    PVL(sizeof(ColTypeEnum));
+    PVL(sizeof(MapKey));
+    PVL(sizeof(ColValue));
+    PVL(sizeof(MapNode));
+    PVL(sizeof(ColValuePolicyType));
 
-MapValue value_for_string(const char * v) {
-    return (MapValue){.vstring = (char*)v, .value_type = MAP_TYPE_STRING};
-}
+    PVL(sizeof(MapKeyPolicy));
 
-MapValue value_for_void_ptr(const void * v) {
-    return (MapValue){.vvoid_ptr = (void*)v, .value_type = MAP_TYPE_VOID_PTR};
+    PVL(sizeof(MapValuePolicy));
+    PVL(sizeof(MapDataPolicies));
+    PVL(sizeof(MemPolicy));
+    PVL(sizeof(HashMap));
 }

@@ -27,8 +27,6 @@ MapKey map_policy_key_add_default(HashMap map[static 1], MapKey key);
 void map_policy_key_free_default(HashMap map[static 1], MapKey key);
 MapNode * map_node_for(const HashMap map[static 1], MapKey key);
 void map_recalc_load(HashMap *map);
-void map_set_value(HashMap *top_map, MapNode *node, MapValue value );
+void map_set_value(HashMap *top_map, MapNode *node, ColValue value );
 
-//this probably belongs in  memory.c
-char * map_strdup(MemPolicy mem_policy, char const * string) ;
 

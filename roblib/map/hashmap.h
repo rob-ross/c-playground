@@ -9,53 +9,16 @@
 #include <stddef.h> // For size_t
 #include <stdint.h> // For uint8_t
 
+#include "../collections.h"
 #include "../memory/memory_pool.h"
 
 
-// we can support arbitrary objects via a void* key, but we'll save that for later
-// for values we should support all the the scalar types, which we can do via int/long and double.
-// for values we will also support char* specifically for strings, and void* for arbitrary data.
 
-// in phase 3 we'll optimize memory by allocating in chunks so we can keep our buckets
-// and linked lists in the same memory chunk.
-// ideas for memory :
-//  * HashMap will manage its own memory
-//  * memory will be allocated in pages/chunks. No coordination with OS for memory-manager "pages".
-//  * biggest requirement: HashMap buckets is sequential chunk of num_buckets MapNodes. When map grows,
-//      new memory must be allocated and the old chunk released for reuse.
-//  * we need to track multiple pages as parts of the abstract memory object for the map, so new pages can be
-//      allocated as needed
-//  * after buckets, individual MapNodes for the linked lists are the next largest requirement.
-//  * same requirements will apply to the intern string map, probably with smaller requirements. But child
-//      structuees like the intern map and any Sets we use (future work) all need to live in the same
-//      memory object.
-//  Sizes of objects:
-//  * MapNodes - 48 bytes each
-//  * MapKey and MapValue are part of a MapNode so we don't need to consider them separately, i.e., we don't
-//      allocate them on the heap.
-//      so our memory pages should be multiples of sizeof(MapNode).
-//
-//  To be clear, the top-level HashMap struct can live on the heap or stack, but it will not be contained in
-//      the memory it manages.
-//
-//
-
+// Forward-declare dependency types.
 typedef struct StringCounter StringCounter;
+typedef struct HashMap HashMap;
 
 
-typedef enum MapTypeEnum: unsigned char {
-    MAP_TYPE_NONE,
-    MAP_TYPE_LONG,
-    MAP_TYPE_DOUBLE,
-    MAP_TYPE_STRING,
-    MAP_TYPE_VOID_PTR,
-    MAP_TYPE_NULL
-} MapTypeEnum;
-
-typedef struct BasicBlob {
-    size_t size;
-    uint8_t *data;
-} BasicBlob;
 
 // if we really intend to support *any* data buffer type as a key in the map, we need to be provided:
 // 1. a free function pointer, if we need to free it.
@@ -73,79 +36,55 @@ typedef struct MapKey {
         char *kstring;
         void *kvoid_ptr;
     };
-    MapTypeEnum  key_type;
+    ColTypeEnum  key_type;
 } MapKey;
-
-// 16 bytes
-typedef struct MapValue {
-    union {
-        long   vlong;
-        double vdouble;
-        char  *vstring;
-        void  *vvoid_ptr;
-    };
-    MapTypeEnum  value_type;
-} MapValue;
 
 
 // 48 bytes
 typedef struct MapNode {
     const MapKey key;
-    MapValue     value;
+    ColValue     value;
     const size_t hash;
     struct MapNode  *next;
 } MapNode;
 
-struct HashMap;
-// Forward-declare the dependency type.
-struct StringCounter;
 
-
-
-
-
-typedef enum MapPolicyType: uint8_t {
-    MAP_POLICY_NONE, // default ininitialized value
-    MAP_POLICY_COPY, // HashMap makes a copy and owns the copy. HashMap frees owned copy
-    MAP_POLICY_TAKE, // HashMap takes ownership and does not make a copy. HashMap frees
-    //todo must implement reference counting for shared policy
-    MAP_POLICY_SHARED // HashMap uses value, does not copy,  does not free.
-} MapPolicyType;
-
+// 40 bytes
 typedef struct MapKeyPolicy {
     // A context pointer to be passed to the policy functions.
     void* context;
     // Called when a key is added. Returns the key to be stored.
     // Can be used for copying, interning, or reference counting.
-    MapKey (*on_add_key)(struct HashMap *map, MapKey key);
+    MapKey (*on_add_key)(HashMap *map, MapKey key);
     // Called when a key is freed.
-    void (*on_free_key)(struct HashMap *map, MapKey key);
+    void (*on_free_key)(HashMap *map, MapKey key);
     // for any specialized cleanup of the context
     void (*on_free_context)(void* context);
-    MapPolicyType policy_type;
+    ColValuePolicyType policy_type;
 } MapKeyPolicy;
 
+// 40 bytes
 typedef struct MapValuePolicy {
     // A context pointer to be passed to the policy functions.
     void* context;
     // Called when a value is added. Returns the value to be stored.
     // Can be used for copying, interning, or reference counting.
-    MapValue (*on_set_value)(struct HashMap *map, MapValue value);
+    ColValue (*on_set_value)(HashMap *map, ColValue value);
     // Called when a value is freed.
-    void (*on_free_value)(struct HashMap *map, MapValue value);
+    void (*on_free_value)(HashMap *map, ColValue value);
     // for any specialized cleanup of the context
     void (*on_free_context)(void* context);
-    MapPolicyType policy_type;
+    ColValuePolicyType policy_type;
 } MapValuePolicy;
 
-
+// 80 bytes
 typedef struct MapDataPolicies {
     MapKeyPolicy   key_policy;
     MapValuePolicy value_policy;
 } MapDataPolicies;
 
 
-// ?? bytes
+// 192 bytes
 typedef struct HashMap {
     MapNode **buckets;            // each bucket is a linked list
     size_t size;                  // Number of key-value pairs currently in the map
@@ -156,47 +95,46 @@ typedef struct HashMap {
 
     MapDataPolicies data_policies;
     MemPolicy       mem_policy;
-    uint64_t flags; // future use
+    uint64_t        flags; // future use
 } HashMap;
 
 
-extern const MapDataPolicies MAP_DEFAULT_DATA_POLICIES;
 
 //// ------------------------------------------------------------
 ////
 ////    Return and Error WIP
 ////
 //// ------------------------------------------------------------
+//
+// typedef enum MapErrorCode: unsigned char {
+//     MAP_OK,
+//     MAP_ERR_NULL_ARG,
+//     MAP_ERR_OUT_OF_MEM,
+//
+// } MapErrorCode;
+//
+// typedef struct MapError {
+//     MapErrorCode err;
+//     const char msg[]; // error message, flexible array
+// } MapError;
+//
+// typedef struct MapResult {
+//     union {
+//         MapKey   key;
+//         ColValue value;
+//     };
+//     const char type[1]; // holds either 'k' or 'v'
+// } MapResult;
+//
+// typedef struct MapRE {
+//     MapResult result;
+//     MapError  err;
+// } MapRE;
 
-typedef enum MapErrorCode {
-    MAP_OK,
-    MAP_ERR_NULL_ARG,
-    MAP_ERR_OUT_OF_MEM,
 
-} MapErrorCode;
-
-typedef struct MapError {
-    MapErrorCode err;
-    const char msg[]; // error message, flexible array
-} MapError;
-
-typedef struct MapResult {
-    union {
-        MapKey   key;
-        MapValue value;
-    };
-    const char type[1]; // holds either 'k' or 'v'
-} MapResult;
-
-typedef struct MapRE {
-    MapResult result;
-    MapError  err;
-} MapRE;
-
-
-extern const MapKey   NULL_MAP_KEY;
-extern const MapValue NULL_MAP_VALUE;
-extern const MapNode  NULL_MAP_NODE;
+extern const MapKey          NULL_MAP_KEY;
+extern const MapNode         NULL_MAP_NODE;
+extern const MapDataPolicies MAP_DEFAULT_DATA_POLICIES;
 
 static constexpr double DEFAULT_FILL_FACTOR = 0.75;
 
@@ -209,9 +147,12 @@ static constexpr double DEFAULT_FILL_FACTOR = 0.75;
 
 
 
-// ---------------------------
-// Public API methods
-// ---------------------------
+//// ------------------------------------------------------------
+////
+////    Public API methods
+////
+//// ------------------------------------------------------------
+
 
 // call map_destroy to free all resources
 HashMap * (map_create)(size_t num_buckets, MapDataPolicies data_policies, MemPolicy mem_policy) ;
@@ -227,13 +168,13 @@ void map_clear(HashMap map[static 1]);
 // if you intend to use the key's value immediately if it exists, consider using map_try_get instead, for efficiency.
 bool map_contains_key(HashMap map[static 1], MapKey key) ;
 //  Returns true if this map contains a mapping for the specified key. Currently O(N)
-bool map_contains_value(HashMap map[static 1], MapValue value);
+bool map_contains_value(HashMap map[static 1], ColValue value);
 
 
 /**
  * Returns the value associated with the given key.
  *
- * If the key is not found, returns a MapValue where value_type is MAP_TYPE_NULL.
+ * If the key is not found, returns a ColValue where value_type is MAP_TYPE_NULL.
  *
  * Ownership (Borrowing):
  *  - For pointer types (e.g. strings), the caller "borrows" the pointer from the HashMap.
@@ -241,11 +182,11 @@ bool map_contains_value(HashMap map[static 1], MapValue value);
  *  - The pointer is valid only as long as the entry remains in the HashMap.
  *  - Removing the key from the HashMap invalidates the pointer (dangling pointer).
  */
-MapValue (map_get)(const HashMap map[static 1], MapKey key);
+ColValue (map_get)(const HashMap map[static 1], MapKey key);
 // Returns the value to which the specified key is mapped, or fallback if this map contains no mapping for the key.
-MapValue (map_get_or)(const HashMap map[static 1], MapKey key, MapValue fallback) ;
+ColValue (map_get_or)(const HashMap map[static 1], MapKey key, ColValue fallback) ;
 // if key exists, copies the value into out and returns true. If key does not exist, writes
-bool (map_try_get)(const HashMap map[static 1], MapKey key, MapValue *out);
+bool (map_try_get)(const HashMap map[static 1], MapKey key, ColValue *out);
 
 // Returns true if this map contains no key-value mappings.
 bool map_is_empty(const HashMap map[static 1]);
@@ -253,8 +194,8 @@ bool map_is_empty(const HashMap map[static 1]);
 //associates value with key in the map. If key did not previously exist in the map, this
 // function adds it. If the key already exists, the value is replaced with the argument value.
 // If the key previously existed, the old value is returned. If the key is being added, returns
-//NULL_MAP_VALUE.
-void map_put(HashMap map[static 1], MapKey key, MapValue value) ;
+//NULL_COL_VALUE.
+void map_put(HashMap map[static 1], MapKey key, ColValue value) ;
 
 //Removes the mapping for a key from this map if it is present
 // Returns the value to which this map previously associated the key, or null if the map contained no mapping for the key.
@@ -269,24 +210,22 @@ size_t map_size(const HashMap *map);
 //// ---------------------------------------------
 void map_repr_HashMap(const HashMap map[static 1], bool verbose, const char* type_str);
 void map_repr_MapKey(MapKey map_key, bool verbose);
-void map_repr_MapValue(MapValue map_value, bool verbose);
+void map_repr_MapValue(ColValue map_value, bool verbose);
 void map_repr_Node(const MapNode node[static 1]);
 
 
 
-// ---------------------------------------------------
-// Converters for generic map function arguments
-//  these convert expressions to a MapKey or MapValue
-// ---------------------------------------------------
+//// -----------------------------------------------------
+////    Converters for generic map function arguments
+////
+////    these convert expressions to a MapKey
+//// -----------------------------------------------------
+
 MapKey key_for_long(long k);
 MapKey key_for_double(double k);
 MapKey key_for_string(const char *k);
 MapKey key_for_void_ptr(const void *k);
 
-MapValue value_for_long(long v);
-MapValue value_for_double(double v);
-MapValue value_for_string(const char *v);
-MapValue value_for_void_ptr(const void *v);
 
 // Macros for type-generic map functions
 #define MAP_KEY(K) ( _Generic( (K), \
@@ -298,27 +237,17 @@ MapValue value_for_void_ptr(const void *v);
     default: key_for_long \
 ) (K) )
 
-#define MAP_VALUE(V) ( _Generic( (V), \
-    float: value_for_double, \
-    double: value_for_double, \
-    long double: value_for_double, \
-    char *: value_for_string,     const char *: value_for_string, \
-    void *: value_for_void_ptr,   const void *: value_for_void_ptr, \
-    default: value_for_long \
-) (V) )
-
-
 
 #define map_contains_key(M, K) map_contains_key( (M), MAP_KEY(K))
-#define map_contains_value(M, V) map_contains_value( (M), MAP_VALUE(V))
+#define map_contains_value(M, V) map_contains_value( (M), COL_VALUE(V))
 #define map_get(M, K) map_get( (M), MAP_KEY(K) )
-#define map_get_or(M, K, V) map_get_or( (M), MAP_KEY(K), MAP_VALUE(V) )
+#define map_get_or(M, K, V) map_get_or( (M), MAP_KEY(K), COL_VALUE(V) )
 #define map_try_get( M, K, V ) map_try_get( (M), MAP_KEY(K), V )
-#define map_put(M, K, V) map_put( (M), MAP_KEY(K), MAP_VALUE(V) )
+#define map_put(M, K, V) map_put( (M), MAP_KEY(K), COL_VALUE(V) )
 #define map_remove( M, K) map_remove( (M), MAP_KEY(K)  )
 
 
-
+// map_create() default arguments
 #define map_create_0() (map_create)( 0, MAP_DEFAULT_DATA_POLICIES, MEM_DEFAULT_MALLOC_POLICY)
 #define map_create_1(_1) (map_create)(_1, MAP_DEFAULT_DATA_POLICIES, MEM_DEFAULT_MALLOC_POLICY)
 #define map_create_2(_1, _2) (map_create)(_1, _2, MAP_DEFAULT_MALLOC_POLICY)
@@ -326,3 +255,7 @@ MapValue value_for_void_ptr(const void *v);
 #define map_create_SELECT_(_1, _2, _3, NAME, ...) NAME
 #define map_create(...) \
 map_create_SELECT_(__VA_ARGS__ __VA_OPT__(,) map_create_3, map_create_2, map_create_1, map_create_0 ) (__VA_ARGS__)
+
+
+// utility methods
+void display_type_sizes();

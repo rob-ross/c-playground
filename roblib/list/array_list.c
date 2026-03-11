@@ -12,21 +12,20 @@
 #include <stdlib.h>
 #include <string.h>
 
-static constexpr size_t MAX_POW2 = (SIZE_MAX >> 1) + 1;
 
 const ListValuePolicy LIST_DEFAULT_VALUE_POLICY = (ListValuePolicy){
-    .policy_type     = LIST_POLICY_NONE,
+    .policy_type     = COL_VALUE_POLICY_NONE,
     .on_add_value    = nullptr,
     .on_free_value   = nullptr,
 };
 
-static void list_policy_value_free_default(List list[static 1], ListValue value) {
+static void list_policy_value_free_default(List list[static 1], ColValue value) {
     if (!list) return;
-    ListPolicyType valuepolicy = list->value_policy.policy_type;
-    if ( value.value_type == LIST_TYPE_STRING &&
-        ( valuepolicy == LIST_POLICY_COPY || valuepolicy == LIST_POLICY_TAKE || valuepolicy == LIST_POLICY_NONE )) {
+    ColValuePolicyType valuepolicy = list->value_policy.policy_type;
+    if ( value.value_type == COL_TYPE_STRING &&
+        ( valuepolicy == COL_VALUE_POLICY_COPY || valuepolicy == COL_VALUE_POLICY_TAKE || valuepolicy == COL_VALUE_POLICY_NONE )) {
         mem_free_bytes(list->mem_policy, value.vstring);  //we own it.
-        } else if ( value.value_type == LIST_TYPE_VOID_PTR ) {
+        } else if ( value.value_type == COL_TYPE_VOID_PTR ) {
             // invoke the pointer's free method
             //todo deal with void* types
         }
@@ -83,22 +82,22 @@ static CollectionsError list_ensure_capacity(List list[static 1], const size_t w
     return COL_OK;
 }
 
-static bool list_equals_ListValue(const ListValue a, const ListValue b) {
+static bool list_equals_ListValue(const ColValue a, const ColValue b) {
     if (a.value_type != b.value_type) {
         return false;
     }
 
     switch (a.value_type) {
-        case LIST_TYPE_LONG:
+        case COL_TYPE_LONG:
             return a.vlong == b.vlong;
-        case LIST_TYPE_DOUBLE:
+        case COL_TYPE_DOUBLE:
             return a.vdouble == b.vdouble;
-        case LIST_TYPE_STRING:
+        case COL_TYPE_STRING:
             return strcmp(a.vstring, b.vstring) == 0;
-        case LIST_TYPE_VOID_PTR:
+        case COL_TYPE_VOID_PTR:
             return a.vvoid_ptr == b.vvoid_ptr;
-        case LIST_TYPE_NULL:
-        case LIST_TYPE_NONE:
+        case COL_TYPE_NULL:
+        case COL_TYPE_NONE:
             return true;
     }
 
@@ -111,7 +110,7 @@ static bool list_equals_ListValue(const ListValue a, const ListValue b) {
 ////
 //// ------------------------------------------------------------
 
-CollectionsError list_append(List list[static 1], ListValue value) {
+CollectionsError list_append(List list[static 1], ColValue value) {
     if (!list) return COL_ERR_NULL_ARG;
 
     CollectionsError result = list_ensure_capacity(list, list->size);
@@ -138,7 +137,7 @@ void list_clear(List list[static 1]) {
 }
 
 
-bool list_contains(List list[static 1], ListValue value) {
+bool list_contains(List list[static 1], ColValue value) {
     size_t size = list->size;
     for (int i=0; i < size; ++i) {
         if ( list_equals_ListValue(list->elements[i].value, value )) {
@@ -149,9 +148,15 @@ bool list_contains(List list[static 1], ListValue value) {
 }
 
 // Returns nullptr on failure.
-List * (list_create)( size_t capacity, ListValuePolicy value_policy, MemPolicy mem_policy) {
+List * (list_create)( size_t initial_capacity, ListValuePolicy value_policy, MemPolicy mem_policy) {
 
-    capacity = (capacity == 0 ? 16 : capacity ); // min capacity is 16
+    if (!initial_capacity) {
+        initial_capacity = LIST_MIN_CAPACITY;
+    } else if ( initial_capacity > (SIZE_MAX >> 1) + 1) {
+        initial_capacity = (SIZE_MAX >> 1) + 1;
+    } else {
+        initial_capacity = col_next_power_of_two(initial_capacity, LIST_MIN_CAPACITY);
+    }
 
     List *list = (List *)mem_alloc_bytes(mem_policy, sizeof(List));
 
@@ -159,7 +164,7 @@ List * (list_create)( size_t capacity, ListValuePolicy value_policy, MemPolicy m
         return nullptr;
     }
 
-    ListElement *elements = (ListElement *)mem_calloc_bytes(mem_policy, capacity, sizeof(ListElement));
+    ListElement *elements = (ListElement *)mem_calloc_bytes(mem_policy, initial_capacity, sizeof(ListElement));
     if (!elements) {
         mem_free_bytes(mem_policy, list);
         return nullptr;
@@ -168,7 +173,7 @@ List * (list_create)( size_t capacity, ListValuePolicy value_policy, MemPolicy m
     List prototype = (List){
         .elements = elements,
         .size = 0,
-        .capacity = capacity,
+        .capacity = initial_capacity,
         .value_policy = value_policy,
         .mem_policy  = mem_policy,
         .flags = 0 };
@@ -213,12 +218,12 @@ void list_destroy(List list[static 1]) {
     }
 }
 
-ListValue list_get(const List list[static 1], const size_t index) {
+ColValue list_get(const List list[static 1], const size_t index) {
     if (index >= list->size) return NULL_LIST_VALUE;
     return list->elements[index].value;
 }
 
-CollectionsError list_insert(List list[static 1], const size_t index, const ListValue value ) {
+CollectionsError list_insert(List list[static 1], const size_t index, const ColValue value ) {
     if ( !list ) return COL_ERR_NULL_ARG;
     if ( index > list->size )   return COL_ERR_INDEX_OUT_OF_RANGE;
 
@@ -240,13 +245,13 @@ bool list_is_empty(const List list[static 1]) {
     return list->size == 0;
 }
 
-ListValue list_remove(List list[static 1], const size_t index) {
+ColValue list_remove(List list[static 1], const size_t index) {
     if ( ( list->size == 0 && index > 0 ) ||
         (list->size == index) ||
         (index > list->size - 1 )) return NULL_LIST_VALUE;
 
     // todo bounds checking, error return code?
-    const ListValue result = list->elements[index].value;
+    const ColValue result = list->elements[index].value;
 
     // if (index == list->size - 1 ) {
     //     list->size--;

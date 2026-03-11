@@ -129,6 +129,22 @@ void * mem_realloc_bytes( MemPolicy mem_policy, void * pointer,  size_t old_byte
     return mem_policy.realloc(mem_policy.context, pointer, old_byte_count, new_byte_count);
 }
 
+char * mem_strdup(MemPolicy mem_policy, char const * string) {
+    const size_t str_len = strlen(string)+1;
+    char *dupe = mem_alloc_bytes(mem_policy, strlen(string)+1);
+    memcpy(dupe, string, str_len);
+    return dupe;
+}
+bool equals_MemPolicy(const MemPolicy o1, const MemPolicy o2) {
+    if ( o1.policy_type == o2.policy_type && o1.context == o2.context && o1.alloc == o2.alloc &&
+        o1.calloc == o2.calloc && o1.realloc == o2.realloc && o1.free == o2.free &&
+        o1.free_context == o2.free_context) {
+        return true;
+    }
+
+    return false;
+}
+
 void  mem_free_bytes(const MemPolicy mem_policy, void * bytes) {
     mem_policy.free(mem_policy.context, bytes);
 }
