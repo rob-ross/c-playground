@@ -271,6 +271,7 @@ void map_destroy_node(HashMap map[static 1], MapNode node[static 1]) {
     mem_free_bytes(map->mem_policy, node);
 }
 
+//todo this needs a wanted_capacity paramenter.
 void map_ensure_capacity(HashMap map[static 1]) {
     // printf("map_ensure_capacity: buckets: %'zu->%'zu\n", map->num_buckets, map->num_buckets * 2);
     const size_t new_num_buckets = map->num_buckets * 2;
@@ -349,6 +350,35 @@ size_t map_hash_function(const MapKey key) {
             raw_hash = 0;
     }
     return map_hash_mix64(raw_hash);
+}
+
+bool map_equals_MapKeyPolicy(const MapKeyPolicy kp1, const MapKeyPolicy kp2) {
+    if (kp1.context         != kp2.context ||
+        kp1.on_add_key      != kp2.on_add_key ||
+        kp1.on_free_key     != kp2.on_free_key ||
+        kp1.on_free_context != kp2.on_free_context) {
+        return false;
+    }
+    return true;
+}
+
+bool map_equals_MapValuePolicy(const MapValuePolicy vp1, const MapValuePolicy vp2) {
+    if (vp1.context         != vp2.context ||
+        vp1.on_set_value    != vp2.on_set_value ||
+        vp1.on_free_value   != vp2.on_free_value ||
+        vp1.on_free_context != vp2.on_free_context) {
+        return false;
+    }
+    return true;
+}
+
+bool map_equals_MapDataPolicies(const MapDataPolicies o1, const MapDataPolicies o2) {
+    const MapKeyPolicy kp1 = o1.key_policy;
+    const MapKeyPolicy kp2 = o2.key_policy;
+    const MapValuePolicy vp1 = o1.value_policy;
+    const MapValuePolicy vp2 = o2.value_policy;
+
+    return map_equals_MapKeyPolicy(kp1, kp2) && map_equals_MapValuePolicy(vp1, vp2);
 }
 
 bool map_equals_MapKey(const MapKey k1, const MapKey k2) {
@@ -430,13 +460,15 @@ void map_recalc_load(HashMap *map) {
 // number of buckets doubles when fill capacity is reached (75% full by default).
 // 16 buckets provides adequate sizing for 12 items before growing HashMap capacity
 HashMap * (map_create)(size_t num_buckets, MapDataPolicies data_policies, MemPolicy mem_policy) {
+    printf("map_create: num_buckets was : %'zu, ", num_buckets);
     if (!num_buckets) {
         num_buckets = MIN_CAP;
-    } else if ( num_buckets > (SIZE_MAX >> 1) + 1) {
-        num_buckets = (SIZE_MAX >> 1) + 1;
+    } else if ( num_buckets > MAX_POW2 ) {
+        num_buckets = MAX_POW2;
     } else {
         num_buckets = col_next_power_of_two(num_buckets, MIN_CAP);
     }
+    printf("num_buckets now : %'zu\n", num_buckets);
 
     HashMap *map = (HashMap *)mem_alloc_bytes(mem_policy, sizeof(HashMap));
 
@@ -468,6 +500,7 @@ HashMap * (map_create)(size_t num_buckets, MapDataPolicies data_policies, MemPol
     return map;
 }
 
+//todo fix this. pass mem_policy by value?
 // convenience method that creates a HashMap backed by a StringCounter to use as a string pool for sharing string
 // instances, if there are many duplicate string values. MemPolicy can be nullptr, or a valid allocator.
 HashMap *map_create_using_stringpool(size_t num_buckets, const MemPolicy *mem_policy) {
@@ -476,12 +509,13 @@ HashMap *map_create_using_stringpool(size_t num_buckets, const MemPolicy *mem_po
     HashMap *map = map_create(num_buckets, MAP_DEFAULT_DATA_POLICIES, *mem_policy);
     if (!map) return nullptr;
 
-    // the StringCounter is subordinate to the HashMap in `map`. It must not free the memory pool when destroyed.
+    // The StringCounter is subordinate to the HashMap in `map`.
+    // The StringCounter must not free the memory pool when destroyed. This is the HashMap's responsibility.
     MemPolicy mp = *mem_policy;
     if (mp.policy_type == MEM_POLICY_ALLOCATOR_OWN) {
         mp.policy_type = MEM_POLICY_ALLOCATOR_SHARED;
     } else if (mp.policy_type == MEM_POLICY_MALLOC_OWN ) {
-        mp.policy_type = MEM_POLICY_ALLOCATOR_SHARED;
+        mp.policy_type = MEM_POLICY_MALLOC_SHARED;
     }
 
     StringCounter *sct = sct_create(num_buckets , SCT_DEFAULT_DATA_POLICIES, mp);
@@ -569,7 +603,6 @@ bool (map_contains_value)(HashMap map[static 1], const ColValue value) {
     }
     return false;
 }
-
 
 ColValue (map_get)(const HashMap map[static 1], const MapKey key) {
     if (map == nullptr) return NULL_COL_VALUE;

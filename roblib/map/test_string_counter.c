@@ -15,6 +15,7 @@
 #include "string_counter.h"
 #include "../testing_utils.h"
 #include "hashmap.h"
+#include "hashmap_private.h"
 
 struct StringCounter {
     HashMap *map;
@@ -37,25 +38,7 @@ static void sct_free(void * fixture) {
     sct_destroy((StringCounter*)fixture);
 }
 
-static bool equals_data_policies(const MapDataPolicies o1, const MapDataPolicies o2) {
-    const MapKeyPolicy kp1 = o1.key_policy;
-    const MapKeyPolicy kp2 = o2.key_policy;
-    if (kp1.context != kp2.context ||
-        kp1.on_add_key != kp2.on_add_key ||
-        kp1.on_free_key != kp2.on_free_key ||
-        kp1.on_free_context != kp2.on_free_context) {
-        return false;
-    }
-    const MapValuePolicy vp1 = o1.value_policy;
-    const MapValuePolicy vp2 = o2.value_policy;
-    if (vp1.context != vp2.context ||
-        vp1.on_set_value != vp2.on_set_value ||
-        vp1.on_free_value != vp2.on_free_value ||
-        vp1.on_free_context != vp2.on_free_context) {
-        return false;
-        }
-    return true;
-}
+
 
 
 // -------------------------------------------------
@@ -70,9 +53,7 @@ static MunitResult test_create_0(const MunitParameter params[], void* fixture) {
     HashMap *map = sct->map;
     munit_assert_ptr_not_null(map);
     munit_assert_int(16, ==, map->num_buckets);
-    // expect SCT_DEFAULT_DATA_POLICIES == map->data_policies
-    munit_assert_true(equals_data_policies(SCT_DEFAULT_DATA_POLICIES, map->data_policies));
-    // expect == map->mem_policy
+    munit_assert_true(map_equals_MapDataPolicies(SCT_DEFAULT_DATA_POLICIES, map->data_policies));
     munit_assert_true(mem_equals_MemPolicy(MEM_DEFAULT_MALLOC_POLICY, map->mem_policy));
     sct_destroy(sct);
     return MUNIT_OK;
@@ -83,20 +64,20 @@ static MunitResult test_create_1(const MunitParameter params[], void* fixture) {
     StringCounter *sct;
     sct = sct_create(0);
     munit_assert_int(16, ==, sct->map->num_buckets);
-    munit_assert_true(equals_data_policies(SCT_DEFAULT_DATA_POLICIES, sct->map->data_policies));
+    munit_assert_true(map_equals_MapDataPolicies(SCT_DEFAULT_DATA_POLICIES, sct->map->data_policies));
     munit_assert_true(mem_equals_MemPolicy(MEM_DEFAULT_MALLOC_POLICY, sct->map->mem_policy));
 
     sct_destroy(sct);
 
     sct = sct_create(10);  //closest power of 2 is 16
     munit_assert_int(16, ==, sct->map->num_buckets);
-    munit_assert_true(equals_data_policies(SCT_DEFAULT_DATA_POLICIES, sct->map->data_policies));
+    munit_assert_true(map_equals_MapDataPolicies(SCT_DEFAULT_DATA_POLICIES, sct->map->data_policies));
     munit_assert_true(mem_equals_MemPolicy(MEM_DEFAULT_MALLOC_POLICY, sct->map->mem_policy));
     sct_destroy(sct);
 
     sct = sct_create(20);  //closest power of 2 is 32
     munit_assert_int(32, ==, sct->map->num_buckets);
-    munit_assert_true(equals_data_policies(SCT_DEFAULT_DATA_POLICIES, sct->map->data_policies));
+    munit_assert_true(map_equals_MapDataPolicies(SCT_DEFAULT_DATA_POLICIES, sct->map->data_policies));
     munit_assert_true(mem_equals_MemPolicy(MEM_DEFAULT_MALLOC_POLICY, sct->map->mem_policy));
     sct_destroy(sct);
 
@@ -155,7 +136,7 @@ static MunitResult test_create_2(const MunitParameter params[], void* fixture) {
     StringCounter *sct;
     sct = sct_create(0, data_policy);
     munit_assert_int(16, ==, sct->map->num_buckets);
-    munit_assert_true(equals_data_policies(data_policy, sct->map->data_policies));
+    munit_assert_true(map_equals_MapDataPolicies(data_policy, sct->map->data_policies));
     munit_assert_true(mem_equals_MemPolicy(MEM_DEFAULT_MALLOC_POLICY, sct->map->mem_policy));
     sct_destroy(sct);
 
@@ -170,7 +151,7 @@ static MunitResult test_create_3(const MunitParameter params[], void* fixture) {
     StringCounter *sct;
     sct = sct_create(0, data_policy, mem_policy);
     munit_assert_int(16, ==, sct->map->num_buckets);
-    munit_assert_true(equals_data_policies(data_policy, sct->map->data_policies));
+    munit_assert_true(map_equals_MapDataPolicies(data_policy, sct->map->data_policies));
     munit_assert_true(mem_equals_MemPolicy(mem_policy, sct->map->mem_policy));
     sct_destroy(sct);
 
@@ -189,7 +170,7 @@ static MunitResult test_create_with_mempolicy(const MunitParameter params[], voi
     munit_assert_ptr_not_null(map);
 
     munit_assert_int(16, ==, map->num_buckets);
-    munit_assert_true(equals_data_policies(data_policy, sct->map->data_policies));
+    munit_assert_true(map_equals_MapDataPolicies(data_policy, sct->map->data_policies));
     munit_assert_true(mem_equals_MemPolicy(mem_policy, sct->map->mem_policy));
 
     sct_put(sct, "first", 1);

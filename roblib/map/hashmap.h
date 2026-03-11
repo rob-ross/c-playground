@@ -250,7 +250,7 @@ MapKey key_for_void_ptr(const void *k);
 // map_create() default arguments
 #define map_create_0() (map_create)( 0, MAP_DEFAULT_DATA_POLICIES, MEM_DEFAULT_MALLOC_POLICY)
 #define map_create_1(_1) (map_create)(_1, MAP_DEFAULT_DATA_POLICIES, MEM_DEFAULT_MALLOC_POLICY)
-#define map_create_2(_1, _2) (map_create)(_1, _2, MAP_DEFAULT_MALLOC_POLICY)
+#define map_create_2(_1, _2) (map_create)(_1, _2, MEM_DEFAULT_MALLOC_POLICY)
 #define map_create_3(_1, _2, _3) (map_create)(_1, _2, _3)
 #define map_create_SELECT_(_1, _2, _3, NAME, ...) NAME
 #define map_create(...) \
