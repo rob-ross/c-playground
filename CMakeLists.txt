@@ -13,16 +13,17 @@ set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g -fno-omit-frame-pointer -
 add_executable(string_buffer roblib/string_buffer.c roblib/string_buffer.h)
 
 # Explicit target matching your manual clang command:
-add_executable(test_hashmap
-        roblib/map/test_hashmap.c
-        roblib/collections.c
+add_executable(test_hashmap2
+        roblib/map/test_hashmap2.c
         roblib/map/hashmap.c
+        roblib/collections.c
         roblib/map/string_counter.c
         roblib/memory/memory_pool.c
         roblib/munit/munit.c
 )
 
-target_compile_definitions(test_hashmap PRIVATE TEST_HASHMAP)
+target_compile_definitions(test_hashmap2 PRIVATE TEST_HASHMAP)
+target_compile_options(test_hashmap2 PRIVATE -Wno-unused-function)
 
 add_executable(string_counter
         roblib/map/test_string_counter.c
@@ -69,3 +70,5 @@ foreach(SOURCE_FILE ${ALL_SOURCES})
         add_executable(${TARGET_NAME} ${SOURCE_FILE})
     endif()
 endforeach()
+
+

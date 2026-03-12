@@ -100,8 +100,9 @@ typedef enum CollectionsError {
 static constexpr ColValue NULL_COL_VALUE = (ColValue){ .vvoid_ptr = nullptr, .value_type = COL_TYPE_NULL};
 static constexpr size_t MAX_POW2 = (SIZE_MAX >> 1) + 1;
 
-
-size_t col_next_power_of_two(size_t wanted_size, size_t min_size);
+bool col_equals_ColValue( ColValue v1, ColValue v2);
+bool col_equals_double(double d1, double d2);
+size_t col_next_power_of_two(size_t wanted_size, size_t min_size, size_t max_size);
 ColValue col_policy_value_set_default(void * context, ColValue value, ColValuePolicyType value_policy, MemPolicy mem_policy );
 void col_policy_value_free_default(void * context, ColValue value, ColValuePolicyType value_policy, MemPolicy mem_policy ) ;
 

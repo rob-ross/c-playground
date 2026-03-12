@@ -99,7 +99,6 @@ typedef struct HashMap {
 } HashMap;
 
 
-
 //// ------------------------------------------------------------
 ////
 ////    Return and Error WIP
@@ -131,12 +130,19 @@ typedef struct HashMap {
 //     MapError  err;
 // } MapRE;
 
+static constexpr double DEFAULT_FILL_FACTOR = 0.75;
+
+// 2^28 = 268,435,456 buckets, capacity = 201,326,592, sizeof(all MapNodes) =  9.216 GB,  sizeof(buckets[]) = 2048 MB
+// Ram for just Hashmap array and nodes = 11.264 GB. + storage for strings.
+static constexpr size_t MIN_NUM_BUCKETS = 16;
+static constexpr size_t MAX_NUM_BUCKETS = 268'435'456;
+static constexpr size_t MIN_CAPACITY  = 12;
+static constexpr size_t MAX_CAPACITY = (size_t)(MAX_NUM_BUCKETS * DEFAULT_FILL_FACTOR);  // currently 201,326,592
 
 extern const MapKey          NULL_MAP_KEY;
 extern const MapNode         NULL_MAP_NODE;
 extern const MapDataPolicies MAP_DEFAULT_DATA_POLICIES;
 
-static constexpr double DEFAULT_FILL_FACTOR = 0.75;
 
 
 // -------------------------------------
@@ -155,7 +161,7 @@ static constexpr double DEFAULT_FILL_FACTOR = 0.75;
 
 
 // call map_destroy to free all resources
-HashMap * (map_create)(size_t num_buckets, MapDataPolicies data_policies, MemPolicy mem_policy) ;
+HashMap * (map_create)(unsigned initial_capacity, MapDataPolicies data_policies, MemPolicy mem_policy) ;
 void map_destroy(HashMap map[static 1]);
 
 // creates and returns a HashMap backed by a string pool that interns all string values. Good when the same string is
@@ -185,7 +191,8 @@ bool map_contains_value(HashMap map[static 1], ColValue value);
 ColValue (map_get)(const HashMap map[static 1], MapKey key);
 // Returns the value to which the specified key is mapped, or fallback if this map contains no mapping for the key.
 ColValue (map_get_or)(const HashMap map[static 1], MapKey key, ColValue fallback) ;
-// if key exists, copies the value into out and returns true. If key does not exist, writes
+// if key exists, copies the value into out and returns true. If key does not exist,
+// writes NULL_COL_VALUE to out and returns false
 bool (map_try_get)(const HashMap map[static 1], MapKey key, ColValue *out);
 
 // Returns true if this map contains no key-value mappings.

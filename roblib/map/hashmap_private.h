@@ -17,7 +17,7 @@
 size_t map_calc_bucket_index(size_t hashcode, size_t num_buckets);
 MapNode * map_create_node(HashMap map[static 1], size_t hashcode, MapKey key) ;
 void map_destroy_node(HashMap map[static 1], MapNode *node);
-void map_ensure_capacity(HashMap *map);
+void map_ensure_capacity(HashMap *map, unsigned wanted_capacity);
 
 bool map_equals_MapDataPolicies( MapDataPolicies o1, MapDataPolicies o2);
 bool map_equals_MapKey(MapKey k1, MapKey k2);

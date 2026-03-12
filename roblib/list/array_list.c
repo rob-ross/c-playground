@@ -155,7 +155,7 @@ List * (list_create)( size_t initial_capacity, ListValuePolicy value_policy, Mem
     } else if ( initial_capacity > (SIZE_MAX >> 1) + 1) {
         initial_capacity = (SIZE_MAX >> 1) + 1;
     } else {
-        initial_capacity = col_next_power_of_two(initial_capacity, LIST_MIN_CAPACITY);
+        initial_capacity = col_next_power_of_two(initial_capacity, LIST_MIN_CAPACITY, LIST_MAX_CAPACITY);
     }
 
     List *list = (List *)mem_alloc_bytes(mem_policy, sizeof(List));

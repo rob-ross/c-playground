@@ -11,6 +11,9 @@
 
 #include "collections.h"
 
+#include <math.h>
+#include <string.h>
+
 // -----------------------
 // Value data_policies
 // -----------------------
@@ -39,13 +42,54 @@ void col_policy_value_free_default(void * context, ColValue value, ColValuePolic
     }
 }
 
+bool col_equals_ColValue(const ColValue v1, const ColValue v2) {
+    if (v1.value_type != v2.value_type) return false;
 
-size_t col_next_power_of_two(size_t wanted_size, const size_t min_size) {
+    switch (v1.value_type) {
+        case COL_TYPE_NONE:
+            return false;
+        case COL_TYPE_LONG:
+            return v1.vlong == v2.vlong;
+        case COL_TYPE_DOUBLE:
+            return col_equals_double(v1.vdouble, v2.vdouble);
+        case COL_TYPE_STRING: {
+            if (v1.vstring == v2.vstring) return true;
+            return strcmp(v1.vstring, v2.vstring) == 0;
+        }
+        case COL_TYPE_VOID_PTR:
+            // this requires the caller to have defined an equal function for this blob.
+            // todo implement
+            return v1.vvoid_ptr == v2.vvoid_ptr;
+        case COL_TYPE_NULL:
+            return true; // both value_types are null
+        default:
+            return false;
+    }
+}
+
+bool col_equals_double(double d1, double d2) {
+    // Optional policy: NaNs are not equal to anything (including NaN)
+    if (isnan(d1) || isnan(d2)) return false;
+
+    // Make -0.0 and +0.0 compare equal (matches common hashing data_policies)
+    if (d1 == 0.0) d1 = 0.0;
+    if (d2 == 0.0) d2 = 0.0;
+
+    uint64_t ua, ub;
+    memcpy(&ua, &d1, sizeof ua);
+    memcpy(&ub, &d2, sizeof ub);
+    return ua == ub;
+}
+
+//min_size and max_size must be powers of 2.
+size_t col_next_power_of_two(size_t wanted_size, const size_t min_size, const size_t max_size) {
     // Clamp lower bound
     if (wanted_size < min_size) return min_size;
 
     // Clamp upper bound
-    if (wanted_size >= MAX_POW2) return MAX_POW2;
+    if (wanted_size >= max_size) wanted_size = max_size - 1;
+    // note: next largest power of two might be > max size, but this is acceptable since this fudging is
+    // already actored into max_size
 
     // Round up to next power of two
     // algorithm:

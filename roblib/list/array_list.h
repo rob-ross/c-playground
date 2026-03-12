@@ -53,6 +53,7 @@ typedef struct List {
 
 constexpr ColValue NULL_LIST_VALUE = (ColValue){.vlong = 0, .value_type = COL_TYPE_NULL};
 constexpr size_t LIST_MIN_CAPACITY = 16;
+constexpr size_t LIST_MAX_CAPACITY = 268'435'456; // 2^28 for now. todo tune this
 
 extern const ListValuePolicy LIST_DEFAULT_VALUE_POLICY;
 extern const MemPolicy LIST_DEFAULT_MALLOC_POLICY;

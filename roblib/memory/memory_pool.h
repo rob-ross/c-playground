@@ -61,6 +61,11 @@ static constexpr size_t DEFAULT_PAGE_SIZE = 64L * 1024 * 1024; // 64 MB
 extern const MemPolicy MEM_DEFAULT_MALLOC_POLICY;
 extern const MemPolicy MEM_DEFAULT_ALLOCATOR_POLICY;
 extern const MemPolicy NULL_MEM_POLICY;
+// on my system, MAX_MALLOC_BYTES = 1'099'511'627'776; // 16^10
+// 2^34, ~17.2GB which is more than my computer ram
+// let's clamp to something more reasonable like 2^33 bytes, about 8.6GB, half my RAM
+[[maybe_unused]]
+static constexpr size_t MAX_MALLOC_BYTES = 1L << 33;  // 2^33, ~8.6GB, half my RAM
 
 // --- API Functions ---
 

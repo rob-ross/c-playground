@@ -19,7 +19,7 @@
 #include "../memory/memory_pool.h"
 
 
-static constexpr size_t MIN_CAP  = 16;
+
 
 const MapKey   NULL_MAP_KEY   = (MapKey){  .kvoid_ptr = nullptr, .key_type   = COL_TYPE_NULL};
 const MapNode  NULL_MAP_NODE  = (MapNode){ .key = NULL_MAP_KEY, .value = NULL_COL_VALUE, .hash = 0, .next = nullptr};
@@ -41,7 +41,7 @@ extern const MapDataPolicies SCT_DEFAULT_DATA_POLICIES;  // need for map_create_
 //
 // for functions defined in this file
 // -----------------------------------------------------------------
-static bool map_equals_double(double d1, double d2);
+
 static void map_free_key_if(HashMap map[static 1], const MapNode node[static 1]);
 static void map_free_value_if(HashMap map[static 1], const MapNode *node);
 static size_t map_hash_mix64(size_t x);
@@ -57,45 +57,45 @@ static void map_policy_value_free_default(HashMap map[static 1], ColValue value)
 ////
 //// ------------------------------------------------------------
 
-static bool map_equals_double(double d1, double d2) {
-    // Optional policy: NaNs are not equal to anything (including NaN)
-    if (isnan(d1) || isnan(d2)) return false;
-
-    // Make -0.0 and +0.0 compare equal (matches common hashing data_policies)
-    if (d1 == 0.0) d1 = 0.0;
-    if (d2 == 0.0) d2 = 0.0;
-
-    uint64_t ua, ub;
-    memcpy(&ua, &d1, sizeof ua);
-    memcpy(&ub, &d2, sizeof ub);
-    return ua == ub;
-}
-
-static bool map_equals_MapValue(const ColValue v1, const ColValue v2) {
-
-    if (v1.value_type != v2.value_type) return false;
-
-    switch (v1.value_type) {
-        case COL_TYPE_NONE:
-            return false;
-        case COL_TYPE_LONG:
-            return v1.vlong == v2.vlong;
-        case COL_TYPE_DOUBLE:
-            return map_equals_double(v1.vdouble, v2.vdouble);
-        case COL_TYPE_STRING: {
-            if (v1.vstring == v2.vstring) return true;
-            return strcmp(v1.vstring, v2.vstring) == 0;
-        }
-        case COL_TYPE_VOID_PTR:
-            // this requires the caller to have defined an equal function for this blob.
-            // todo implement
-            return v1.vvoid_ptr == v2.vvoid_ptr;
-        case COL_TYPE_NULL:
-            return true; // both value_types are null
-        default:
-            return false;
-    }
-}
+// static bool col_equals_double(double d1, double d2) {
+//     // Optional policy: NaNs are not equal to anything (including NaN)
+//     if (isnan(d1) || isnan(d2)) return false;
+//
+//     // Make -0.0 and +0.0 compare equal (matches common hashing data_policies)
+//     if (d1 == 0.0) d1 = 0.0;
+//     if (d2 == 0.0) d2 = 0.0;
+//
+//     uint64_t ua, ub;
+//     memcpy(&ua, &d1, sizeof ua);
+//     memcpy(&ub, &d2, sizeof ub);
+//     return ua == ub;
+// }
+//
+// static bool col_equals_ColValue(const ColValue v1, const ColValue v2) {
+//
+//     if (v1.value_type != v2.value_type) return false;
+//
+//     switch (v1.value_type) {
+//         case COL_TYPE_NONE:
+//             return false;
+//         case COL_TYPE_LONG:
+//             return v1.vlong == v2.vlong;
+//         case COL_TYPE_DOUBLE:
+//             return col_equals_double(v1.vdouble, v2.vdouble);
+//         case COL_TYPE_STRING: {
+//             if (v1.vstring == v2.vstring) return true;
+//             return strcmp(v1.vstring, v2.vstring) == 0;
+//         }
+//         case COL_TYPE_VOID_PTR:
+//             // this requires the caller to have defined an equal function for this blob.
+//             // todo implement
+//             return v1.vvoid_ptr == v2.vvoid_ptr;
+//         case COL_TYPE_NULL:
+//             return true; // both value_types are null
+//         default:
+//             return false;
+//     }
+// }
 
 static void map_free_key_if(HashMap map[static 1], const MapNode node[static 1]) {
     if (!map || !node) return;
@@ -272,14 +272,33 @@ void map_destroy_node(HashMap map[static 1], MapNode node[static 1]) {
 }
 
 //todo this needs a wanted_capacity paramenter.
-void map_ensure_capacity(HashMap map[static 1]) {
+void map_ensure_capacity(HashMap map[static 1], unsigned wanted_capacity) {
     // printf("map_ensure_capacity: buckets: %'zu->%'zu\n", map->num_buckets, map->num_buckets * 2);
-    const size_t new_num_buckets = map->num_buckets * 2;
-    if (new_num_buckets > MAX_POW2) {
-        return; // Can't grow anymore
+
+    if (wanted_capacity < map->fill_capacity) {
+        // current capacity meets need
+        return;
+    }
+    const size_t wanted_buckets = (size_t)(wanted_capacity / map->fill_factor);
+    size_t new_num_buckets;
+
+    while  ( (new_num_buckets = map->num_buckets * 2) < wanted_buckets && new_num_buckets < MAX_NUM_BUCKETS ) {
+        //num_buckets always a power of 2
+        // NO-OP
     }
 
-    MapNode **new_buckets = (MapNode **)mem_calloc_bytes(map->mem_policy, new_num_buckets,  sizeof(MapNode *));
+    if (new_num_buckets > MAX_NUM_BUCKETS) {
+        new_num_buckets = MAX_NUM_BUCKETS;
+    }
+
+    if ( new_num_buckets <= map->num_buckets) {
+        // map already at max bucket size
+        return;
+    }
+
+    // todo we should call our mem_realloc_bytes method here
+    MapNode **new_buckets = \
+        (MapNode **)mem_calloc_bytes(map->mem_policy, new_num_buckets,  sizeof(MapNode *));
     if (!new_buckets) {
         return; // Allocation failed, keep old map
     }
@@ -391,7 +410,7 @@ bool map_equals_MapKey(const MapKey k1, const MapKey k2) {
         case COL_TYPE_LONG:
             return k1.klong == k2.klong;
         case COL_TYPE_DOUBLE:
-            return map_equals_double(k1.kdouble, k2.kdouble);
+            return col_equals_double(k1.kdouble, k2.kdouble);
         case COL_TYPE_STRING: {
             if (k1.kstring == k2.kstring) return true;
             return strcmp(k1.kstring, k2.kstring) == 0;
@@ -455,20 +474,25 @@ void map_recalc_load(HashMap *map) {
 //// ------------------------------------------------------------
 
 
-// returns nullptr on failure. if num_buckets == 0, uses 16 as initial bucket size.
-// num_buckets is clamped to smallest power of two that is greater than num_buckets.
+// returns nullptr on failure. if initial_capacity == 0, uses 16 as initial bucket size.
 // number of buckets doubles when fill capacity is reached (75% full by default).
 // 16 buckets provides adequate sizing for 12 items before growing HashMap capacity
-HashMap * (map_create)(size_t num_buckets, MapDataPolicies data_policies, MemPolicy mem_policy) {
-    printf("map_create: num_buckets was : %'zu, ", num_buckets);
-    if (!num_buckets) {
-        num_buckets = MIN_CAP;
-    } else if ( num_buckets > MAX_POW2 ) {
-        num_buckets = MAX_POW2;
-    } else {
-        num_buckets = col_next_power_of_two(num_buckets, MIN_CAP);
+// initial_capacity is number of elements that can be stored in the HashMap before resizing.
+HashMap * (map_create)(unsigned initial_capacity, MapDataPolicies data_policies, MemPolicy mem_policy) {
+    // ReSharper disable  CppPrintfExtraArg
+    // ReSharper disable  CppPrintfBadFormat
+    // printf("\nmap_create: initial_capacity was : %'u, ", initial_capacity);
+    if (initial_capacity < MIN_CAPACITY) {
+        initial_capacity = MIN_CAPACITY;
+    } else if ( initial_capacity > MAX_CAPACITY ) {
+        initial_capacity = MAX_CAPACITY;
     }
-    printf("num_buckets now : %'zu\n", num_buckets);
+    size_t num_buckets = (size_t)(initial_capacity /  DEFAULT_FILL_FACTOR);
+
+    num_buckets = col_next_power_of_two(num_buckets, MIN_NUM_BUCKETS, MAX_NUM_BUCKETS);
+
+    // printf("initial_capacity now : %'u, num_buckets = %'zu\n", initial_capacity, num_buckets);
+
 
     HashMap *map = (HashMap *)mem_alloc_bytes(mem_policy, sizeof(HashMap));
 
@@ -595,8 +619,8 @@ bool (map_contains_value)(HashMap map[static 1], const ColValue value) {
     for ( size_t index = 0; index < num_buckets; ++index ) {
         const MapNode *current = map->buckets[index];
         while (current) {
-            if ( map_equals_MapValue(value, current->value) ) {
-                return current;
+            if ( col_equals_ColValue(value, current->value) ) {
+                return true;
             }
             current = current->next;
         }
@@ -646,7 +670,7 @@ void (map_put)(HashMap map[static 1], const MapKey key, const ColValue value) {
     if (map == nullptr) return;
 
     if (map->size >= map->fill_capacity) {
-        map_ensure_capacity(map);
+        map_ensure_capacity(map, map->size + 1);
     }
 
     const size_t hashcode = map_hash_function(key);
