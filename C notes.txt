@@ -116,9 +116,19 @@ CYCLES :  Stop including the “other” header in your public header.
 
 Signal Errors:
 --------------
-Signal 11, or SIGSEGV (Segmentation Fault),
-    a program has attempted to access a memory location it is not allowed to use
 Signal 5 is SIGTRAP (Trace/Breakpoint Trap)
 Signal 6, or SIGABRT (Signal Abort)  is a POSIX signal sent to a process to terminate it abnormally,
     usually triggered when the program detects a critical internal error, such as a failed assert(),
     double-free memory corruption, or by calling abort()
+
+Signal 9  SIGKILL  forceful, non-catchable signal used in Unix-like operating systems to immediately
+            terminate a process. When you run the command kill -9 <pid>, you are explicitly telling the
+            operating system's kernel to stop the specified process without any opportunity for it
+            to clean up or save its state.
+
+
+Signal 10 (SIGBUS) is a fatal error indicating a process tried to access invalid physical memory,
+    often caused by improper memory alignment, accessing non-existent file-mapped memory,
+    or using bad pointers
+Signal 11, or SIGSEGV (Segmentation Fault),
+    a program has attempted to access a memory location it is not allowed to use

@@ -150,10 +150,10 @@ bool list_contains(List list[static 1], ColValue value) {
 // Returns nullptr on failure.
 List * (list_create)( size_t initial_capacity, ListValuePolicy value_policy, MemPolicy mem_policy) {
 
-    if (!initial_capacity) {
+    if (initial_capacity < LIST_MIN_CAPACITY ) {
         initial_capacity = LIST_MIN_CAPACITY;
-    } else if ( initial_capacity > (SIZE_MAX >> 1) + 1) {
-        initial_capacity = (SIZE_MAX >> 1) + 1;
+    } else if ( initial_capacity > LIST_MAX_CAPACITY ) {
+        initial_capacity = LIST_MAX_CAPACITY;
     } else {
         initial_capacity = col_next_power_of_two(initial_capacity, LIST_MIN_CAPACITY, LIST_MAX_CAPACITY);
     }
@@ -219,7 +219,7 @@ void list_destroy(List list[static 1]) {
 }
 
 ColValue list_get(const List list[static 1], const size_t index) {
-    if (index >= list->size) return NULL_LIST_VALUE;
+    if (index >= list->size) return LIST_NULL_LIST_VALUE;
     return list->elements[index].value;
 }
 
@@ -248,7 +248,7 @@ bool list_is_empty(const List list[static 1]) {
 ColValue list_remove(List list[static 1], const size_t index) {
     if ( ( list->size == 0 && index > 0 ) ||
         (list->size == index) ||
-        (index > list->size - 1 )) return NULL_LIST_VALUE;
+        (index > list->size - 1 )) return LIST_NULL_LIST_VALUE;
 
     // todo bounds checking, error return code?
     const ColValue result = list->elements[index].value;

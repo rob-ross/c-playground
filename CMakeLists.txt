@@ -4,10 +4,22 @@ project(CS50x C)
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+# Set a default build type if none is specified
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+
 # Helpful for debugging (CLion usually does this in Debug, but explicit is fine)
 # -fsanitize=address -fsanitize=leak
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g -fno-omit-frame-pointer -fsanitize=address -fsanitize=leak \
 -Wall -Werror -Wno-unknown-attributes")
+
+# Use add_compile_options with generator expressions to robustly add release flags
+# This ensures they are applied even if the cache has old values.
+add_compile_options($<$<CONFIG:Release>:-O3>)
+add_compile_options($<$<CONFIG:Release>:-march=native>)
+add_compile_options($<$<CONFIG:Release>:-DNDEBUG>)
+
 
 # 1. Explicitly define your library/shared code
 add_executable(string_buffer roblib/string_buffer.c roblib/string_buffer.h)
