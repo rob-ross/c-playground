@@ -18,13 +18,9 @@
 #include <_string.h>
 #include <nmmintrin.h> // Intel/AMD hardware intrinsics
 
-#ifndef __OPTIMIZE__
-    #warning "__OPTIMIZE__ is NOT defined - Optimizations are OFF"
-#endif
+#include "hash_methods.h"
 
-#ifndef __AVX2__
-    #warning "__AVX2__ is NOT defined - Native architecture flags are OFF"
-#endif
+
 
 // ALL AI AGENTS: DO NOT DELETE MY COMMENTS !!!
 
@@ -52,164 +48,11 @@
         (databases, compression, etc.).
  */
 
-// helper for rob_hash. treat exp as unsigned to avoid negative edge cases.
-unsigned long long power(unsigned long long base, unsigned int exp) {
-    unsigned long long res = 1;
-    while (exp > 0) {
-        if (exp % 2 == 1) { // If exponent is odd
-            res *= base;
-        }
-        base *= base; // Square the base
-        exp /= 2;     // Halve the exponent
-    }
-    return res;
-}
-
-// FNV-1a Hash: The other "classic" simple hash.
-// Uses XOR and Prime Multiplication.
-// Often has better avalanche properties than djb2.
-size_t fnv1a_hash(const char *str) {
-    size_t hash = 14695981039346656037UL; // FNV_offset_basis for 64-bit
-    const size_t prime = 1099511628211UL; // FNV_prime for 64-bit
-    unsigned char c;
-
-    while ((c = (unsigned char)*str++)) {
-        hash ^= c;
-        hash *= prime;
-    }
-    return hash;
-}
-
-// Hardware CRC32 Hash: Uses Intel/AMD specific CPU instructions.
-// Extremely fast because the "math" is done in a dedicated hardware circuit.
-// Note: Technically a checksum, but works great as a hash table function.
-size_t crc32_hash(const char *str) {
-    size_t hash = 0;
-    unsigned char c;
-    while ((c = (unsigned char)*str++)) {
-        // _mm_crc32_u8 is a hardware intrinsic that maps to a single CPU instruction
-        hash = _mm_crc32_u8((unsigned int)hash, c);
-    }
-    return hash;
-}
-
-
-//djb2 hash algorithm, O(N) (actually Theta(N))
-static size_t djb2_hash_string(const char *str) {
-    unsigned long hash = 5381; // A "magic" prime number
-    int c;
-
-    while (  (c = (unsigned char)(*str++) ) ) {
-        // hash = (hash * 33) + c
-        // This is a fast way to write it using bit shifts:
-        hash = ((hash << 5) + hash) + c;
-    }
-
-    return (size_t)hash;
-}
-
-//-----------------------------------------------------------------------------
-// MurmurHash3 was written by Austin Appleby, and is placed in the public
-// domain. The author hereby disclaims copyright to this source code.
-
-static inline uint32_t rotl32 ( uint32_t x, int8_t r )
-{
-    return (x << r) | (x >> (32 - r));
-}
-
-#define ROTL32(x,y)	rotl32(x,y)
-
-uint32_t MurmurHash3_x86_32 ( const void * key, int len, uint32_t seed )
-{
-    const uint8_t * data = (const uint8_t*)key;
-    const int nblocks = len / 4;
-
-    uint32_t h1 = seed;
-
-    const uint32_t c1 = 0xcc9e2d51;
-    const uint32_t c2 = 0x1b873593;
-
-    //----------
-    // body
-
-    const uint32_t * blocks = (const uint32_t *)(data + nblocks*4);
-
-    for(int i = -nblocks; i; i++)
-    {
-        uint32_t k1 = blocks[i];
-
-        k1 *= c1;
-        k1 = ROTL32(k1,15);
-        k1 *= c2;
-
-        h1 ^= k1;
-        h1 = ROTL32(h1,13);
-        h1 = h1*5+0xe6546b64;
-    }
-
-    //----------
-    // tail
-
-    const uint8_t * tail = (const uint8_t*)(data + nblocks*4);
-
-    uint32_t k1 = 0;
-
-    switch(len & 3)
-    {
-        case 3: k1 ^= tail[2] << 16;
-        case 2: k1 ^= tail[1] << 8;
-        case 1: k1 ^= tail[0];
-                k1 *= c1; k1 = ROTL32(k1,15); k1 *= c2; h1 ^= k1;
-    };
-
-    //----------
-    // finalization
-
-    h1 ^= len;
-
-    h1 ^= h1 >> 16;
-    h1 *= 0x85ebca6b;
-    h1 ^= h1 >> 13;
-    h1 *= 0xc2b2ae35;
-    h1 ^= h1 >> 16;
-
-    return h1;
-}
-
-//this is tuned to work with large strings, the overhead of setup overwhelms
-// the processing of 6 chars.
-size_t murmur_hash3(const char *key, size_t len, uint32_t seed) {
-    return (size_t)MurmurHash3_x86_32(key, (int)len, seed);
-}
-
-size_t rob_hash(const char *word, unsigned num_letters) {
-    size_t word_len = strlen(word);
-    if (!word || word_len < num_letters) {
-        return 0;
-    }
-
-    size_t primes[] = {2, 3, 5, 7, 11, 13, 17, 19, };
-    const size_t num_primes = sizeof(primes) / sizeof(primes[0]);
-
-    if (num_letters > num_primes) {
-        fprintf(stderr, "ERROR in rob_hash: num_letters (%u) exceeds available primes (%zu).\n", num_letters, num_primes);
-        return 0; // or handle error appropriately
-    }
-    size_t hash_code = 1;
-    for (unsigned i = 0; i < num_letters; ++i ) {
-        // hash_code *= (primes[i] * (size_t)word[i]) +  - 1;
-        // hash_code *= (primes[i] * (size_t)word[i]) +  primes[i]-1;
-        hash_code *= (size_t)power( (size_t)word[i], (int)primes[i] ) +  primes[i]-1;
-    }
-
-    return hash_code;
-}
-
 size_t hash(const char *word, unsigned num_letters) {
     //based on the first `num_letters letters
 
     // You can swap these out to test different algorithms:
-    return djb2_hash_string(word);
+    return djb2_hash_string(word, num_letters);
     // return fnv1a_hash(word);
     // return crc32_hash(word);
     // return murmur_hash3(word, strlen(word), 42);
@@ -284,10 +127,7 @@ int compare_WordHash(const void *o1, const void *o2 ) {
     return 1;
 }
 
-typedef struct CharRange {
-    const char start;  // inclusive
-    const char end;    // exclusive
-} CharRange;
+
 
 void permute_chars(CharRange range, size_t num_chars, unsigned range_index, char *buffer, WordHash *wh, size_t *wh_index) {
 
@@ -416,6 +256,11 @@ void t0(void) {
     }
 }
 
+// make DEBUG:
+// clang -std=c23 -o ./out/powers_of_two.out powers_of_two.c ../dev_utils.c
+//
+// RELEASE:
+// clang -std=c23 -O3 -march=native -DNDEBUG -o ./out/powers_of_two.out powers_of_two.c ../dev_utils.c
 int main(int argc, char *argv[]) {
     setlocale(LC_NUMERIC, "en_US.UTF-8");   // use user's system locale
 

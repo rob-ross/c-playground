@@ -72,6 +72,10 @@ add_executable(all_tests
         roblib/list/array_list.c
 )
 
+add_executable( hashing CS50X/week5/hashing.c CS50X/week5/hash_methods.c )
+
+
+
 # 2. AUTOMATION: Find all other .c files and make them executables
 # This is great for "learning" repos where every file has a main()
 file(GLOB_RECURSE ALL_SOURCES "*.c")

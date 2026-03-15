@@ -13,14 +13,25 @@
 #include <stddef.h>
 #include <stdio.h>
 
-int main(int argc, char *argv[]) {
-    setlocale(LC_NUMERIC, "en_US.UTF-8");   // use user's system locale
+#include "../dev_utils.h"
+
+
+void display_powers(void) {
     size_t pow = 1;
     for (int i=0; i < 64; ++i) {
         printf("%3d  %'zu\n", i, pow);
         pow <<= 1;
     }
     printf("%3d  %'zu + 2\n", 64, ( (1uL << 63) - 1 ) * 2 ) ;
+}
+
+// make:
+// clang -std=c23 -o ./out/powers_of_two.out powers_of_two.c ../dev_utils.c
+
+int main(int argc, char *argv[]) {
+    setlocale(LC_NUMERIC, "en_US.UTF-8");   // use user's system locale
+    TIMEIT( display_powers() ); print("");
+
 
 }
 

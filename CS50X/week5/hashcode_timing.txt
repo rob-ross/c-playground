@@ -1,0 +1,280 @@
+
+--------------------------------------------------------------------------------------------------------------
+Timing method permute_chars_and_hash() in DEBUG mode. Multiple function arguments:
+--------------------------------------------------------------------------------------------------------------
+
+void permute_chars_and_hash(HashFunc hash_func, CharRange range, size_t num_chars, unsigned range_index, char *buffer, size_t *wh_index)
+
+ function: fnv1a_hash
+----------------------------------------------------------------------
+All 1-char permutations picked from 26 chars.             26 permutations.   Hashed 26 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.000002 s,
+All 2-char permutations picked from 26 chars.            676 permutations.   Hashed 676 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.000009 s,
+All 3-char permutations picked from 26 chars.         17,576 permutations.   Hashed 17,576 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.000266 s,
+All 4-char permutations picked from 26 chars.        456,976 permutations.   Hashed 456,976 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.007603 s,
+All 5-char permutations picked from 26 chars.     11,881,376 permutations.   Hashed 11,881,376 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.191589 s,
+All 6-char permutations picked from 26 chars.    308,915,776 permutations.   Hashed 308,915,776 words. hash_all_permutations_with(funcs[f].func, i)  time: 5.247563 s,
+All 7-char permutations picked from 26 chars.   8,031,810,176 permutations.  Hashed 8,031,810,176 words. hash_all_permutations_with(funcs[f].func, i)  time: 149.087146 s,
+Total elapsed time: 154.534178 s
+
+
+Testing function: crc32_hash
+----------------------------------------------------------------------
+All 1-char permutations picked from 26 chars.             26 permutations.   Hashed 26 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.000001 s,
+All 2-char permutations picked from 26 chars.            676 permutations.   Hashed 676 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.000010 s,
+All 3-char permutations picked from 26 chars.         17,576 permutations.   Hashed 17,576 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.000244 s,
+All 4-char permutations picked from 26 chars.        456,976 permutations.   Hashed 456,976 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.007258 s,
+All 5-char permutations picked from 26 chars.     11,881,376 permutations.   Hashed 11,881,376 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.208556 s,
+All 6-char permutations picked from 26 chars.    308,915,776 permutations.   Hashed 308,915,776 words. hash_all_permutations_with(funcs[f].func, i)  time: 5.820782 s,
+All 7-char permutations picked from 26 chars.   8,031,810,176 permutations.  Hashed 8,031,810,176 words. hash_all_permutations_with(funcs[f].func, i)  time: 171.896654 s,
+Total elapsed time: 177.933505 s
+
+
+Testing function: djb2_hash_string
+----------------------------------------------------------------------
+All 1-char permutations picked from 26 chars.             26 permutations.   Hashed 26 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.000002 s,
+All 2-char permutations picked from 26 chars.            676 permutations.   Hashed 676 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.000010 s,
+All 3-char permutations picked from 26 chars.         17,576 permutations.   Hashed 17,576 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.000262 s,
+All 4-char permutations picked from 26 chars.        456,976 permutations.   Hashed 456,976 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.007341 s,
+All 5-char permutations picked from 26 chars.     11,881,376 permutations.   Hashed 11,881,376 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.205156 s,
+All 6-char permutations picked from 26 chars.    308,915,776 permutations.   Hashed 308,915,776 words. hash_all_permutations_with(funcs[f].func, i)  time: 5.297953 s,
+All 7-char permutations picked from 26 chars.   8,031,810,176 permutations.  Hashed 8,031,810,176 words. hash_all_permutations_with(funcs[f].func, i)  time: 154.222252 s,
+Total elapsed time: 159.732976 s
+
+
+Testing function: murmur_hash3
+----------------------------------------------------------------------
+All 1-char permutations picked from 26 chars.             26 permutations.   Hashed 26 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.000002 s,
+All 2-char permutations picked from 26 chars.            676 permutations.   Hashed 676 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.000020 s,
+All 3-char permutations picked from 26 chars.         17,576 permutations.   Hashed 17,576 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.000524 s,
+All 4-char permutations picked from 26 chars.        456,976 permutations.   Hashed 456,976 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.016063 s,
+All 5-char permutations picked from 26 chars.     11,881,376 permutations.   Hashed 11,881,376 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.426427 s,
+All 6-char permutations picked from 26 chars.    308,915,776 permutations.   Hashed 308,915,776 words. hash_all_permutations_with(funcs[f].func, i)  time: 10.950621 s,
+All 7-char permutations picked from 26 chars.   8,031,810,176 permutations.  Hashed 8,031,810,176 words. hash_all_permutations_with(funcs[f].func, i)  time: 281.876708 s,
+Total elapsed time: 293.270365 s
+
+
+Testing function: rob_hash
+----------------------------------------------------------------------
+All 1-char permutations picked from 26 chars.             26 permutations.   Hashed 26 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.000001 s,
+All 2-char permutations picked from 26 chars.            676 permutations.   Hashed 676 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.000018 s,
+All 3-char permutations picked from 26 chars.         17,576 permutations.   Hashed 17,576 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.000639 s,
+All 4-char permutations picked from 26 chars.        456,976 permutations.   Hashed 456,976 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.021780 s,
+All 5-char permutations picked from 26 chars.     11,881,376 permutations.   Hashed 11,881,376 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.664324 s,
+All 6-char permutations picked from 26 chars.    308,915,776 permutations.   Hashed 308,915,776 words. hash_all_permutations_with(funcs[f].func, i)  time: 19.591157 s,
+All 7-char permutations picked from 26 chars.   8,031,810,176 permutations.  Hashed 8,031,810,176 words. hash_all_permutations_with(funcs[f].func, i)  time: 681.292208 s,
+Total elapsed time: 701.570127 s
+
+
+--------------------------------------------------------------------------------------------------------------
+Timing method permute_chars_and_hash() in RELEASE mode. Multiple function arguments:
+--------------------------------------------------------------------------------------------------------------
+
+
+Testing function: fnv1a_hash
+----------------------------------------------------------------------
+All 1-char permutations picked from 26 chars.             26 permutations.   Hashed 26 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.000003 s,
+All 2-char permutations picked from 26 chars.            676 permutations.   Hashed 676 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.000005 s,
+All 3-char permutations picked from 26 chars.         17,576 permutations.   Hashed 17,576 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.000103 s,
+All 4-char permutations picked from 26 chars.        456,976 permutations.   Hashed 456,976 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.004229 s,
+All 5-char permutations picked from 26 chars.     11,881,376 permutations.   Hashed 11,881,376 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.073390 s,
+All 6-char permutations picked from 26 chars.    308,915,776 permutations.   Hashed 308,915,776 words. hash_all_permutations_with(funcs[f].func, i)  time: 2.039424 s,
+All 7-char permutations picked from 26 chars.   8,031,810,176 permutations.  Hashed 8,031,810,176 words. hash_all_permutations_with(funcs[f].func, i)  time: 54.807491 s,
+Total elapsed time: 56.924645 s
+
+
+Testing function: crc32_hash
+----------------------------------------------------------------------
+All 1-char permutations picked from 26 chars.             26 permutations.   Hashed 26 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.000001 s,
+All 2-char permutations picked from 26 chars.            676 permutations.   Hashed 676 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.000003 s,
+All 3-char permutations picked from 26 chars.         17,576 permutations.   Hashed 17,576 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.000063 s,
+All 4-char permutations picked from 26 chars.        456,976 permutations.   Hashed 456,976 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.001831 s,
+All 5-char permutations picked from 26 chars.     11,881,376 permutations.   Hashed 11,881,376 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.053596 s,
+All 6-char permutations picked from 26 chars.    308,915,776 permutations.   Hashed 308,915,776 words. hash_all_permutations_with(funcs[f].func, i)  time: 1.353910 s,
+All 7-char permutations picked from 26 chars.   8,031,810,176 permutations.  Hashed 8,031,810,176 words. hash_all_permutations_with(funcs[f].func, i)  time: 37.496055 s,
+Total elapsed time: 38.905459 s
+
+
+Testing function: djb2_hash_string
+----------------------------------------------------------------------
+All 1-char permutations picked from 26 chars.             26 permutations.   Hashed 26 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.000001 s,
+All 2-char permutations picked from 26 chars.            676 permutations.   Hashed 676 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.000003 s,
+All 3-char permutations picked from 26 chars.         17,576 permutations.   Hashed 17,576 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.000071 s,
+All 4-char permutations picked from 26 chars.        456,976 permutations.   Hashed 456,976 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.002142 s,
+All 5-char permutations picked from 26 chars.     11,881,376 permutations.   Hashed 11,881,376 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.063273 s,
+All 6-char permutations picked from 26 chars.    308,915,776 permutations.   Hashed 308,915,776 words. hash_all_permutations_with(funcs[f].func, i)  time: 1.754084 s,
+All 7-char permutations picked from 26 chars.   8,031,810,176 permutations.  Hashed 8,031,810,176 words. hash_all_permutations_with(funcs[f].func, i)  time: 48.901666 s,
+Total elapsed time: 50.721240 s
+
+
+Testing function: murmur_hash3
+----------------------------------------------------------------------
+All 1-char permutations picked from 26 chars.             26 permutations.   Hashed 26 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.000001 s,
+All 2-char permutations picked from 26 chars.            676 permutations.   Hashed 676 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.000004 s,
+All 3-char permutations picked from 26 chars.         17,576 permutations.   Hashed 17,576 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.000080 s,
+All 4-char permutations picked from 26 chars.        456,976 permutations.   Hashed 456,976 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.005188 s,
+All 5-char permutations picked from 26 chars.     11,881,376 permutations.   Hashed 11,881,376 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.073709 s,
+All 6-char permutations picked from 26 chars.    308,915,776 permutations.   Hashed 308,915,776 words. hash_all_permutations_with(funcs[f].func, i)  time: 1.937821 s,
+All 7-char permutations picked from 26 chars.   8,031,810,176 permutations.  Hashed 8,031,810,176 words. hash_all_permutations_with(funcs[f].func, i)  time: 51.138092 s,
+Total elapsed time: 53.154895 s
+
+
+Testing function: rob_hash
+----------------------------------------------------------------------
+All 1-char permutations picked from 26 chars.             26 permutations.   Hashed 26 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.000002 s,
+All 2-char permutations picked from 26 chars.            676 permutations.   Hashed 676 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.000005 s,
+All 3-char permutations picked from 26 chars.         17,576 permutations.   Hashed 17,576 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.000161 s,
+All 4-char permutations picked from 26 chars.        456,976 permutations.   Hashed 456,976 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.005569 s,
+All 5-char permutations picked from 26 chars.     11,881,376 permutations.   Hashed 11,881,376 words. hash_all_permutations_with(funcs[f].func, i)  time: 0.180794 s,
+All 6-char permutations picked from 26 chars.    308,915,776 permutations.   Hashed 308,915,776 words. hash_all_permutations_with(funcs[f].func, i)  time: 6.015645 s,
+All 7-char permutations picked from 26 chars.   8,031,810,176 permutations.  Hashed 8,031,810,176 words. hash_all_permutations_with(funcs[f].func, i)  time: 182.404834 s,
+Total elapsed time: 188.607010 s
+
+
+
+
+
+
+--------------------------------------------------------------------------------------------------------------
+Timing method permute_chars_and_hash2() in DEBUG mode. Single function argument, other state in global struct:
+--------------------------------------------------------------------------------------------------------------
+
+void permute_chars_and_hash2(unsigned range_index)
+
+ function: fnv1a_hash
+----------------------------------------------------------------------
+All 1-char permutations picked from 26 chars.             26 permutations.   Hashed 26 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.000004 s,
+All 2-char permutations picked from 26 chars.            676 permutations.   Hashed 676 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.000008 s,
+All 3-char permutations picked from 26 chars.         17,576 permutations.   Hashed 17,576 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.000216 s,
+All 4-char permutations picked from 26 chars.        456,976 permutations.   Hashed 456,976 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.008107 s,
+All 5-char permutations picked from 26 chars.     11,881,376 permutations.   Hashed 11,881,376 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.176885 s,
+All 6-char permutations picked from 26 chars.    308,915,776 permutations.   Hashed 308,915,776 words. hash_all_permutations_with2(funcs[f].func, i)  time: 5.125822 s,
+All 7-char permutations picked from 26 chars.   8,031,810,176 permutations.  Hashed 8,031,810,176 words. hash_all_permutations_with2(funcs[f].func, i)  time: 141.789878 s,
+Total elapsed time: 147.100920 s
+
+
+Testing function: crc32_hash
+----------------------------------------------------------------------
+All 1-char permutations picked from 26 chars.             26 permutations.   Hashed 26 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.000002 s,
+All 2-char permutations picked from 26 chars.            676 permutations.   Hashed 676 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.000009 s,
+All 3-char permutations picked from 26 chars.         17,576 permutations.   Hashed 17,576 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.000214 s,
+All 4-char permutations picked from 26 chars.        456,976 permutations.   Hashed 456,976 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.006051 s,
+All 5-char permutations picked from 26 chars.     11,881,376 permutations.   Hashed 11,881,376 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.190046 s,
+All 6-char permutations picked from 26 chars.    308,915,776 permutations.   Hashed 308,915,776 words. hash_all_permutations_with2(funcs[f].func, i)  time: 6.269283 s,
+All 7-char permutations picked from 26 chars.   8,031,810,176 permutations.  Hashed 8,031,810,176 words. hash_all_permutations_with2(funcs[f].func, i)  time: 166.246127 s,
+Total elapsed time: 172.711732 s
+
+
+Testing function: djb2_hash_string
+----------------------------------------------------------------------
+All 1-char permutations picked from 26 chars.             26 permutations.   Hashed 26 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.000002 s,
+All 2-char permutations picked from 26 chars.            676 permutations.   Hashed 676 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.000008 s,
+All 3-char permutations picked from 26 chars.         17,576 permutations.   Hashed 17,576 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.000206 s,
+All 4-char permutations picked from 26 chars.        456,976 permutations.   Hashed 456,976 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.005517 s,
+All 5-char permutations picked from 26 chars.     11,881,376 permutations.   Hashed 11,881,376 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.158877 s,
+All 6-char permutations picked from 26 chars.    308,915,776 permutations.   Hashed 308,915,776 words. hash_all_permutations_with2(funcs[f].func, i)  time: 5.088344 s,
+All 7-char permutations picked from 26 chars.   8,031,810,176 permutations.  Hashed 8,031,810,176 words. hash_all_permutations_with2(funcs[f].func, i)  time: 133.457786 s,
+Total elapsed time: 138.710740 s
+
+
+Testing function: murmur_hash3
+----------------------------------------------------------------------
+All 1-char permutations picked from 26 chars.             26 permutations.   Hashed 26 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.000002 s,
+All 2-char permutations picked from 26 chars.            676 permutations.   Hashed 676 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.000016 s,
+All 3-char permutations picked from 26 chars.         17,576 permutations.   Hashed 17,576 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.000418 s,
+All 4-char permutations picked from 26 chars.        456,976 permutations.   Hashed 456,976 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.014515 s,
+All 5-char permutations picked from 26 chars.     11,881,376 permutations.   Hashed 11,881,376 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.403683 s,
+All 6-char permutations picked from 26 chars.    308,915,776 permutations.   Hashed 308,915,776 words. hash_all_permutations_with2(funcs[f].func, i)  time: 9.744561 s,
+All 7-char permutations picked from 26 chars.   8,031,810,176 permutations.  Hashed 8,031,810,176 words. hash_all_permutations_with2(funcs[f].func, i)  time: 265.205016 s,
+Total elapsed time: 275.368211 s
+
+
+Testing function: rob_hash
+----------------------------------------------------------------------
+All 1-char permutations picked from 26 chars.             26 permutations.   Hashed 26 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.000002 s,
+All 2-char permutations picked from 26 chars.            676 permutations.   Hashed 676 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.000019 s,
+All 3-char permutations picked from 26 chars.         17,576 permutations.   Hashed 17,576 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.000643 s,
+All 4-char permutations picked from 26 chars.        456,976 permutations.   Hashed 456,976 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.020197 s,
+All 5-char permutations picked from 26 chars.     11,881,376 permutations.   Hashed 11,881,376 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.663592 s,
+All 6-char permutations picked from 26 chars.    308,915,776 permutations.   Hashed 308,915,776 words. hash_all_permutations_with2(funcs[f].func, i)  time: 20.364813 s,
+All 7-char permutations picked from 26 chars.   8,031,810,176 permutations.  Hashed 8,031,810,176 words. hash_all_permutations_with2(funcs[f].func, i)  time: 625.064210 s,
+Total elapsed time: 646.113476 s
+
+
+--------------------------------------------------------------------------------------------------------------
+Timing method permute_chars_and_hash2() in RELEASE mode. Single function argument, other state in global struct:
+--------------------------------------------------------------------------------------------------------------
+
+void permute_chars_and_hash2(unsigned range_index)
+
+OPTIMIZED -O3 -march=native
+
+Testing function: fnv1a_hash
+----------------------------------------------------------------------
+All 1-char permutations picked from 26 chars.             26 permutations.   Hashed 26 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.000005 s,
+All 2-char permutations picked from 26 chars.            676 permutations.   Hashed 676 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.000004 s,
+All 3-char permutations picked from 26 chars.         17,576 permutations.   Hashed 17,576 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.000074 s,
+All 4-char permutations picked from 26 chars.        456,976 permutations.   Hashed 456,976 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.002578 s,
+All 5-char permutations picked from 26 chars.     11,881,376 permutations.   Hashed 11,881,376 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.070014 s,
+All 6-char permutations picked from 26 chars.    308,915,776 permutations.   Hashed 308,915,776 words. hash_all_permutations_with2(funcs[f].func, i)  time: 1.783144 s,
+All 7-char permutations picked from 26 chars.   8,031,810,176 permutations.  Hashed 8,031,810,176 words. hash_all_permutations_with2(funcs[f].func, i)  time: 52.022029 s,
+Total elapsed time: 53.877848 s
+All 8-char permutations picked from 26 chars.   208,827,064,576 permutations.Hashed 208,827,064,576 words. hash_all_permutations_with2(funcs[f].func, i)  time: 1523.298277 s,
+Total elapsed time: 1574.340560 s
+
+
+Testing function: crc32_hash
+----------------------------------------------------------------------
+All 1-char permutations picked from 26 chars.             26 permutations.   Hashed 26 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.000001 s,
+All 2-char permutations picked from 26 chars.            676 permutations.   Hashed 676 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.000003 s,
+All 3-char permutations picked from 26 chars.         17,576 permutations.   Hashed 17,576 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.000059 s,
+All 4-char permutations picked from 26 chars.        456,976 permutations.   Hashed 456,976 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.001734 s,
+All 5-char permutations picked from 26 chars.     11,881,376 permutations.   Hashed 11,881,376 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.046678 s,
+All 6-char permutations picked from 26 chars.    308,915,776 permutations.   Hashed 308,915,776 words. hash_all_permutations_with2(funcs[f].func, i)  time: 1.264704 s,
+All 7-char permutations picked from 26 chars.   8,031,810,176 permutations.  Hashed 8,031,810,176 words. hash_all_permutations_with2(funcs[f].func, i)  time: 34.475654 s,
+Total elapsed time: 35.788833 s
+All 8-char permutations picked from 26 chars.   208,827,064,576 permutations.Hashed 208,827,064,576 words. hash_all_permutations_with2(funcs[f].func, i)  time: 1023.756345 s,
+Total elapsed time: 1063.275363 s
+
+
+Testing function: djb2_hash_string
+----------------------------------------------------------------------
+All 1-char permutations picked from 26 chars.             26 permutations.   Hashed 26 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.000002 s,
+All 2-char permutations picked from 26 chars.            676 permutations.   Hashed 676 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.000003 s,
+All 3-char permutations picked from 26 chars.         17,576 permutations.   Hashed 17,576 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.000067 s,
+All 4-char permutations picked from 26 chars.        456,976 permutations.   Hashed 456,976 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.002225 s,
+All 5-char permutations picked from 26 chars.     11,881,376 permutations.   Hashed 11,881,376 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.059798 s,
+All 6-char permutations picked from 26 chars.    308,915,776 permutations.   Hashed 308,915,776 words. hash_all_permutations_with2(funcs[f].func, i)  time: 1.648643 s,
+All 7-char permutations picked from 26 chars.   8,031,810,176 permutations.  Hashed 8,031,810,176 words. hash_all_permutations_with2(funcs[f].func, i)  time: 46.847604 s,
+Total elapsed time: 48.558342 s
+All 8-char permutations picked from 26 chars.   208,827,064,576 permutations.Hashed 208,827,064,576 words. hash_all_permutations_with2(funcs[f].func, i)  time: 1372.263688 s,
+Total elapsed time: 1426.073008 s
+
+
+
+
+Testing function: murmur_hash3
+----------------------------------------------------------------------
+All 1-char permutations picked from 26 chars.             26 permutations.   Hashed 26 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.000001 s,
+All 2-char permutations picked from 26 chars.            676 permutations.   Hashed 676 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.000004 s,
+All 3-char permutations picked from 26 chars.         17,576 permutations.   Hashed 17,576 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.000077 s,
+All 4-char permutations picked from 26 chars.        456,976 permutations.   Hashed 456,976 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.004540 s,
+All 5-char permutations picked from 26 chars.     11,881,376 permutations.   Hashed 11,881,376 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.070110 s,
+All 6-char permutations picked from 26 chars.    308,915,776 permutations.   Hashed 308,915,776 words. hash_all_permutations_with2(funcs[f].func, i)  time: 1.889171 s,
+All 7-char permutations picked from 26 chars.   8,031,810,176 permutations.  Hashed 8,031,810,176 words. hash_all_permutations_with2(funcs[f].func, i)  time: 49.224799 s,
+Total elapsed time: 51.188702 s
+All 8-char permutations picked from 26 chars.   208,827,064,576 permutations.Hashed 208,827,064,576 words. hash_all_permutations_with2(funcs[f].func, i)  time: 2085.073591 s,
+Total elapsed time: 2136.679217 s
+
+
+Testing function: rob_hash
+----------------------------------------------------------------------
+All 1-char permutations picked from 26 chars.             26 permutations.   Hashed 26 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.000002 s,
+All 2-char permutations picked from 26 chars.            676 permutations.   Hashed 676 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.000006 s,
+All 3-char permutations picked from 26 chars.         17,576 permutations.   Hashed 17,576 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.000172 s,
+All 4-char permutations picked from 26 chars.        456,976 permutations.   Hashed 456,976 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.005921 s,
+All 5-char permutations picked from 26 chars.     11,881,376 permutations.   Hashed 11,881,376 words. hash_all_permutations_with2(funcs[f].func, i)  time: 0.181546 s,
+All 6-char permutations picked from 26 chars.    308,915,776 permutations.   Hashed 308,915,776 words. hash_all_permutations_with2(funcs[f].func, i)  time: 5.833008 s,
+All 7-char permutations picked from 26 chars.   8,031,810,176 permutations.  Hashed 8,031,810,176 words. hash_all_permutations_with2(funcs[f].func, i)  time: 175.809715 s,
+Total elapsed time: 181.830370 s
+All 8-char permutations picked from 26 chars.   208,827,064,576 permutations.Hashed 208,827,064,576 words. hash_all_permutations_with2(funcs[f].func, i)  time: 5788.582157 s,
+Total elapsed time: 5977.959333 s

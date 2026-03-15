@@ -19,3 +19,5 @@
 8. **Documentation:** Use Doxygen-style comments (`/** ... */`) for all function definitions.
 9. **Error Handling:** Prefer returning `int` status codes (0 for success) rather than relying solely on `errno`. Use `goto` labels for cleanup in complex functions to avoid memory leaks.
 
+** When you are asked a question, you may use sample code in the chat response for illustration purposes. You will not
+generate changes to existing code when asked a question, unless you first ask if you may update the code. ***

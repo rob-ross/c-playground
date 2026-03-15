@@ -9,8 +9,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "dev_utils.h"
+
+#include <time.h>
 
 
 char const *create_string(char const *fmt, ...) {
@@ -79,4 +82,9 @@ void du_repr_array_int_2D(size_t const rows, size_t const cols, int const array[
     }
 
     printf("\n}");
+}
+
+double du_elapsed_seconds(struct timespec start, struct timespec end) {
+    return (double)(end.tv_sec - start.tv_sec)
+         + (double)(end.tv_nsec - start.tv_nsec) / 1e9;
 }
