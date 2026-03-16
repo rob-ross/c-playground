@@ -278,3 +278,188 @@ All 7-char permutations picked from 26 chars.   8,031,810,176 permutations.  Has
 Total elapsed time: 181.830370 s
 All 8-char permutations picked from 26 chars.   208,827,064,576 permutations.Hashed 208,827,064,576 words. hash_all_permutations_with2(funcs[f].func, i)  time: 5788.582157 s,
 Total elapsed time: 5977.959333 s
+
+
+
+--------------------------------------------------------------------------------------------------------------
+Hash function distribution testing  RELEASE mode. Single function argument, other state in global struct:
+--------------------------------------------------------------------------------------------------------------
+
+Testing function: fnv1a_hash
+----------------------------------------------------------------------
+All 1-char permutations picked from 26 chars.             26 permutations.
+num_entries: 26, num_buckets:  1,024, num_unused_buckets:   998, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.03, red_chi_squares: 0.975562
+num_entries: 26, num_buckets:  4,096, num_unused_buckets:  4070, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.01, red_chi_squares: 0.993895
+num_entries: 26, num_buckets: 16,384, num_unused_buckets: 16358, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.00, red_chi_squares: 0.998474
+num_entries: 26, num_buckets: 65,536, num_unused_buckets: 65510, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.00, red_chi_squares: 0.999619
+num_entries: 26, num_buckets:  1,009, num_unused_buckets:   983, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.03, red_chi_squares: 0.975198
+num_entries: 26, num_buckets:  4,093, num_unused_buckets:  4067, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.01, red_chi_squares: 0.993891
+
+All 2-char permutations picked from 26 chars.            676 permutations.
+num_entries: 676, num_buckets:  1,024, num_unused_buckets:   392, max_bucket_count:        2, min_bucket_count:     0, mean_bucket_count:      0.66, red_chi_squares: 0.470481
+num_entries: 676, num_buckets:  4,096, num_unused_buckets:  3420, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.17, red_chi_squares: 0.835165
+num_entries: 676, num_buckets: 16,384, num_unused_buckets: 15708, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.04, red_chi_squares: 0.958799
+num_entries: 676, num_buckets: 65,536, num_unused_buckets: 64860, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.01, red_chi_squares: 0.9897
+num_entries: 676, num_buckets:  1,009, num_unused_buckets:   565, max_bucket_count:        4, min_bucket_count:     0, mean_bucket_count:      0.67, red_chi_squares: 1.14181
+num_entries: 676, num_buckets:  4,093, num_unused_buckets:  3417, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.17, red_chi_squares: 0.835044
+
+All 3-char permutations picked from 26 chars.         17,576 permutations.
+num_entries: 17,576, num_buckets:  1,024, num_unused_buckets:     0, max_bucket_count:       24, min_bucket_count:    10, mean_bucket_count:     17.16, red_chi_squares: 0.264735
+num_entries: 17,576, num_buckets:  4,096, num_unused_buckets:     7, max_bucket_count:       10, min_bucket_count:     0, mean_bucket_count:      4.29, red_chi_squares: 0.521583
+num_entries: 17,576, num_buckets: 16,384, num_unused_buckets:  8713, max_bucket_count:        7, min_bucket_count:     0, mean_bucket_count:      1.07, red_chi_squares: 1.91621
+num_entries: 17,576, num_buckets: 65,536, num_unused_buckets: 52144, max_bucket_count:        4, min_bucket_count:     0, mean_bucket_count:      0.27, red_chi_squares: 1.25345
+num_entries: 17,576, num_buckets:  1,009, num_unused_buckets:     0, max_bucket_count:       25, min_bucket_count:    10, mean_bucket_count:     17.42, red_chi_squares: 0.370057
+num_entries: 17,576, num_buckets:  4,093, num_unused_buckets:    41, max_bucket_count:       11, min_bucket_count:     0, mean_bucket_count:      4.29, red_chi_squares: 0.946171
+
+All 4-char permutations picked from 26 chars.        456,976 permutations.
+num_entries: 456,976, num_buckets:  1,024, num_unused_buckets:     0, max_bucket_count:      482, min_bucket_count:   426, mean_bucket_count:    446.27, red_chi_squares: 0.165982
+num_entries: 456,976, num_buckets:  4,096, num_unused_buckets:     0, max_bucket_count:      133, min_bucket_count:    94, mean_bucket_count:    111.57, red_chi_squares: 0.274248
+num_entries: 456,976, num_buckets: 16,384, num_unused_buckets:     0, max_bucket_count:       45, min_bucket_count:    13, mean_bucket_count:     27.89, red_chi_squares: 0.805359
+num_entries: 456,976, num_buckets: 65,536, num_unused_buckets:   359, max_bucket_count:       21, min_bucket_count:     0, mean_bucket_count:      6.97, red_chi_squares: 1.58547
+num_entries: 456,976, num_buckets:  1,009, num_unused_buckets:     0, max_bucket_count:      519, min_bucket_count:   383, mean_bucket_count:    452.90, red_chi_squares: 1.64873
+num_entries: 456,976, num_buckets:  4,093, num_unused_buckets:     0, max_bucket_count:      148, min_bucket_count:    83, mean_bucket_count:    111.65, red_chi_squares: 0.728766
+
+All 5-char permutations picked from 26 chars.     11,881,376 permutations.
+num_entries: 11,881,376, num_buckets:  1,024, num_unused_buckets:     0, max_bucket_count:   11,695, min_bucket_count: 11508, mean_bucket_count: 11,602.91, red_chi_squares: 0.0941577
+num_entries: 11,881,376, num_buckets:  4,096, num_unused_buckets:     0, max_bucket_count:    2,971, min_bucket_count:  2823, mean_bucket_count:  2,900.73, red_chi_squares: 0.204472
+num_entries: 11,881,376, num_buckets: 16,384, num_unused_buckets:     0, max_bucket_count:      815, min_bucket_count:   662, mean_bucket_count:    725.18, red_chi_squares: 0.63508
+num_entries: 11,881,376, num_buckets: 65,536, num_unused_buckets:     0, max_bucket_count:      242, min_bucket_count:   129, mean_bucket_count:    181.30, red_chi_squares: 1.07647
+num_entries: 11,881,376, num_buckets:  1,009, num_unused_buckets:     0, max_bucket_count:   12,004, min_bucket_count: 11554, mean_bucket_count: 11,775.40, red_chi_squares: 0.373745
+num_entries: 11,881,376, num_buckets:  4,093, num_unused_buckets:     0, max_bucket_count:    3,073, min_bucket_count:  2748, mean_bucket_count:  2,902.85, red_chi_squares: 0.688104
+
+Total elapsed time: 0.000000 s
+
+
+Testing function: crc32_hash
+----------------------------------------------------------------------
+All 1-char permutations picked from 26 chars.             26 permutations.
+num_entries: 26, num_buckets:  1,024, num_unused_buckets:   998, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.03, red_chi_squares: 0.975562
+num_entries: 26, num_buckets:  4,096, num_unused_buckets:  4070, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.01, red_chi_squares: 0.993895
+num_entries: 26, num_buckets: 16,384, num_unused_buckets: 16358, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.00, red_chi_squares: 0.998474
+num_entries: 26, num_buckets: 65,536, num_unused_buckets: 65510, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.00, red_chi_squares: 0.999619
+num_entries: 26, num_buckets:  1,009, num_unused_buckets:   983, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.03, red_chi_squares: 0.975198
+num_entries: 26, num_buckets:  4,093, num_unused_buckets:  4067, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.01, red_chi_squares: 0.993891
+
+All 2-char permutations picked from 26 chars.            676 permutations.
+num_entries: 676, num_buckets:  1,024, num_unused_buckets:   348, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.66, red_chi_squares: 0.340176
+num_entries: 676, num_buckets:  4,096, num_unused_buckets:  3420, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.17, red_chi_squares: 0.835165
+num_entries: 676, num_buckets: 16,384, num_unused_buckets: 15708, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.04, red_chi_squares: 0.958799
+num_entries: 676, num_buckets: 65,536, num_unused_buckets: 64860, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.01, red_chi_squares: 0.9897
+num_entries: 676, num_buckets:  1,009, num_unused_buckets:   514, max_bucket_count:        5, min_bucket_count:     0, mean_bucket_count:      0.67, red_chi_squares: 0.987813
+num_entries: 676, num_buckets:  4,093, num_unused_buckets:  3463, max_bucket_count:        3, min_bucket_count:     0, mean_bucket_count:      0.17, red_chi_squares: 0.974131
+
+All 3-char permutations picked from 26 chars.         17,576 permutations.
+num_entries: 17,576, num_buckets:  1,024, num_unused_buckets:     0, max_bucket_count:       25, min_bucket_count:     9, mean_bucket_count:     17.16, red_chi_squares: 0.889606
+num_entries: 17,576, num_buckets:  4,096, num_unused_buckets:     2, max_bucket_count:        8, min_bucket_count:     0, mean_bucket_count:      4.29, red_chi_squares: 0.619923
+num_entries: 17,576, num_buckets: 16,384, num_unused_buckets:  2808, max_bucket_count:        2, min_bucket_count:     0, mean_bucket_count:      1.07, red_chi_squares: 0.382436
+num_entries: 17,576, num_buckets: 65,536, num_unused_buckets: 51960, max_bucket_count:        2, min_bucket_count:     0, mean_bucket_count:      0.27, red_chi_squares: 1.187
+num_entries: 17,576, num_buckets:  1,009, num_unused_buckets:     0, max_bucket_count:       33, min_bucket_count:     5, mean_bucket_count:     17.42, red_chi_squares: 1.04676
+num_entries: 17,576, num_buckets:  4,093, num_unused_buckets:    56, max_bucket_count:       13, min_bucket_count:     0, mean_bucket_count:      4.29, red_chi_squares: 0.975764
+
+All 4-char permutations picked from 26 chars.        456,976 permutations.
+num_entries: 456,976, num_buckets:  1,024, num_unused_buckets:     0, max_bucket_count:      467, min_bucket_count:   426, mean_bucket_count:    446.27, red_chi_squares: 0.218956
+num_entries: 456,976, num_buckets:  4,096, num_unused_buckets:     0, max_bucket_count:      141, min_bucket_count:    85, mean_bucket_count:    111.57, red_chi_squares: 1.51159
+num_entries: 456,976, num_buckets: 16,384, num_unused_buckets:     0, max_bucket_count:       38, min_bucket_count:    19, mean_bucket_count:     27.89, red_chi_squares: 0.486531
+num_entries: 456,976, num_buckets: 65,536, num_unused_buckets:     0, max_bucket_count:       11, min_bucket_count:     2, mean_bucket_count:      6.97, red_chi_squares: 0.285988
+num_entries: 456,976, num_buckets:  1,009, num_unused_buckets:     0, max_bucket_count:      530, min_bucket_count:   383, mean_bucket_count:    452.90, red_chi_squares: 1.05631
+num_entries: 456,976, num_buckets:  4,093, num_unused_buckets:     0, max_bucket_count:      151, min_bucket_count:    73, mean_bucket_count:    111.65, red_chi_squares: 1.0511
+
+All 5-char permutations picked from 26 chars.     11,881,376 permutations.
+num_entries: 11,881,376, num_buckets:  1,024, num_unused_buckets:     0, max_bucket_count:   11,647, min_bucket_count: 11562, mean_bucket_count: 11,602.91, red_chi_squares: 0.0358928
+num_entries: 11,881,376, num_buckets:  4,096, num_unused_buckets:     0, max_bucket_count:    2,994, min_bucket_count:  2813, mean_bucket_count:  2,900.73, red_chi_squares: 0.63156
+num_entries: 11,881,376, num_buckets: 16,384, num_unused_buckets:     0, max_bucket_count:      754, min_bucket_count:   695, mean_bucket_count:    725.18, red_chi_squares: 0.188556
+num_entries: 11,881,376, num_buckets: 65,536, num_unused_buckets:     0, max_bucket_count:      198, min_bucket_count:   164, mean_bucket_count:    181.30, red_chi_squares: 0.121704
+num_entries: 11,881,376, num_buckets:  1,009, num_unused_buckets:     0, max_bucket_count:   12,076, min_bucket_count: 11493, mean_bucket_count: 11,775.40, red_chi_squares: 0.826218
+num_entries: 11,881,376, num_buckets:  4,093, num_unused_buckets:     0, max_bucket_count:    3,095, min_bucket_count:  2698, mean_bucket_count:  2,902.85, red_chi_squares: 0.978443
+
+Total elapsed time: 0.000000 s
+
+
+Testing function: djb2_hash_string
+----------------------------------------------------------------------
+All 1-char permutations picked from 26 chars.             26 permutations.
+num_entries: 26, num_buckets:  1,024, num_unused_buckets:   998, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.03, red_chi_squares: 0.975562
+num_entries: 26, num_buckets:  4,096, num_unused_buckets:  4070, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.01, red_chi_squares: 0.993895
+num_entries: 26, num_buckets: 16,384, num_unused_buckets: 16358, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.00, red_chi_squares: 0.998474
+num_entries: 26, num_buckets: 65,536, num_unused_buckets: 65510, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.00, red_chi_squares: 0.999619
+num_entries: 26, num_buckets:  1,009, num_unused_buckets:   983, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.03, red_chi_squares: 0.975198
+num_entries: 26, num_buckets:  4,093, num_unused_buckets:  4067, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.01, red_chi_squares: 0.993891
+
+All 2-char permutations picked from 26 chars.            676 permutations.
+num_entries: 676, num_buckets:  1,024, num_unused_buckets:   348, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.66, red_chi_squares: 0.340176
+num_entries: 676, num_buckets:  4,096, num_unused_buckets:  3420, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.17, red_chi_squares: 0.835165
+num_entries: 676, num_buckets: 16,384, num_unused_buckets: 15708, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.04, red_chi_squares: 0.958799
+num_entries: 676, num_buckets: 65,536, num_unused_buckets: 64860, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.01, red_chi_squares: 0.9897
+num_entries: 676, num_buckets:  1,009, num_unused_buckets:   333, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.67, red_chi_squares: 0.330357
+num_entries: 676, num_buckets:  4,093, num_unused_buckets:  3417, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.17, red_chi_squares: 0.835044
+
+All 3-char permutations picked from 26 chars.         17,576 permutations.
+num_entries: 17,576, num_buckets:  1,024, num_unused_buckets:     0, max_bucket_count:       23, min_bucket_count:    13, mean_bucket_count:     17.16, red_chi_squares: 0.273392
+num_entries: 17,576, num_buckets:  4,096, num_unused_buckets:     0, max_bucket_count:        7, min_bucket_count:     3, mean_bucket_count:      4.29, red_chi_squares: 0.147801
+num_entries: 17,576, num_buckets: 16,384, num_unused_buckets:  3934, max_bucket_count:        2, min_bucket_count:     0, mean_bucket_count:      1.07, red_chi_squares: 0.510573
+num_entries: 17,576, num_buckets: 65,536, num_unused_buckets: 47960, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.27, red_chi_squares: 0.731823
+num_entries: 17,576, num_buckets:  1,009, num_unused_buckets:     0, max_bucket_count:       20, min_bucket_count:    15, mean_bucket_count:     17.42, red_chi_squares: 0.0740189
+num_entries: 17,576, num_buckets:  4,093, num_unused_buckets:   184, max_bucket_count:        7, min_bucket_count:     0, mean_bucket_count:      4.29, red_chi_squares: 0.751426
+
+All 4-char permutations picked from 26 chars.        456,976 permutations.
+num_entries: 456,976, num_buckets:  1,024, num_unused_buckets:     0, max_bucket_count:      472, min_bucket_count:   423, mean_bucket_count:    446.27, red_chi_squares: 0.195925
+num_entries: 456,976, num_buckets:  4,096, num_unused_buckets:     0, max_bucket_count:      120, min_bucket_count:   105, mean_bucket_count:    111.57, red_chi_squares: 0.0553686
+num_entries: 456,976, num_buckets: 16,384, num_unused_buckets:     0, max_bucket_count:       35, min_bucket_count:    20, mean_bucket_count:     27.89, red_chi_squares: 0.275706
+num_entries: 456,976, num_buckets: 65,536, num_unused_buckets:     0, max_bucket_count:       11, min_bucket_count:     3, mean_bucket_count:      6.97, red_chi_squares: 0.229228
+num_entries: 456,976, num_buckets:  1,009, num_unused_buckets:     0, max_bucket_count:      458, min_bucket_count:   448, mean_bucket_count:    452.90, red_chi_squares: 0.00840021
+num_entries: 456,976, num_buckets:  4,093, num_unused_buckets:     0, max_bucket_count:      118, min_bucket_count:   105, mean_bucket_count:    111.65, red_chi_squares: 0.0539184
+
+All 5-char permutations picked from 26 chars.     11,881,376 permutations.
+num_entries: 11,881,376, num_buckets:  1,024, num_unused_buckets:     0, max_bucket_count:   11,692, min_bucket_count: 11485, mean_bucket_count: 11,602.91, red_chi_squares: 0.131624
+num_entries: 11,881,376, num_buckets:  4,096, num_unused_buckets:     0, max_bucket_count:    2,933, min_bucket_count:  2867, mean_bucket_count:  2,900.73, red_chi_squares: 0.0411004
+num_entries: 11,881,376, num_buckets: 16,384, num_unused_buckets:     0, max_bucket_count:      747, min_bucket_count:   706, mean_bucket_count:    725.18, red_chi_squares: 0.0796586
+num_entries: 11,881,376, num_buckets: 65,536, num_unused_buckets:     0, max_bucket_count:      200, min_bucket_count:   164, mean_bucket_count:    181.30, red_chi_squares: 0.175858
+num_entries: 11,881,376, num_buckets:  1,009, num_unused_buckets:     0, max_bucket_count:   11,783, min_bucket_count: 11768, mean_bucket_count: 11,775.40, red_chi_squares: 0.000576905
+num_entries: 11,881,376, num_buckets:  4,093, num_unused_buckets:     0, max_bucket_count:    2,916, min_bucket_count:  2889, mean_bucket_count:  2,902.85, red_chi_squares: 0.0089387
+
+Total elapsed time: 0.000000 s
+
+
+Testing function: murmur_hash3
+----------------------------------------------------------------------
+All 1-char permutations picked from 26 chars.             26 permutations.
+num_entries: 26, num_buckets:  1,024, num_unused_buckets:   998, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.03, red_chi_squares: 0.975562
+num_entries: 26, num_buckets:  4,096, num_unused_buckets:  4070, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.01, red_chi_squares: 0.993895
+num_entries: 26, num_buckets: 16,384, num_unused_buckets: 16358, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.00, red_chi_squares: 0.998474
+num_entries: 26, num_buckets: 65,536, num_unused_buckets: 65510, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.00, red_chi_squares: 0.999619
+num_entries: 26, num_buckets:  1,009, num_unused_buckets:   984, max_bucket_count:        2, min_bucket_count:     0, mean_bucket_count:      0.03, red_chi_squares: 1.0522
+num_entries: 26, num_buckets:  4,093, num_unused_buckets:  4067, max_bucket_count:        1, min_bucket_count:     0, mean_bucket_count:      0.01, red_chi_squares: 0.993891
+
+All 2-char permutations picked from 26 chars.            676 permutations.
+num_entries: 676, num_buckets:  1,024, num_unused_buckets:   520, max_bucket_count:        4, min_bucket_count:     0, mean_bucket_count:      0.66, red_chi_squares: 0.944316
+num_entries: 676, num_buckets:  4,096, num_unused_buckets:  3466, max_bucket_count:        3, min_bucket_count:     0, mean_bucket_count:      0.17, red_chi_squares: 0.974252
+num_entries: 676, num_buckets: 16,384, num_unused_buckets: 15723, max_bucket_count:        2, min_bucket_count:     0, mean_bucket_count:      0.04, red_chi_squares: 1.00318
+num_entries: 676, num_buckets: 65,536, num_unused_buckets: 64866, max_bucket_count:        2, min_bucket_count:     0, mean_bucket_count:      0.01, red_chi_squares: 1.00745
+num_entries: 676, num_buckets:  1,009, num_unused_buckets:   519, max_bucket_count:        4, min_bucket_count:     0, mean_bucket_count:      0.67, red_chi_squares: 1.02039
+num_entries: 676, num_buckets:  4,093, num_unused_buckets:  3469, max_bucket_count:        4, min_bucket_count:     0, mean_bucket_count:      0.17, red_chi_squares: 1.00076
+
+All 3-char permutations picked from 26 chars.         17,576 permutations.
+num_entries: 17,576, num_buckets:  1,024, num_unused_buckets:     0, max_bucket_count:       31, min_bucket_count:     6, mean_bucket_count:     17.16, red_chi_squares: 0.923549
+num_entries: 17,576, num_buckets:  4,096, num_unused_buckets:    55, max_bucket_count:       14, min_bucket_count:     0, mean_bucket_count:      4.29, red_chi_squares: 0.953414
+num_entries: 17,576, num_buckets: 16,384, num_unused_buckets:  5578, max_bucket_count:        7, min_bucket_count:     0, mean_bucket_count:      1.07, red_chi_squares: 0.993761
+num_entries: 17,576, num_buckets: 65,536, num_unused_buckets: 50132, max_bucket_count:        5, min_bucket_count:     0, mean_bucket_count:      0.27, red_chi_squares: 1.00129
+num_entries: 17,576, num_buckets:  1,009, num_unused_buckets:     0, max_bucket_count:       32, min_bucket_count:     6, mean_bucket_count:     17.42, red_chi_squares: 0.963726
+num_entries: 17,576, num_buckets:  4,093, num_unused_buckets:    60, max_bucket_count:       15, min_bucket_count:     0, mean_bucket_count:      4.29, red_chi_squares: 1.00467
+
+All 4-char permutations picked from 26 chars.        456,976 permutations.
+num_entries: 456,976, num_buckets:  1,024, num_unused_buckets:     0, max_bucket_count:      516, min_bucket_count:   378, mean_bucket_count:    446.27, red_chi_squares: 1.04561
+num_entries: 456,976, num_buckets:  4,096, num_unused_buckets:     0, max_bucket_count:      153, min_bucket_count:    77, mean_bucket_count:    111.57, red_chi_squares: 1.01015
+num_entries: 456,976, num_buckets: 16,384, num_unused_buckets:     0, max_bucket_count:       52, min_bucket_count:     8, mean_bucket_count:     27.89, red_chi_squares: 0.99932
+num_entries: 456,976, num_buckets: 65,536, num_unused_buckets:    73, max_bucket_count:       21, min_bucket_count:     0, mean_bucket_count:      6.97, red_chi_squares: 1.00449
+num_entries: 456,976, num_buckets:  1,009, num_unused_buckets:     0, max_bucket_count:      521, min_bucket_count:   381, mean_bucket_count:    452.90, red_chi_squares: 1.00028
+num_entries: 456,976, num_buckets:  4,093, num_unused_buckets:     0, max_bucket_count:      149, min_bucket_count:    77, mean_bucket_count:    111.65, red_chi_squares: 0.986576
+
+All 5-char permutations picked from 26 chars.     11,881,376 permutations.
+num_entries: 11,881,376, num_buckets:  1,024, num_unused_buckets:     0, max_bucket_count:   11,935, min_bucket_count: 11280, mean_bucket_count: 11,602.91, red_chi_squares: 1.00259
+num_entries: 11,881,376, num_buckets:  4,096, num_unused_buckets:     0, max_bucket_count:    3,102, min_bucket_count:  2699, mean_bucket_count:  2,900.73, red_chi_squares: 1.00693
+num_entries: 11,881,376, num_buckets: 16,384, num_unused_buckets:     0, max_bucket_count:      827, min_bucket_count:   629, mean_bucket_count:    725.18, red_chi_squares: 0.992491
+num_entries: 11,881,376, num_buckets: 65,536, num_unused_buckets:     0, max_bucket_count:      242, min_bucket_count:   131, mean_bucket_count:    181.30, red_chi_squares: 0.995719
+num_entries: 11,881,376, num_buckets:  1,009, num_unused_buckets:     0, max_bucket_count:   12,180, min_bucket_count: 11408, mean_bucket_count: 11,775.40, red_chi_squares: 0.96779
+num_entries: 11,881,376, num_buckets:  4,093, num_unused_buckets:     0, max_bucket_count:    3,082, min_bucket_count:  2697, mean_bucket_count:  2,902.85, red_chi_squares: 0.961802
+
+Total elapsed time: 0.000000 s
