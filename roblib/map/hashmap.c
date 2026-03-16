@@ -8,15 +8,16 @@
 // DO NOT INCLUDE string_counter.h. There is a cyclic dependency between that header file and hashmap.h.
 // the declarations needed by both string_counter.c and hashmap.c are in hashmap_private.h.
 
-
-#include <string.h> // Required for memcpy
-#include <math.h>
-#include <stdlib.h>
-#include <stdio.h>
-
 #include "hashmap.h"
 #include "hashmap_private.h"
 #include "../memory/memory_pool.h"
+
+#include <string.h> // Required for memcpy
+// #include <math.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+
 
 
 
@@ -57,45 +58,6 @@ static void map_policy_value_free_default(HashMap map[static 1], ColValue value)
 ////
 //// ------------------------------------------------------------
 
-// static bool col_equals_double(double d1, double d2) {
-//     // Optional policy: NaNs are not equal to anything (including NaN)
-//     if (isnan(d1) || isnan(d2)) return false;
-//
-//     // Make -0.0 and +0.0 compare equal (matches common hashing data_policies)
-//     if (d1 == 0.0) d1 = 0.0;
-//     if (d2 == 0.0) d2 = 0.0;
-//
-//     uint64_t ua, ub;
-//     memcpy(&ua, &d1, sizeof ua);
-//     memcpy(&ub, &d2, sizeof ub);
-//     return ua == ub;
-// }
-//
-// static bool col_equals_ColValue(const ColValue v1, const ColValue v2) {
-//
-//     if (v1.value_type != v2.value_type) return false;
-//
-//     switch (v1.value_type) {
-//         case COL_TYPE_NONE:
-//             return false;
-//         case COL_TYPE_LONG:
-//             return v1.vlong == v2.vlong;
-//         case COL_TYPE_DOUBLE:
-//             return col_equals_double(v1.vdouble, v2.vdouble);
-//         case COL_TYPE_STRING: {
-//             if (v1.vstring == v2.vstring) return true;
-//             return strcmp(v1.vstring, v2.vstring) == 0;
-//         }
-//         case COL_TYPE_VOID_PTR:
-//             // this requires the caller to have defined an equal function for this blob.
-//             // todo implement
-//             return v1.vvoid_ptr == v2.vvoid_ptr;
-//         case COL_TYPE_NULL:
-//             return true; // both value_types are null
-//         default:
-//             return false;
-//     }
-// }
 
 static void map_free_key_if(HashMap map[static 1], const MapNode node[static 1]) {
     if (!map || !node) return;
@@ -233,34 +195,28 @@ MapNode * map_create_node(HashMap map[static 1], const size_t hashcode, const Ma
         return nullptr;
     }
 
-    MapNode *temp_node;
-    switch (key.key_type) {
-        case COL_TYPE_LONG:
-            temp_node = &(MapNode){ .hash = hashcode, .key.klong = key.klong, .key.key_type = COL_TYPE_LONG };
-            break;
-        case COL_TYPE_DOUBLE:
-            temp_node = &(MapNode){ .hash = hashcode, .key.kdouble = key.kdouble, .key.key_type = COL_TYPE_DOUBLE };
-            break;
-        case COL_TYPE_STRING: {
-            MapKey copy;
-            if ( map->data_policies.key_policy.on_add_key ) {
-                copy = map->data_policies.key_policy.on_add_key(map, key);
-            } else {
-                copy = map_policy_key_add_default(map, key);
-            }
-            temp_node = &(MapNode){ .hash = hashcode, .key.kstring = copy.kstring, .key.key_type = COL_TYPE_STRING };
-            break;
+    // Resolve the key to be stored (handling string copying via policy if needed).
+    MapKey stored_key = key;
+    if (key.key_type == COL_TYPE_STRING) {
+        if (map->data_policies.key_policy.on_add_key) {
+            stored_key = map->data_policies.key_policy.on_add_key(map, key);
+        } else {
+            stored_key = map_policy_key_add_default(map, key);
         }
-        case COL_TYPE_VOID_PTR:
-            temp_node = &(MapNode){ .hash = hashcode, .key.kvoid_ptr = key.kvoid_ptr, .key.key_type = COL_TYPE_VOID_PTR };
-            break;
-        case COL_TYPE_NONE:
-        default:
-            temp_node = &(MapNode){};
-            break;
     }
 
-    memcpy(new_node, temp_node, sizeof(MapNode));
+    // Initialize a temporary node on the stack.
+    // This allows us to set the 'const' members using standard initialization.
+    MapNode temp = {
+        .hash = hashcode,
+        .key = stored_key,
+        .value = {},
+        .next = nullptr
+    };
+
+    // Copy the initialized content into the allocated memory.
+    // This safely sets the const members before the memory is exposed as a MapNode.
+    memcpy(new_node, &temp, sizeof(MapNode));
 
     return new_node;
 }
@@ -271,8 +227,7 @@ void map_destroy_node(HashMap map[static 1], MapNode node[static 1]) {
     mem_free_bytes(map->mem_policy, node);
 }
 
-//todo this needs a wanted_capacity paramenter.
-void map_ensure_capacity(HashMap map[static 1], unsigned wanted_capacity) {
+void map_ensure_capacity(HashMap map[static 1], const unsigned wanted_capacity) {
     // printf("map_ensure_capacity: buckets: %'zu->%'zu\n", map->num_buckets, map->num_buckets * 2);
 
     if (wanted_capacity < map->fill_capacity) {
@@ -346,10 +301,9 @@ size_t map_hash_function(const MapKey key) {
             if (sizeof(size_t) >= sizeof(double)) {
                 memcpy(&hash, &d, sizeof(double));
             } else {
-                // ReSharper disable once CppDFAUnreachableCode
+                // ReSharper disable  CppDFAUnreachableCode
                 unsigned long long bits;
                 memcpy(&bits, &d, sizeof(double));
-                // ReSharper disable once CppDFAUnreachableCode
                 hash = (size_t)(bits ^ (bits >> 32));
             }
             raw_hash = hash;

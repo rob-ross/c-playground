@@ -67,6 +67,10 @@ typedef enum MemPolicyType: uint8_t {
 
 // --- Structures ---
 
+// MemPolicy struct  is a textbook "Polymorphic Allocator" interface.
+// It uses function pointers (alloc, calloc, realloc, free) and a context to allow different implementations
+// to sit behind the same API.
+
 // 56 bytes
 typedef struct MemPolicy {
     void * context;
@@ -109,6 +113,14 @@ extern const MemPolicy NULL_MEM_POLICY;
 static constexpr size_t MAX_MALLOC_BYTES = 1L << 33;  // 2^33, ~8.6GB, half my RAM
 
 // --- API Functions ---
+
+/*
+* Standard API Conventions: Arenas usually have a simpler, specific API:
+1. arena_init(buffer, size): Create the arena from a backing buffer.
+2. arena_alloc(arena, size): Bump the pointer and return the address.
+3. arena_reset(arena): Move the pointer back to the start (effectively freeing everything).
+4. arena_temp_begin(arena) / arena_temp_end(arena, temp): A convention for taking a "snapshot" of the arena's state to perform temporary work and then rewinding it only partially.
+*/
 
 // Calls the mem_policy's `alloc` function
 void * mem_alloc_bytes( MemPolicy mem_policy,  size_t num_bytes);
