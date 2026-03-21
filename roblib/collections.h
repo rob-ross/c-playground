@@ -10,10 +10,14 @@
 //
 
 #pragma once
+
+#include "ref_objects.h"
+#include "memory/memory_pool.h"
+
 #include <stddef.h>
 #include <stdint.h>
 
-#include "memory/memory_pool.h"
+
 
 
 // 1 byte
@@ -22,41 +26,21 @@ typedef enum ColTypeEnum: unsigned char {
     COL_TYPE_LONG,
     COL_TYPE_DOUBLE,
     COL_TYPE_STRING,
-    COL_TYPE_REF_STRING,
+    COL_TYPE_REF_OBJECT,
     COL_TYPE_VOID_PTR,
     COL_TYPE_NULL
 } ColTypeEnum;
 
 
-// our first "special" type
-
-typedef struct RefString {
-    union {
-        char *ptr;        // For long strings (allocated)
-        char buf[8];      // For short strings (embedded)
-    };
-} RefString;
-
-typedef union RefObjectData {
-    RefString string;
-} RefObjectData;
-
-typedef struct RefObject {
-    size_t length;
-    RefObjectData data;
-    unsigned refcount;
-    // we probably need a RefObjectType enum here.
-} RefObject;
-
 
 // 16 bytes
 typedef struct ColValue {
     union {
-        long   vlong;
-        double vdouble;
-        char  *vstring;
-        RefObject *vref_object;
-        void  *vvoid_ptr;
+        long        vlong;
+        double      vdouble;
+        char        *vstring;
+        RefObject   *vref_object;
+        void        *vvoid_ptr;
     };
     ColTypeEnum  value_type;
 } ColValue;
@@ -96,10 +80,7 @@ typedef struct ColValuePolicy {
 
 
 
-typedef struct BasicBlob {
-    size_t size;
-    uint8_t *data;
-} BasicBlob;
+
 
 
 //// ------------------------------------------------------------

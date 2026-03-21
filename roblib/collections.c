@@ -25,6 +25,11 @@ ColValue col_policy_value_set_default(void * context, ColValue value, ColValuePo
         char *string_copy = mem_strdup(mem_policy, value.vstring);
         return (ColValue){.value_type = COL_TYPE_STRING, .vstring = string_copy};
     }
+    if ( value.value_type == COL_TYPE_REF_OBJECT && value.vref_object->data.string.length > 7 &&
+        ( value_policy == COL_VALUE_POLICY_COPY || value_policy == COL_VALUE_POLICY_NONE ) ) {
+        char *string_copy = mem_strdup(mem_policy, value.vref_object->data.string.ptr);
+        return (ColValue){.value_type = COL_TYPE_STRING, .vstring = string_copy};
+    }
     if ( value.value_type == COL_TYPE_VOID_PTR ) {
         // invoke the pointer's add method?
         //todo deal with void* types
@@ -33,13 +38,21 @@ ColValue col_policy_value_set_default(void * context, ColValue value, ColValuePo
 }
 
 void col_policy_value_free_default(void * context, ColValue value, ColValuePolicyType value_policy, MemPolicy mem_policy ) {
-    if ( value.value_type == COL_TYPE_STRING &&
+    if ( (value.value_type == COL_TYPE_STRING || (value.value_type == COL_TYPE_REF_OBJECT && value.vref_object->data.string.length > 7 ) ) &&
         ( value_policy == COL_VALUE_POLICY_COPY || value_policy == COL_VALUE_POLICY_TAKE || value_policy == COL_VALUE_POLICY_NONE )) {
         mem_free_bytes(mem_policy, value.vstring);  //we own it.
     } else if ( value.value_type == COL_TYPE_VOID_PTR ) {
             // invoke the pointer's free method
             //todo deal with void* types
     }
+}
+
+bool col_equals_RefString(RefString s1, RefString s2) {
+    if (s1.length != s2.length ) return false;
+    if (s1.length < 8 ) {
+        return ( strcmp( s1.buf, s2.buf )  == 0);
+    }
+    return ( strcmp(s1.ptr, s2.ptr) == 0 );
 }
 
 bool col_equals_ColValue(const ColValue v1, const ColValue v2) {
@@ -55,6 +68,9 @@ bool col_equals_ColValue(const ColValue v1, const ColValue v2) {
         case COL_TYPE_STRING: {
             if (v1.vstring == v2.vstring) return true;
             return strcmp(v1.vstring, v2.vstring) == 0;
+        }
+        case COL_TYPE_REF_OBJECT: {
+            return col_equals_RefString(v1.vref_object->data.string, v2.vref_object->data.string);
         }
         case COL_TYPE_VOID_PTR:
             // this requires the caller to have defined an equal function for this blob.

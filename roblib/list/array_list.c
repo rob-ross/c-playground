@@ -83,25 +83,7 @@ static CollectionsError list_ensure_capacity(List list[static 1], const size_t w
 }
 
 static bool list_equals_ListValue(const ColValue a, const ColValue b) {
-    if (a.value_type != b.value_type) {
-        return false;
-    }
-
-    switch (a.value_type) {
-        case COL_TYPE_LONG:
-            return a.vlong == b.vlong;
-        case COL_TYPE_DOUBLE:
-            return a.vdouble == b.vdouble;
-        case COL_TYPE_STRING:
-            return strcmp(a.vstring, b.vstring) == 0;
-        case COL_TYPE_VOID_PTR:
-            return a.vvoid_ptr == b.vvoid_ptr;
-        case COL_TYPE_NULL:
-        case COL_TYPE_NONE:
-            return true;
-    }
-
-    return false;
+    return col_equals_ColValue(a, b);
 }
 
 //// ------------------------------------------------------------
