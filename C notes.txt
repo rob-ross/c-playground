@@ -69,6 +69,20 @@ assertInstanceOf(Class, Object, string) - probably not useful in C
 C printf format specifiers start on page 228 of the IOC reference.
 ---------------------------------------------------------------------
 
+EOF in stdin: if reading from stdin in a loop, to enter EOF in the terminal type ctrl-d. May have to type
+    it twice. In CLion, you must check the "Emulate terminal in the output console" under
+    Edit Configurations -> Additional Options to accept the ctrl-D signal.
+
+Ctrl+C sends a SIGINT signal to interrupt (usually terminate) the process.
+▪
+Ctrl+D on an empty line sends an End-of-File (EOF) marker, which your C code sees as fgets or getchar returning NULL or EOF.
+▪
+Ctrl+Z sends a SIGTSTP signal to suspend the process.
+-------------------------------------------------------
+
+
+Sanity check C-strings before passing to methods that assume they are valid strings:
+if (memchr(lbuf, 0, size)) {...} // search for \0 terminator in expected length of string, or some reasonable max limit.
 
 * C idea : hash table
 * C idea : can we use macros to implement a generic type system for arrays and stacks, like instead of
