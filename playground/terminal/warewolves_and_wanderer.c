@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 enum Item {
     ITEM_DUMMY,
@@ -179,8 +180,15 @@ int main(void) {
 }
 
 void display(char const* msg) {
-    // todo (rob) print characters one at a time with some delay between each
-    printf("%s\n", msg);
+    fflush(stdout);
+    constexpr int _30ms = 30'000;
+    for (char const *next = msg; *next; ++next) {
+        putchar(*next);
+        fflush(stdout);
+        usleep(_30ms);
+    }
+    putchar('\n');
+    fflush(stdout);
 }
 
 void display_score(struct GameState * gs) {
@@ -454,7 +462,7 @@ void fight(struct GameState * gs) {
         printf("\n\nTHE %s DEFEATED YOU!.\n", monster.name);
         gs->STRENGTH /= 2;
     }
-    
+
     ROOM_GRAPH[gs->RO][CONTENTS] = 0;
 }
 
