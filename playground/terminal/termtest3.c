@@ -10,6 +10,7 @@
 #include <term.h>     // Core terminfo definitions
 #include <curses.h>   // Often needed for macros like ERR, OK
 #include <unistd.h>
+#include <wchar.h>
 
 // You must link with -lncurses (or -ltinfo)
 // clang -o termtest3.out termtest3.c -lncurses
@@ -62,4 +63,10 @@ int main(void) {
     putp(tparm(cursor_pos, 7, 0));
 
     return EXIT_SUCCESS;
+}
+
+#include <wchar.h>
+void t1(void) {
+    mbstate_t foo;
+    enum mbcode m;
 }

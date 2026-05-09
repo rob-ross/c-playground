@@ -127,6 +127,7 @@ CYCLES :  Stop including the “other” header in your public header.
           Use forward declarations + opaque pointers in headers.
           Put the real #include in the .c file, where the full definition is actually needed.
 
+SIMD - Single Instruction Multiple Data
 
 Signal Errors:
 --------------
