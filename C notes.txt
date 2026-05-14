@@ -37,7 +37,7 @@ When Arrays Don't Decay
 1. sizeof Operator: Returns the size of the entire array (e.g., sizeof(arr)), not just the size of a pointer.
 2. & Operator Taking the address of an array with &arr gives you a pointer to the whole array, not just the first element. The type of &arr is a pointer to the array type, e.g., int (*)[5] for an int array with 5 elements.
 3. Initialization: When an array is declared and initialized, it is fully allocated in memory and does not decay to a pointer.
-
+4. typeof??
 
 Project idea:
 (Python) : extract stdlib docs from pdf to render in html. Look into pymupdf, pdftotext
