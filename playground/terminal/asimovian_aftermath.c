@@ -566,7 +566,7 @@ void fight(struct GameState * gs) {
                 }
             }
 
-            if ( has_light && mt_random_double(&mt_state) < .25 ) {
+            if ( has_light && mt_random_double(&mt_state) < .1 ) {
                 display_line("YOUR LIGHT WAS KNOCKED FROM YOUR HAND!");
                 gs->items[ITEM_LIGHT] = false;
                 has_light = false;
@@ -585,7 +585,7 @@ void fight(struct GameState * gs) {
 
         } else {
             display_line("YOU ATTACK.");
-            if (mt_random_double(&mt_state) < .5) {
+            if (mt_random_double(&mt_state) < .6) {
                 display_line("YOU MANAGE TO WOUND IT.");
                 ferocity_factor = 5 * ferocity_factor / 6;
             } else {
@@ -596,28 +596,28 @@ void fight(struct GameState * gs) {
         if (mt_random_double(&mt_state) < .05) {
             display_line("Aaaaargh!!!\nRIP! TEAR! RIP!");
         }
-        if (mt_random_double(&mt_state) < .1) {
+        if (mt_random_double(&mt_state) < .05) {
             display_line("YOU WANT TO RUN, BUT YOU STAND YOUR GROUND...");
         }
-        if (mt_random_double(&mt_state) < .1) {
+        if (mt_random_double(&mt_state) < .05) {
             display_line("*&%%$#$%$%# II @#$$! #$@! !$ $#$");
         }
-        if (mt_random_double(&mt_state) < .3) {
+        if (mt_random_double(&mt_state) < .075) {
             display_line("WILL THIS BE A BATTLE TO THE DEATH?");
         }
-        if (mt_random_double(&mt_state) < .3) {
+        if (mt_random_double(&mt_state) < .075) {
             display_line("HIS EYES FLASH FEARFULLY");
         }
-        if (mt_random_double(&mt_state) < .3) {
+        if (mt_random_double(&mt_state) < .075) {
             display_line("BLOOD DRIPS FROM HIS CLAWS");
         }
-        if (mt_random_double(&mt_state) < .3) {
+        if (mt_random_double(&mt_state) < .1) {
             display_line("YOU SMELL THE LUBRICANTS ON HIS BREATH");
         }
-        if (mt_random_double(&mt_state) < .3) {
+        if (mt_random_double(&mt_state) < .1) {
             display_line("HE STRIKES WILDLY, MADLY.............");
         }
-        if (mt_random_double(&mt_state) < .3) {
+        if (mt_random_double(&mt_state) < .1) {
             display_line("YOU HAVE NEVER FOUGHT AN OPPONENT LIKE THIS!!");
         }
 
