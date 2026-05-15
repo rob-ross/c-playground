@@ -124,10 +124,10 @@ enum RoomGraphIndex {
     RGINDEX_COUNT
 };
 
-constexpr int NUM_ROOMS = 20;
-constexpr int START_ROOM = 3;
-constexpr int END_ROOM = 6;
-constexpr int POD_ROOM = 11;
+constexpr int NUM_ROOMS      = 20;
+constexpr int START_ROOM     = 3;
+constexpr int END_ROOM       = 6;
+constexpr int POD_ROOM       = 11;
 constexpr int RADIATION_ROOM = 13;
 
 
@@ -173,6 +173,7 @@ struct GameState {
     int wealth;
     int oxy;
     int monsters_killed;  // number aliens/androids destroyed
+    int monsters_fought;
     int qq;
 
     bool is_dead;
@@ -187,7 +188,8 @@ struct Monster {
     char const * name;
 };
 
-static struct Monster MONSTERS[4] = {
+static struct Monster MONSTERS[5] = {
+    { .FF =  1, .name = "ELON ANDROID"},  // dummy placeholder, not actually used
     { .FF =  5, .name = "BERSERK ANDROID"},
     { .FF = 10, .name = "DERANGED DEL-FIEVIAN"},
     { .FF = 15, .name = "RAMPAGING ROBOTIC DEVICE"},
@@ -197,7 +199,7 @@ static struct Monster MONSTERS[4] = {
 // state for Mersenne Twister PRNG
 static MTState mt_state;
 
-char const * const VALID_COMMANDS = "HIQBORFPMNSEWUD";
+char const * const VALID_COMMANDS = "HIQBOTRFPMNSEWUD";
 char const * const VALID_DIRECTIONS = "NSEWUD";
 
 //// ------------------------------------------------------------
@@ -222,8 +224,11 @@ struct StringBuffer {char buffer[1024];} get_str(char const *  prompt);
 char get_command_char(char const *  prompt, char const *  valid_chars, char const *  err_msg);
 int get_int(char const * const prompt, int min, int max);
 bool process_move_command(struct GameState * gs, char first_letter);
+int calc_score(const struct GameState * gs);
 void display_command_err(char const * msg, char  command);
 void display_inventory(struct GameState * gs);
+void display_tally(const struct GameState * gs);
+
 void cls();
 
 void buy_supplies(struct GameState * gs);
@@ -242,7 +247,7 @@ void fight(struct GameState * gs);
 
 int main(void) {
     mt_initialize_state(&mt_state, 0);  // initialize the PRNG
-    struct GameState game_state = { .room = START_ROOM };
+    struct GameState game_state = {};
     bool continue_loop;
     initialize(&game_state);
     do {
@@ -252,10 +257,18 @@ int main(void) {
 
     display_conclusion(&game_state);
 
-    display_score(&game_state);
+    display_tally(&game_state);
     cleanup(&game_state);
 }
 
+
+/*
+*WELL DONE!
+
+SCORE: 4950
+
+tally: 60, strength: 930, wealth: 0, oxy: 0, monsters fought: 8, killed: 4
+ */
 
 
 bool main_game_loop(struct GameState * gs) {
@@ -341,6 +354,9 @@ bool main_game_loop(struct GameState * gs) {
         case 'O' :
             consume_oxygen(gs);
             break;
+        case 'T' :
+            display_tally(gs);
+            break;
         case 'P':
             pick_up_treasure(gs);
             break;
@@ -354,7 +370,7 @@ bool main_game_loop(struct GameState * gs) {
             fight(gs);
             break;
 
-        default: display_command_err("UNEXPECTED COMMAND: ", first_letter);
+        default: display_command_err("UNHANDLED COMMAND: ", first_letter);
 
     }
 
@@ -548,6 +564,8 @@ void fight(struct GameState * gs) {
     display_line("");
     display_line("*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
 
+    int hits_on_monster = 0;
+
     do {
         bool has_light = gs->items[ITEM_LIGHT];
 
@@ -575,7 +593,7 @@ void fight(struct GameState * gs) {
                 gs->items[ITEM_ION] = false;
                 use_ion = false;
                 ferocity_factor = 5 * ferocity_factor / 4;
-            } else if (use_laser && mt_random_double(&mt_state) < .3 ) {
+            } else if (use_laser && mt_random_double(&mt_state) < .2 ) {
                 display_line("YOUR LASER IS KNOCKED FROM YOUR HAND!!");
                 gs->items[ITEM_LASER] = false;
                 use_laser = false;
@@ -588,6 +606,7 @@ void fight(struct GameState * gs) {
             if (mt_random_double(&mt_state) < .6) {
                 display_line("YOU MANAGE TO WOUND IT.");
                 ferocity_factor = 5 * ferocity_factor / 6;
+                hits_on_monster++;
             } else {
                 display_line("IT BLOCKS YOU.");
             }
@@ -600,7 +619,7 @@ void fight(struct GameState * gs) {
             display_line("YOU WANT TO RUN, BUT YOU STAND YOUR GROUND...");
         }
         if (mt_random_double(&mt_state) < .05) {
-            display_line("*&%%$#$%$%# II @#$$! #$@! !$ $#$");
+            display_line("*&%%$#$%$%# !! @#$$! #$@! !$ $#$");
         }
         if (mt_random_double(&mt_state) < .075) {
             display_line("WILL THIS BE A BATTLE TO THE DEATH?");
@@ -624,8 +643,9 @@ void fight(struct GameState * gs) {
     } while (mt_random_double(&mt_state) < .65);
 
     display_line("\n");
-
-    if ( mt_rand_range(&mt_state, 0, 16)  > ferocity_factor) {
+    const int win_chance = mt_rand_range(&mt_state, hits_on_monster, 16 + hits_on_monster);
+    printf("win_chance: %d, ferocity_factor: %d\n", win_chance, ferocity_factor);
+    if ( win_chance > ferocity_factor) {
         display("AND YOU MANAGED TO KILL THE ");
         display_line(monster.name);
         gs->monsters_killed++;
@@ -636,6 +656,7 @@ void fight(struct GameState * gs) {
         gs->strength /= 2;
     }
 
+    gs->monsters_fought++;
     ROOM_GRAPH[gs->room][RGINDEX_CONTENTS] = 0;
 }
 
@@ -653,6 +674,10 @@ bool process_move_command(struct GameState * gs, char const first_letter) {
 
     display_line(BAD_MOVE_DESC[direction_index]);
     return false;
+}
+
+int calc_score(const struct GameState * gs) {
+    return 3 * gs->tally + 5 * gs->strength + 2 * gs->wealth + 10 * gs->oxy + 30 * gs->monsters_killed;
 }
 
 //// ------------------------------------------------------------
@@ -712,7 +737,7 @@ void display_help_info(void) {
     display_line("\nVALID COMMANDS ARE:\n");
 
     display_line("[H]ELP     [I]NVENTORY  [Q]UIT");
-    display_line("[B]UY      [O]XYGEN");
+    display_line("[B]UY      [O]XYGEN     [T]ALLY");
     display_line("[R]ETREAT  [F]IGHT");
     display_line("[P]ICK UP  [M]ATTER TRANSPORTER");
     display_line("[N]ORTH    [S]OUTH");
@@ -837,10 +862,12 @@ void display_conclusion(const struct GameState * gs) {
     }
 }
 
-void display_score(const struct GameState * gs) {
-    display("\nYOUR SCORE WAS ");
-    int const score = 3 * gs->tally + 5 * gs->strength + 2 * gs->wealth + 10 * gs->oxy + 30 * gs->monsters_killed;
-    printf("%d\n\n", score);
+
+void display_tally(const struct GameState * gs) {
+    display("\nSCORE: ");
+    printf("%d\n", calc_score(gs));
+    printf("\ntally: %d, strength: %d, wealth: %d, oxy: %d, monsters fought: %d, killed: %d\n",
+        gs->tally, gs->strength, gs->wealth, gs->oxy, gs->monsters_fought, gs->monsters_killed);
 }
 
 void display_strength(const struct GameState * gs) {
@@ -991,7 +1018,7 @@ void init_rooms() {
     ROOMS[13].preamble->lines[0] = (struct RandomText){ .chance_percent = .5, .text="YOUR BODY TWISTS AND BURNS..."};
     ROOMS[13].epilog = create_rta(2);
     ROOMS[13].epilog->lines[0] = (struct RandomText){ .chance_percent = .5, .text="NO MATTER WHAT YOU DO"};
-    ROOMS[13].epilog->lines[1] = (struct RandomText){ .chance_percent = .5, .text="YOU ARE DOOMED TO DIE HERE"};
+    ROOMS[13].epilog->lines[1] = (struct RandomText){ .chance_percent = .5, .text="YOU ARE DOOMED TO DIE HERE."};
     // room 14
     ROOMS[14].epilog = create_rta(2);
     ROOMS[14].epilog->lines[0] = (struct RandomText){ .chance_percent = .1, .text="YOU CAN BARELY MAKE OUT DOORS\nTO THE NORTH AND WEST."};
@@ -1008,8 +1035,8 @@ void init_rooms() {
     ROOMS[19].epilog->lines[0] =
         (struct RandomText){
             .chance_percent = .5,
-            .text="ONE OF WHICH IS THE GRAVITY WELL.",
-        .else_text="ONE OF WHICH LEADS TO THE GOODS HOLD." };
+            .text  = "ONE OF WHICH IS THE GRAVITY WELL.",
+        .else_text = "ONE OF WHICH LEADS TO THE GOODS HOLD." };
 }
 
 
@@ -1050,6 +1077,7 @@ void initialize(struct GameState * gs) {
     char_sleep(15'000); // set char delay to 15 ms
     // debug_room_desc();
 
+    gs->room = START_ROOM;
     gs->strength = mt_rand_range(&mt_state, 0, 50) + 75;
     gs->wealth   = mt_rand_range(&mt_state, 0, 50) + 50;
     gs->oxy   = mt_rand_range(&mt_state, 0, 16);
@@ -1081,11 +1109,11 @@ void initialize(struct GameState * gs) {
     }
     //allot monsters
     for (int t = 0; t < 2; ++t) {
-        for (int j = 0; j < 4; ++j ) {
+        for (int j = 1; j < 5; ++j ) {
             for (;;) {
                 // Generate a random number between 1 and 19
                 const int room_index = mt_rand_range(&mt_state, 1, 20);
-                if ( !(room_index == END_ROOM || room_index == POD_ROOM || room_index == RADIATION_ROOM ||
+                if ( !(room_index == END_ROOM || room_index == START_ROOM || room_index == RADIATION_ROOM ||
                         ROOM_GRAPH[room_index][RGINDEX_CONTENTS] != 0 ) ) {
                     ROOM_GRAPH[room_index][RGINDEX_CONTENTS] = -j;
                     break;
