@@ -7,7 +7,8 @@
 //
 // The Aftermath of The Asimovian Disaster
 //
-// ported from a BASIC text adventure by Tim Hartnell, 1983
+// ported by Rob Ross
+// from a BASIC text adventure by Tim Hartnell, 1983
 
 
 // make :
@@ -174,7 +175,7 @@ struct GameState {
     int oxy;
     int monsters_killed;  // number aliens/androids destroyed
     int monsters_fought;
-    int qq;
+    int radiation_turn_count;  // when in RADIATION_ROOM, counts turns spent in the room.
 
     bool is_dead;
     bool completed; // true if reached final room
@@ -277,13 +278,17 @@ bool main_game_loop(struct GameState * gs) {
     printf("---------------------------------------------------------------------- %d\n", gs->tally);
 
     if (gs->room == RADIATION_ROOM ) {
-        gs->qq++;
+        gs->radiation_turn_count++;
     }
 
     gs->strength -= 5;
 
-    if ( gs->qq == 2 || gs->strength < 1 ) {
-        if (gs->strength < 1) display_line("YOU HAVE RUN OUT OF OXYGEN....");
+    if ( gs->radiation_turn_count == 2 || gs->strength < 1 ) {
+        if (gs->strength < 1) {
+            display_line("YOU HAVE RUN OUT OF OXYGEN....");
+        } else {
+            display_line("RADIATION DESTROYS YOUR BODY...");
+        }
         gs->is_dead = true;
         return false;
     }

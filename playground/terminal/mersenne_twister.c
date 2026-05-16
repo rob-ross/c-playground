@@ -3,6 +3,7 @@
 
 // Created 2026/05/11 17:42:20 PDT
 
+// todo (rob) we need to run a statistical analysis on this code to verify it produces uniform distributions
 
 #include "mersenne_twister.h"
 
@@ -29,7 +30,6 @@
 
 
 static uint32_t get_random_uint_from_urandom() ;
-uint32_t mt_random_uint32(MTState* state);
 
 // Must call to initialize and seed generator before calling mt_rand()
 // if `seed` is 0, tries to get seed from "/dev/urandom"
