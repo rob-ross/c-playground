@@ -24,6 +24,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdbool.h>
+
+#ifdef _WIN32
+#include <conio.h>
+#else
+#include <poll.h>
+#endif
 
 #include "mersenne_twister.h"
 
@@ -247,6 +254,7 @@ void fight(struct GameState * gs);
 //// ------------------------------------------------------------
 
 int main(void) {
+    setvbuf(stdin, NULL, _IONBF, 0);
     mt_initialize_state(&mt_state, 0);  // initialize the PRNG
     struct GameState game_state = {};
     bool continue_loop;
@@ -902,9 +910,22 @@ void display_strength(const struct GameState * gs) {
 //// ------------------------------------------------------------
 
 
+static bool stdin_has_data(void) {
+#ifdef _WIN32
+    return _kbhit() != 0;
+#else
+    struct pollfd fds;
+    fds.fd = STDIN_FILENO;
+    fds.events = POLLIN;
+    return poll(&fds, 1, 0) > 0;
+#endif
+}
+
 void flush_input(void) {
-    int c;
-    while ((c = getchar()) != '\n' && c != EOF);
+    while (stdin_has_data()) {
+        int c = getchar();
+        if (c == '\n' || c == EOF) break;
+    }
 }
 
 

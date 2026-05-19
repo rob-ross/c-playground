@@ -1,0 +1,11 @@
+
+
+
+Function names:
+
+`generate`_xxx - function produces a value using internal logic, calculations, or randomness.
+`new`, `create` - allocate memory, caller may take ownership, but *something* needs to free it
+`make` - generates compound data, may involve memory allocation
+`init` - may refer to a subsystem as a high-level group of subroutines. Or, may refer to a specific argument
+    which is passed by reference/pointer and the function fills in fields of the dereferenced pointer.
+

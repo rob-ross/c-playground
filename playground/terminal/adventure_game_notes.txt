@@ -1,0 +1,61 @@
+
+
+
+Useful tools:
+
+Copy system ('copy' as in written words)
+Handle copy as assets, or associate copy with assets
+
+UI to enter copy/scripts.
+1. Ease of data entry
+2. Integrated thesaurus and dictionary
+3. Automatically show common synonyms, antonyms for selected word
+4. spell checking and grammar checking
+5. export tools to JSON, other formats
+6. Support inclusions and alterations with percentages. Need some type of markup for this. A sentence or phrase  can
+    be marked as randomly included based on a percentage.
+    Examples
+    %%.3:{You see a door to the south.} could mean "include this here  30% of  the time."
+    %%{The air is cold.|The frigid air bites} could mean chose one or the other with equal proability (50-50 here)
+    %%{.3::The air is cold.|The frigid air bites} "choose first alternate 30% of the time otherwise use second"
+    %%{.1::Foo|.1::Bar|Baz} "choose Foo 10% of the time, Bar 10%, or Baz 80%"
+     note: the tool  would facilitate entering the markup. The game engine would need to interpret the mark up to
+        determine what text to display to the user.
+
+Blue sky:
+1. Search synomyms/antonyms by categories, like most common, least common, archaic, popular during a date range,
+    literary categories (poetic, fiction, fantasy, regional dialect, etc.)
+2. Rewrite in particular literary style, time period (AI good solution here.
+3. Localization to British English when possible, e.g. realize->realise.
+
+Synonyms, Antonyms, Definitions obtained from Word Net, wiktionary data
+Usage data from Google N-gram database
+
+
+Need a terrian building system
+1. Outdoor/overland
+2. Indoor, buildings, castles, forts
+3. Dungeon crawl
+
+Need to be able to construct maps and floor plans and associate asssets to areas such as text description,
+state machines to transition between scenes of the story, set ruless for treasure, NPCs, monsters, wandering monsters, etc.
+
+
+Entity creator (for both players, monsters, NPCs)
+Define classes and attributes, skills, deficits, allowable weapons, spells, restrictions.
+
+From a class creeate specific entity, link with asssets such as backstory, name, etc.
+
+
+Tool: need to run simulations with character classes against monsters to evaluate balance.
+
+Balance design
+ 1. traits and attributes should ideally occur in spectrums, perhaps multiple spectrums.
+        specific values across all spectrums should sum or average equally along all the classes.
+        Example: Say STRENGTH and DEFENSE are opposing spectrums. The combination of these values should
+        be roughly comparable between different classes.
+        Simplified concept - there could be a total amount of points to distribute among various attributes..
+            Distributing these points in different combinations in two classes should allow entities from those classes,
+            assuming similar experience levels and balanced equipment (weapons, spells, special skills (Kung Fu), when
+            battling each other to have similar records of wins vs losses. Tool should simulate many such interactions
+            to verify this balance.
