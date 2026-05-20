@@ -144,7 +144,7 @@ struct Monster {
     int monster_index;
     union {
         struct CharStats stats; // Named access: m.stats.strength
-        struct { CHAR_STATS_UNION_BODY }; // Anonymous access: m.strength & m.as_array
+        union { CHAR_STATS_UNION_BODY }; // Anonymous access: m.strength & m.as_array
     };
 };
 
@@ -315,7 +315,7 @@ static char const * const MONSTER_NAMES[NUM_MONSTERS] = {
 enum Item {
     ITEM_NULL,
     ITEM_TORCH,
-    ITEM_SLVER_KEY,
+    ITEM_SILVER_KEY,
     ITEM_GOLD_KEY,
     ITEM_SWORD,
     ITEM_WAR_HAMMER,
@@ -344,7 +344,7 @@ struct GameState {
 
     union {
         struct CharStats stats; // Named access: m.stats.strength
-        struct { CHAR_STATS_UNION_BODY }; // Anonymous access: m.strength & m.as_array
+        union { CHAR_STATS_UNION_BODY }; // Anonymous access: m.strength & m.as_array
     };
 
     bool has_torch;
@@ -357,6 +357,13 @@ struct GameState {
     int  items[ITEM_COUNT];  // first 9 items of Treasure have a slot here with the same index
     bool rooms_visited[NUM_ROOMS];
 };
+
+static bool G_IS_SILENT = false;
+
+/** API for ML/AI to suppress output */
+void set_silent_mode(bool silent) {
+    G_IS_SILENT = silent;
+}
 
 
 //// ------------------------------------------------------------
@@ -388,22 +395,31 @@ static void cls() {
     fflush(stdout);
 }
 
+// usleep() takes argument in microseconds
+constexpr uint32_t _10ms = 10'000;
+constexpr uint32_t _15ms = 15'000;
+constexpr uint32_t _30ms = 30'000;
+
+static uint32_t char_sleep_duration = _30ms;
+
+// sets the current sleep duration (in microseconds) for future calls to char_sleep().
+// returns the previous (old) sleep duration value
+static uint32_t set_char_sleep(const uint32_t microseconds) {
+    const uint32_t temp = char_sleep_duration;
+    char_sleep_duration = microseconds;
+    return temp;
+}
 
 
-// pass -1 to sleep default time of 30 miliseconds or last time set > 0
+// pass -1 to sleep for last set sleep duration (via set_char_sleep(),
+// or pass a duration in microseconds to sleep for
 static void char_sleep(const int32_t microseconds) {
-    constexpr int _30ms = 30'000;  // usleep() takes argument in microseconds
-    static useconds_t current_delay = _30ms; // initial default
-
     useconds_t sleep_time;
-
     if (microseconds >= 0) {
-        current_delay = microseconds;  // sticky sleep time
         sleep_time = microseconds;
     } else {
-        sleep_time = current_delay;
+        sleep_time = char_sleep_duration;
     }
-
     if (sleep_time > 0) {
         usleep(sleep_time);
     }
@@ -412,6 +428,8 @@ static void char_sleep(const int32_t microseconds) {
 
 //display string without adding newline
 static void display(char const* msg) {
+    if (G_IS_SILENT) return;
+
     fflush(stdout);
     for (char const *next = msg; *next; ++next) {
         putchar(*next);
@@ -422,11 +440,13 @@ static void display(char const* msg) {
 
 //displays the string and adds newline to end.
 static void display_line(char const* msg) {
+    if (G_IS_SILENT) return;
     display(msg);
     putchar('\n');
     fflush(stdout);
     char_sleep(-1);
 }
+
 
 static void display_char_attributes(const struct CharStats stats) {
     display("Strength:  ");
@@ -447,29 +467,31 @@ static void display_char_attributes(const struct CharStats stats) {
 
 
 static void display_inventory(struct GameState * gs) {
-    int item_count = 0;
-    for (int bag_index = 0; bag_index < ITEM_COUNT; ++bag_index ) {
-        if (gs->items[bag_index]) {
-            display(TREASURE_NAMES[gs->items[bag_index]]);
-            display(" - ");
-            item_count++;
-            if ( ! (item_count % 3) ) {
-                display_line("");  // display 3 items per line
+    if (!G_IS_SILENT ) {
+        display_line("");
+        int item_count = 0;
+        for (int bag_index = 0; bag_index < ITEM_COUNT; ++bag_index ) {
+            if (gs->items[bag_index]) {
+                display(TREASURE_NAMES[gs->items[bag_index]]);
+                display(" - ");
+                item_count++;
+                if ( ! (item_count % 3) ) {
+                    display_line("");  // display 3 items per line
+                }
             }
         }
-    }
-    if (item_count) {
-        if ( item_count % 3) {
-            display_line("");
+        if (item_count) {
+            if ( item_count % 3) {
+                display_line("");
+            }
+        } else {
+            display_line("You have no items.");
         }
-    } else {
-        display_line("You have no items.");
     }
 }
 
 
 static void display_status(struct GameState * gs) {
-    display_line(gs->player_name);
     display("magic spells: ");
     printf("%d\n", gs->magic);
 
@@ -541,7 +563,7 @@ static void display_room_treasure(struct GameState * gs) {
         return;
     }
     struct Room room =ROOMS[gs->room];
-    display("You can see ");
+    display("\nYou can see ");
 
     if (treasure_index > 9 ) {
         display(room.treasure.name);
@@ -573,27 +595,29 @@ static int calc_score(const struct GameState * gs) ;
 static int count_rooms_visited(const struct GameState * gs);
 
 static void display_score(const struct GameState * gs) {
-    display("\nSCORE: ");
-    printf("%d\n", calc_score(gs));
-    const int rooms_visited = count_rooms_visited(gs);
-    printf("\nturns: %d, cash: %d, monsters fought: %d, killed: %d, rooms: %d\n",
-        gs->turns, gs->cash, gs->monsters_fought, gs->monsters_killed, rooms_visited);
-    printf("You completed %3.0f%% of the quest.\n", (double)rooms_visited * 100.0 / (NUM_ROOMS - NUM_DEATH_ROOMS) );
+    if (! G_IS_SILENT ) {
+        display("\nSCORE: ");
+        printf("%d\n", calc_score(gs));
+        const int rooms_visited = count_rooms_visited(gs);
+        printf("\nturns: %d, cash: %d, monsters fought: %d, killed: %d, rooms: %d\n",
+            gs->turns, gs->cash, gs->monsters_fought, gs->monsters_killed, rooms_visited);
+        printf("You completed %3.0f%% of the quest.\n", (double)rooms_visited * 100.0 / (NUM_ROOMS - NUM_DEATH_ROOMS - 1 ) );
+    }
 }
 
 static void display_help_info(void) {
-    display_line("\nVALID COMMANDS ARE:\n");
+    if (! G_IS_SILENT ) {
+        display_line("\nVALID COMMANDS ARE:\n");
 
-    display_line("[H]elp       [I]nventory  [Q]uit");
-    display_line("[A]ttributes [T]ally");
-    display_line("[R]etreat    [F]ight");
-    display_line("[P]ick up    [G]et rid of");
-    display_line("[N]orth      [S]outh");
-    display_line("[E]ast       [W]est");
-    display_line("[U]p         [D]own");
+        display_line("[H]elp       [I]nventory  [Q]uit");
+        display_line("[A]ttributes [T]ally");
+        display_line("[R]etreat    [F]ight");
+        display_line("[P]ick up    [G]et rid of");
+        display_line("[N]orth      [S]outh");
+        display_line("[E]ast       [W]est");
+        display_line("[U]p         [D]own");
+    }
 }
-
-
 
 
 
@@ -623,7 +647,7 @@ static void flush_input(void) {
 }
 
 
-struct StringBuffer {char buffer[1024];} get_str(char const *  prompt) {
+static struct StringBuffer {char buffer[1024];} get_str(char const *  prompt) {
     struct StringBuffer sb = {};
     display(prompt);
 
@@ -642,7 +666,8 @@ struct StringBuffer {char buffer[1024];} get_str(char const *  prompt) {
     return sb;
 }
 
-int get_int(char const * const prompt, const int min, const int max) {
+
+static int get_int(char const * const prompt, const int min, const int max) {
     for (;;) {
         struct StringBuffer sb = get_str(prompt);
 
@@ -671,7 +696,7 @@ int get_int(char const * const prompt, const int min, const int max) {
 }
 
 
-void display_command_err(char const * msg, char const command) {
+static void display_command_err(char const * msg, char const command) {
     if (!msg) {
         msg = "INVALID COMMAND: ";
     }
@@ -682,7 +707,7 @@ void display_command_err(char const * msg, char const command) {
 // return the first letter of the user's input converted to uppercase.
 // input char must be in the `valid_chars` string to be accepted or user is re-prompted until it is
 // err_msg may be null
-char get_command_char(char const * const prompt, char const * const valid_chars, char const * const err_msg) {
+static char get_command_char(char const * const prompt, char const * const valid_chars, char const * const err_msg) {
     char first_letter;
     bool is_invalid_command;
     do {
@@ -716,7 +741,7 @@ struct RandomTextArray * create_rta(int length) {
 }
 
 
-static void init_rooms() {
+static void  init_rooms() {
     // randomized text in Rooms 1, 18, 37, 39
     // room 1
     ROOMS[1].epilog = create_rta(2);
@@ -732,12 +757,9 @@ static void init_rooms() {
     // room 39
     ROOMS[39].epilog = create_rta(1);
     ROOMS[39].epilog->lines[0] = (struct RandomText){ .chance_percent = .6, .text="A small door leaads to the north\nand another to the east."};
-
-
-
 }
 
-static int roll_d6(struct GameState * gs, int num_dice) {
+static int roll_d6(struct GameState * gs, const int num_dice) {
     int result = 0;
     for (int i = 0; i < num_dice; ++i ) {
         result += rnd_range(gs, 1, 7);
@@ -777,9 +799,16 @@ static struct Treasure generate_treasure(struct GameState * gs, int treasure_ind
         .value = rnd_range(gs, 0, 100 ) + 56};
 }
 
-static void initialize(struct GameState * gs) {
+
+void reset(struct GameState * gs, uint32_t seed) {
+
+}
+
+
+
+void initialize(struct GameState * gs, const char* name) {
     mt_initialize_state(&gs->mt_state, 0);  // initialize the PRNG
-    char_sleep(15'000); // set char delay to 15 ms
+    set_char_sleep(_15ms); // set char delay to 15 ms
 
     init_rooms();
 
@@ -826,18 +855,10 @@ static void initialize(struct GameState * gs) {
     ROOMS[LIBRARY_ROOM].treasure = generate_treasure(gs, TREASURE_SILVER_KEY);
     ROOMS[GLOVE_STOREROOM].treasure = generate_treasure(gs, TREASURE_GOLD_KEY);
 
-
-
-
-    cls();
-    const struct StringBuffer sb = get_str("What is your name, explorer? ");
-    char * new_str = malloc(strlen(sb.buffer) + 1);
-    strcpy(new_str, sb.buffer);
+    char * new_str = malloc(strlen(name) + 1);
+    strcpy(new_str, name);
     gs->player_name = new_str;
 
-    display("Hello Explorer ");
-    display_line(gs->player_name);
-    display_line("Type '[H]elp' for a list of commands.");
 }
 
 
@@ -931,15 +952,15 @@ static bool process_move_command(struct GameState * gs, char const first_letter)
     return false;
 }
 
-static void pick_up_treasure(struct GameState * gs) {
+static bool pick_up_treasure(struct GameState * gs) {
     const int treasure_index = ROOM_GRAPH[gs->room][RGINDEX_TREASURE];
     if (!treasure_index) {
         display_line("There is nothing to pick up.");
-        return;
+        return false;
     }
     if ( !gs->has_torch && treasure_index != ITEM_TORCH ) {
         display_line("It is too dark to see anything.");
-        return;
+        return false;
     }
 
     if ( treasure_index == ITEM_TORCH ) {
@@ -955,10 +976,12 @@ static void pick_up_treasure(struct GameState * gs) {
 
     ROOM_GRAPH[gs->room][RGINDEX_TREASURE] = 0;
     ROOMS[gs->room].treasure = (struct Treasure){};
+    return true;
 }
 
-static void get_rid_of(struct GameState * gs) {
+static bool get_rid_of(struct GameState * gs) {
     display_line("I don't know how to get rid of anything yet, Dave.");
+    return true;
 }
 
 
@@ -969,94 +992,64 @@ static void clear_monster(struct GameState * gs) {
     ROOMS[gs->room].monster = (struct Monster){};
 }
 
-static void process_fight(struct GameState * gs) {
+//todo (rob) make `strategy` an enum
+bool fight_action(struct GameState * gs, int strategy, enum StatIndex stat1, enum StatIndex stat2) {
     if (!ROOM_GRAPH[gs->room][RGINDEX_MONSTER]) {
         display_line("There is nothing to fight.");
-        return;
-    }
+        return false;
+    }    
+    
     struct Monster m = ROOMS[gs->room].monster;
+    
+    if (strategy == 1 && gs->magic == 0 ) {
+        // not enough magic
+        //todo (rob) - create return code for this case and others.
+        return false;
+    } 
+    
     gs->monsters_fought++;
-
-    display("\nYour opponent is a ");
-    display_line(m.name);
-    display_line("With the following attributes:");
-    display_char_attributes(m.stats);
-    display_line("\nYour attributes are:");
-    display_char_attributes(gs->stats);
-
+    
+    if (strategy == 1) {
+        display_line("Your magic destroys it!");
+        gs->magic--;
+        gs->monsters_killed++;
+        clear_monster(gs);
+        return true;
+    }
+    
     int hero_tally = 0;
     int monster_tally = 0;
-
-    if (gs->items[ITEM_SWORD]) {
-        display_line("You have a sword");
-        hero_tally++;
-    }
-    if (gs->items[ITEM_WAR_HAMMER]) {
-        display_line("Your War Hammer will be of aid");
-        hero_tally++;
-    }
-    if (gs->items[ITEM_CHAIN_MAIL]) {
-        display_line("Chainmail armor gives you and edge");
-        hero_tally++;
-    }
-    if (gs->items[ITEM_SHIELD]) {
-        display("Your shield will help you in this fight against the ");
-        display_line(m.name);
-        hero_tally++;
-    }
-    if (gs->items[ITEM_CLOAK]) {
-        display_line("The Cloak of Protection surrounds you");
-        hero_tally++;
-    }
-    if (gs->items[ITEM_WAND]) {
-        display_line("The Wand of Fireballs enhances your strength");
-        hero_tally++;
-    }
-    if (gs->magic) {
-        int choice = get_int("Enter 1 to fight with magic or 2 to rely on skill: ", 1, 2);
-        if (choice == 1) {
-            display_line("Your magic destroys it!");
-            gs->magic--;
-            gs->monsters_killed++;
-            clear_monster(gs);
-            return;
+    
+    // calc enhancements due to fighting items
+    for (enum Item item = ITEM_SWORD; item <= ITEM_WAND; ++item ) {
+        if (gs->items[item]) {
+            hero_tally++;
         }
     }
-
-    display_line("Which attributes to fight with (choose 2):");
-    display_line("1: STR, 2: CHA, 3: DEX, 4: INT, 5: WIS, 6: CON");
-
-    const int first_skill = get_int("Enter first skill (1-6) ", 1, 6);
-    int second_skill;
-    for (;;) {
-        second_skill = get_int("Enter second skill (1-6) ", 1, 6);
-        if (first_skill != second_skill) {
-            break;
+    
+    hero_tally += gs->stats.as_array[stat1];
+    hero_tally += gs->stats.as_array[stat2];
+    monster_tally += m.stats.as_array[stat1];
+    monster_tally += m.stats.as_array[stat2];
+    
+    if (!G_IS_SILENT) {
+        display("\nThe fight starts in favor of ");
+        if (hero_tally > monster_tally ) {
+            display_line("you.");
+        } else {
+            display_line(m.name);
         }
-        display("Duplicate skill: ");
+    
+        display("The ");
+        display(m.name);
+        display(" - ");
+        printf("%d\n",monster_tally);
+        display(gs->player_name);
+        display(" - ");
+        printf("%d\n",hero_tally);
     }
-
-    hero_tally += gs->stats.as_array[first_skill];
-    hero_tally += gs->stats.as_array[second_skill];
-    monster_tally += m.stats.as_array[first_skill];
-    monster_tally += m.stats.as_array[second_skill];
-
-    display("\nThe fight starts in favor of ");
-    if (hero_tally > monster_tally ) {
-        display_line("you.");
-    } else {
-        display_line(m.name);
-    }
-    display("The ");
-    display(m.name);
-    display(" - ");
-    printf("%d\n",monster_tally);
-    display(gs->player_name);
-    display(" - ");
-    printf("%d\n",hero_tally);
-
-
-    for (;;) {
+    
+       for (;;) {
         int attack = rnd_range(gs, 0,8 );
         switch (attack) {
             case 0: {
@@ -1067,7 +1060,7 @@ static void process_fight(struct GameState * gs) {
                 display("The ");
                 display(m.name);
                 display_line(" strikes out!");
-                hero_tally -=3;
+                hero_tally -= 3;
                 gs->stats.strength--;
                 gs->stats.charisma--;
             } break;
@@ -1080,7 +1073,7 @@ static void process_fight(struct GameState * gs) {
             case 3: {
                 display_line("You are wounded!!");
                 hero_tally -= rnd_range(gs, 1, 4);
-                gs->dexterity --;  // annonymous union lets us do this!
+                gs->dexterity--;  // annonymous union lets us do this!
             } break;
             case 4: {
                 display("The ");
@@ -1100,14 +1093,15 @@ static void process_fight(struct GameState * gs) {
                 display_line("");
                 monster_tally--;
             } break;
-            case 7: {
-                const int lost_cash = rnd_range(gs, 1, gs->cash + 1);
-                display("It knocks $");
-                printf("%d from your hand.\n",lost_cash);
+            case 7:
+            default: {
+                const int lost_cash = rnd_range(gs, 1, gs->cash/2 + 1);
+                if (!G_IS_SILENT) {
+                    display("It knocks $");
+                    printf("%d from your hand.\n",lost_cash);
+                }
                 gs->cash -= lost_cash;
             } break;
-
-            default: printf("Expected attack = [0,8), got %d,\n", attack);
         }
 
         if (! (hero_tally > 0 && monster_tally > 0 && rnd_d(gs) < .75 ) ) {
@@ -1123,22 +1117,22 @@ static void process_fight(struct GameState * gs) {
         display(m.name);
         display_line(" got the better of you that time.");
 
-        if (first_skill == STAT_STRENGTH || second_skill == STAT_STRENGTH ) {
+        if (stat1 == STAT_STRENGTH || stat2 == STAT_STRENGTH ) {
             gs->stats.strength = 4 *  gs->stats.strength / 5;
         }
-        if (first_skill == STAT_CHARISMA || second_skill == STAT_CHARISMA ) {
+        if (stat1 == STAT_CHARISMA || stat2 == STAT_CHARISMA ) {
             gs->stats.charisma = 3 *  gs->stats.charisma / 4;
         }
-        if (first_skill == STAT_DEXTERITY || second_skill == STAT_DEXTERITY ) {
+        if (stat1 == STAT_DEXTERITY || stat2 == STAT_DEXTERITY ) {
             gs->stats.dexterity = 6 *  gs->stats.dexterity / 7;
         }
-        if (first_skill == STAT_INTELLIGENCE || second_skill == STAT_INTELLIGENCE ) {
+        if (stat1 == STAT_INTELLIGENCE || stat2 == STAT_INTELLIGENCE ) {
             gs->stats.intelligence = 2 *  gs->stats.intelligence / 3;
         }
-        if (first_skill == STAT_WISDOM || second_skill == STAT_WISDOM ) {
+        if (stat1 == STAT_WISDOM || stat2 == STAT_WISDOM ) {
             gs->stats.wisdom = 5 *  gs->stats.wisdom / 6;
         }
-        if (first_skill == STAT_CONSTITUTION || second_skill == STAT_CONSTITUTION ) {
+        if (stat1 == STAT_CONSTITUTION || stat2 == STAT_CONSTITUTION ) {
             gs->stats.constitution = 3 *  gs->stats.constitution / 6;
         }
 
@@ -1151,13 +1145,77 @@ static void process_fight(struct GameState * gs) {
             gs->stats.as_array[i] = 0;
         }
     }
+    return true;
+    
 }
 
-static void process_retreat(struct GameState * gs) {
+//Entry point for human user path. This displays some information, prompts user for some choices, and passes those to
+// fight_action(), the ML entry point for the fight action.
+static bool process_fight(struct GameState * gs) {
+    if (!ROOM_GRAPH[gs->room][RGINDEX_MONSTER]) {
+        display_line("There is nothing to fight.");
+        gs->turns++; // this branch means we are not calling perform_action(), which increments turns.
+        return false;
+    }
+    
+    struct Monster m = ROOMS[gs->room].monster;
+    
+    display("\nYour opponent is a ");
+    display_line(m.name);
+    display_line("With the following attributes:");
+    display_char_attributes(m.stats);
+    display_line("\nYour attributes are:");
+    display_char_attributes(gs->stats);
+
+
+    if (gs->items[ITEM_SWORD]) {
+        display_line("You have a sword");
+    }
+    if (gs->items[ITEM_WAR_HAMMER]) {
+        display_line("Your War Hammer will be of aid");
+    }
+    if (gs->items[ITEM_CHAIN_MAIL]) {
+        display_line("Chainmail armor gives you an edge");
+    }
+    if (gs->items[ITEM_SHIELD]) {
+        display("Your shield will help you in this fight against the ");
+        display_line(m.name);
+    }
+    if (gs->items[ITEM_CLOAK]) {
+        display_line("The Cloak of Protection surrounds you");
+    }
+    if (gs->items[ITEM_WAND]) {
+        display_line("The Wand of Fireballs enhances your strength");
+    }
+    bool perform_action(struct GameState *, char action, int arg1, int arg2, int arg3);
+
+    if (gs->magic) {
+        int choice = get_int("Enter 1 to fight with magic or 2 to rely on skill: ", 1, 2);
+        if (choice == 1) {
+            return perform_action(gs, 'F', 1, 0, 0);
+        }
+    }
+
+    display_line("Which attributes to fight with (choose 2):");
+    display_line("1: STR, 2: CHA, 3: DEX, 4: INT, 5: WIS, 6: CON");
+
+    const int first_skill = get_int("Enter first skill (1-6) ", 1, 6);
+    int second_skill;
+    for (;;) {
+        second_skill = get_int("Enter second skill (1-6) ", 1, 6);
+        if (first_skill != second_skill) {
+            break;
+        }
+        display("Duplicate skill: ");
+    }
+    return perform_action(gs, 'F', 2, first_skill, second_skill);
+}
+
+static bool process_retreat(struct GameState * gs) {
     const int room = gs->room;
     if (!ROOM_GRAPH[room][RGINDEX_MONSTER]) {
         display_line("There is nothing to retreat from.");
-        return;
+        return false;
     }
 
     display_line("RUN AWAY!!!!!!!");
@@ -1180,15 +1238,127 @@ static void process_retreat(struct GameState * gs) {
 
     if ( rnd_d(gs) < .6 || num_exits == 0 || retreat_index == room) {
         display_line("The creature blocks your path. You must fight.");
-        process_fight(gs);
-        return;
+        // We return the result of the fight. If the fight happens, it's a valid turn.
+        return process_fight(gs);
     }
 
     gs->room = exits[retreat_index];
+    return true;
+}
+
+/**
+  * Core Game Engine Logic
+  * This function is "Pure Logic" - it updates state based on an action.
+  * It returns true if the action was accepted as a turn, false otherwise.
+  *
+  * @param arg1 For 'F': strategy (1:magic, 2:skill). For 'G': item index.
+  * @param arg2 For 'F': first skill stat index.
+  * @param arg3 For 'F': second skill stat index.
+  */
+bool perform_action(struct GameState *gs, char action, int arg1, int arg2, int arg3) {
+    const char cmd = (char)toupper(action);
+
+    if (!strchr(VALID_COMMANDS, cmd)) {
+        return false; // Unknown command: Not a turn, no state change.
+    }
+
+    gs->turns++;
+    gs->rooms_visited[gs->room] = true;
+
+    if (gs->room == MARBLE_HALL ) {
+        // if player is here, they already used the key to unlock the west door
+        gs->items[ITEM_GOLD_KEY] = 0;
+    }
+    if (gs->room == WINE_CELLAR_EAST ) {
+        gs->items[ITEM_SILVER_KEY] = 0;
+    }
+
+
+    const bool has_monster = ROOM_GRAPH[gs->room][RGINDEX_MONSTER];
+
+    // Rule: Must deal with monsters first. Recognized command, but logic fails.
+    if (has_monster && cmd != 'F' && cmd != 'R') {
+        display_line("DANGER! You must either FIGHT or RETREAT.");
+        return false; 
+    }
+
+    if (strchr(VALID_DIRECTIONS, cmd)) {
+        // Special logic for locked doors
+        if (gs->room == BEDCHAMBER_ROOM && cmd == 'W' && !gs->items[ITEM_SILVER_KEY]) {
+            display_line("You need the Silver Key to unlock the door.");
+            return false;
+        }
+        if (gs->room == SILVER_CROSSES_STOREROOM && cmd == 'W' && !gs->items[ITEM_GOLD_KEY]) {
+            display_line("You need the Gold Key to unlock the door.");
+            return false;
+        }
+
+        return process_move_command(gs, cmd);
+    }
+
+    //todo (rob) : Fight requires additional input from user, need to model this for ML
+    // same for get_rid_of()
+    switch (cmd) {
+        case 'P':
+            return pick_up_treasure(gs);
+        case 'F':
+            return fight_action(gs, arg1, (enum StatIndex)arg2, (enum StatIndex)arg3);
+        case 'R':
+            return process_retreat(gs);
+        case 'G':
+            // ML would pass the item index to drop in arg1
+            return get_rid_of(gs); 
+        case 'H':
+            display_help_info();
+            return CONTINUE_GAME;
+        case 'I':
+            display_inventory(gs);
+            return CONTINUE_GAME;
+        case 'A':
+            display_char_attributes(gs->stats);
+            return CONTINUE_GAME;
+        case 'T':
+            // These are valid turns, but have no state-solving logic for ML.
+            display_score(gs);
+            return CONTINUE_GAME;
+        case 'Q':
+            gs->completed = true; // Signal the engine to stop
+            return true;
+        default:
+            return false; // Unknown action
+    }
+}
+
+/**
+ * Death and Win condition check
+ * RETURNS: true if the game is over (win or loss).
+ * The caller should check gs->is_dead or gs->completed to see the outcome.
+ */
+bool check_game_over(struct GameState *gs) {
+    if (gs->completed) return true;
+
+    if (gs->room == END_ROOM || gs->room >= DROWNING_ROOM) {
+        if (gs->room >= DROWNING_ROOM) gs->is_dead = true;
+        gs->completed = true;
+        return true;
+    }
+
+    for (int i = STAT_STRENGTH; i < STAT_COUNT; ++i) {
+        if (gs->stats.as_array[i] <= 0) {
+            if (!G_IS_SILENT) {
+                display_char_attributes(gs->stats);
+                display_line("\nYour combined attributes are no longer\nenough to sustain you... You are dead.");
+            }
+            gs->is_dead = true;
+            gs->completed = true;
+            return true;
+        }
+    }
+    return false;
 }
 
 
-bool main_game_loop(struct GameState * gs) {
+bool main_game_loop_prev(struct GameState * gs) {
     gs->turns++;
     gs->rooms_visited[gs->room] = true;
 
@@ -1231,7 +1401,7 @@ bool main_game_loop(struct GameState * gs) {
 
         if ( strchr(VALID_DIRECTIONS, first_letter) ) {
             //special logic for locked doors.
-            if (gs->room == BEDCHAMBER_ROOM && first_letter == 'W' && !gs->items[ITEM_SLVER_KEY] ) {
+            if (gs->room == BEDCHAMBER_ROOM && first_letter == 'W' && !gs->items[ITEM_SILVER_KEY] ) {
                 display_line("You need the Silver Key to unlock the door.");
                 is_invalid_command = true;
                 continue;
@@ -1294,7 +1464,7 @@ bool main_game_loop(struct GameState * gs) {
 
     if (gs->room == GLOVE_STOREROOM ) {
         // if player is here, they already used the key to unlock the west door
-        gs->items[ITEM_SLVER_KEY] = 0;
+        gs->items[ITEM_SILVER_KEY] = 0;
     }
     if (gs->room == MARBLE_HALL ) {
         gs->items[ITEM_GOLD_KEY] = 0;
@@ -1302,6 +1472,55 @@ bool main_game_loop(struct GameState * gs) {
 
 
     return CONTINUE_GAME;
+}
+
+static bool main_game_loop(struct GameState * gs) {
+    uint32_t saved_sleep_duration = char_sleep_duration;
+    if ( gs->rooms_visited[gs->room] ) {
+        // if we've already seen this room, speed up output display
+        set_char_sleep(1'000);  // 1ms
+    }
+    // this can be set multiple times with no issues. perform_action() is the main SOAT but main not always be called from here.
+    gs->rooms_visited[gs->room] = true;
+
+    printf("---------------------------------------------------------------------- %d\n", gs->turns);
+
+    display_status(gs);
+    display_line("");
+    display_room_desc(gs);
+
+    if (check_game_over(gs)){
+        return END_GAME;
+    }
+
+    display_room_content(gs);
+
+    flush_input();
+    char first_letter = get_command_char("\nWhat do you want to do? ", VALID_COMMANDS, nullptr);
+
+    if (first_letter == 'Q') return process_quit(gs);
+
+    if (first_letter == 'F') {
+        //specialized code to prompt user and gather options to pass to perform_action()
+        process_fight(gs);
+    } else {
+        // Now the human call and the ML call use the exact same entry point
+        perform_action(gs, first_letter, 0,0, 0);
+    }
+
+    set_char_sleep(saved_sleep_duration);  // todo (rob) this may not be called due to early exit.
+
+    return CONTINUE_GAME;
+}
+
+struct StringBuffer greet_player() {
+    cls();
+    const struct StringBuffer sb = get_str("What is your name, explorer? ");
+    display("Hello, Explorer ");
+    display(sb.buffer);
+    display_line(".");
+    display_line("Type '[H]elp' for a list of commands.");
+    return sb;
 }
 
 //// ------------------------------------------------------------
@@ -1312,15 +1531,18 @@ bool main_game_loop(struct GameState * gs) {
 
 int main(void) {
     setvbuf(stdin, nullptr, _IONBF, 0);
-    struct GameState game_state = {};
+    struct GameState gs = {};
+
+    const struct StringBuffer sb = greet_player();
+    
     bool continue_loop;
-    initialize(&game_state);
+    initialize(&gs, sb.buffer);
     do {
-        continue_loop = main_game_loop(&game_state);
+        continue_loop = main_game_loop(&gs);
     } while (continue_loop);
 
-
-    display_conclusion(&game_state);
-    display_score(&game_state);
-    cleanup(&game_state);
+    set_char_sleep(_30ms);
+    display_conclusion(&gs);
+    display_score(&gs);
+    cleanup(&gs);
 }
