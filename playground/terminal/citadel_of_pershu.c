@@ -367,10 +367,11 @@ typedef struct GameState {
         // what the player can currently "see" in the environment that is not part of the game state model
         bool     monster_is_visible;
         bool     treasure_is_visible;
+        bool     must_fight; // Explicitly tell ML that movement/retreat is blocked
         Monster  current_monster;
         Treasure current_treasure;
+        uint32_t legal_actions_mask; // Bitmask where each bit corresponds to VALID_COMMANDS
     } perception;
-
 } GameState;
 
 
@@ -902,7 +903,7 @@ struct StringBuffer greet_player() {
 
 
 
-struct RandomTextArray * create_rta(int length) {
+RandomTextArray * create_rta(int length) {
     const size_t mem_size = sizeof(struct RandomTextArray) + sizeof(RandomText) * length;
     struct RandomTextArray * result = calloc(1, mem_size);
     result->length = length;
@@ -1472,6 +1473,32 @@ static bool process_retreat(GameState * gs) {
     return true;
 }
 
+/**
+ * Helper to check if a specific command character is currently legal 
+ * based on the game rules and current room state.
+ */
+static bool is_action_legal(const GameState *gs, char c) {
+    const char cmd = (char)toupper(c);
+    const int room_index = gs->room;
+    const int monster_index = ROOM_GRAPH[room_index][RGINDEX_MONSTER];
+    const int treasure_index = ROOM_GRAPH[room_index][RGINDEX_TREASURE];
+
+    // 1. Basic monster check
+    if (monster_index > 0) {
+        if (gs->must_fight && cmd != 'F') return false;
+        if (cmd != 'F' && cmd != 'R') return false;
+    }
+    // 2. Directional check
+    int dir_idx = calc_direction_index(cmd);
+    if (dir_idx != DIRECTION_ERR) {
+        return ROOM_GRAPH[room_index][dir_idx] > 0;
+    }
+    // 3. Item check for 'P' (Pick up)
+    if (cmd == 'P' && treasure_index == 0) return false;
+
+    return true;
+}
+
 static void update_perception(GameState * gs) {
     const int room_index     = gs->room;
     const int monster_index  = ROOM_GRAPH[room_index][RGINDEX_MONSTER];
@@ -1482,6 +1509,14 @@ static void update_perception(GameState * gs) {
     gs->perception.treasure_is_visible = false;
     gs->perception.current_monster  = (Monster){};
     gs->perception.current_treasure = (Treasure){};
+    gs->perception.legal_actions_mask = 0;
+
+    // Populate Action Mask for ML
+    for (int i = 0; VALID_COMMANDS[i] != '\0'; ++i) {
+        if (is_action_legal(gs, VALID_COMMANDS[i])) {
+            gs->perception.legal_actions_mask |= (1u << i);
+        }
+    }
 
     // Only see things if the room is lit
     // Note: Treasure index 1 is the Torch itself, which is visible in the dark.
