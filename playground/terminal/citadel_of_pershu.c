@@ -213,10 +213,10 @@ static Room ROOMS[NUM_ROOMS] = {
 {.id = 42,  .name= "ROOM 42", .desc = "There is a healing pool here, with a\ndangerous, swirling area of water." },
 {.id = 43,  .name= "ROOM 43", .desc = "The Underpriests of Odric used this\ntiny hall for their forbidden worship\neons ago. It is an unpleasant area,\nso you are thrilled to see a set of\nstone stairs." },
 
-{.id = 44,  .name= "DEATH BY DROWING", .desc = "Water covers your head.\nYou are drowning.\nGLUG... GASP............" },
-{.id = 45,  .name= "DEATH BY BURNING", .desc = "The flames strike at you...\nas you slowly burn to death..."},
+{.id = 44,  .name= "DEATH BY DROWING",  .desc = "Water covers your head.\nYou are drowning.\nGLUG... GASP............" },
+{.id = 45,  .name= "DEATH BY BURNING",  .desc = "The flames strike at you...\nas you slowly burn to death..."},
 {.id = 46,  .name= "DEATH BY FREEZING", .desc = "You are hit by a freezing spell\nand turn into a block of perpetual\nliving stone. This is the end."},
-{.id = 47,  .name= "BOTTOMLESS PIT", .desc = "You tumble down a bottomless pit.\nDown, down, down..."},
+{.id = 47,  .name= "BOTTOMLESS PIT",    .desc = "You tumble down a bottomless pit.\nDown, down, down..."},
 
 };
 
@@ -355,13 +355,87 @@ typedef struct GameState {
     bool has_torch;
     bool is_dead;
     bool completed; // true if reached final room
+    bool must_fight; // true if user previously tried to retreat from monster and failed
 
     // state for Mersenne Twister PRNG
     MTState mt_state;
 
     int  items[ITEM_COUNT];  // first 9 items of Treasure have a slot here with the same index
     bool rooms_visited[NUM_ROOMS];
+
+    struct ObservationSpace {
+        // what the player can currently "see" in the environment that is not part of the game state model
+        bool     monster_is_visible;
+        bool     treasure_is_visible;
+        Monster  current_monster;
+        Treasure current_treasure;
+    } perception;
+
 } GameState;
+
+
+/*
+
+// Exit guard data structures for managing dynamic edges, e.g., user must have a particular item in order to
+// travel west.... or needs a key to unlock a door, etc.
+// Guards provide checking mechanism, and desc_altered can have a separate track of descriptions to use after
+// the guard is met, I.e., Room desc originally says 'The door to the west is locked.' After the guard is met,
+// 'There is an unlocked door leading west.'
+
+enum GameFlag {
+     FLAG_NONE = 0,
+     FLAG_BEDCHAMBER_UNLOCKED,
+     FLAG_SILVER_STOREROOM_UNLOCKED,
+     FLAG_COUNT
+ };
+
+struct ExitGuard {
+    enum Direction direction;
+    enum Item required_item;   // Item needed to trigger the change
+    enum GameFlag sets_flag;   // Flag to set once triggered
+    const char *fail_msg;      // What to say if they don't have the item
+};
+
+struct Room {
+    int id;
+    char const * name;
+    char const * desc;
+    char const * desc_altered; // Description to show once a specific flag is set
+    enum GameFlag desc_flag;   // Which flag triggers the alternate description
+
+    struct ExitGuard *guards;  // Array of guards
+    size_t num_guards;
+
+    // ... rest of your struct ...
+};
+
+static bool process_move_command(struct GameState * gs, char const first_letter) {
+    const int location = gs->room;
+    const enum Direction dir = calc_direction_index(first_letter);
+    struct Room *current_room = &ROOMS[location];
+
+    // 1. Check if there is a guard on this exit
+    for (size_t i = 0; i < current_room->num_guards; i++) {
+        struct ExitGuard *g = &current_room->guards[i];
+
+        if (g->direction == dir && !gs->flags[g->sets_flag]) {
+            // Check if player has the key
+            if (gs->items[g->required_item]) {
+                display_line("You unlock the door with your key!");
+                gs->flags[g->sets_flag] = true;
+                // Optionally consume the key if it's one-time use
+            } else {
+                display_line(g->fail_msg);
+                return false; // Movement blocked
+            }
+        }
+    }
+
+
+
+ *
+ */
+
 
 // usleep() takes argument in microseconds
 // these are equivalent milliseconds
@@ -381,6 +455,9 @@ void set_silent_mode(const bool silent) {
     GLOBALS.silent_mode = silent;
 }
 
+
+
+static void update_perception(GameState * gs);
 
 //// ------------------------------------------------------------
 ////
@@ -674,7 +751,7 @@ static void display_help_info(void) {
         display_line("[U]p         [D]own");
 
         display_line("\nDEBUG:");
-        display_line("g[L]obals  [M]agic  [1]GameState");
+        display_line("g[L]obals  [M]agic  [1]GameState [2]Reset");
     }
 }
 
@@ -685,8 +762,10 @@ void display_globals(void) {
 
 void display_game_state(const GameState *gs) {
     printf("\nGameState:\n");
-    printf("player_name=%s, room=%d, turns=%d, cash=%d, killed=%d, fought=%d, magic=%d, has_torch=%d, is_dead=%d, completed=%d\n",
-        gs->player_name, gs->room, gs->turns, gs->cash, gs->monsters_killed,gs->monsters_fought, gs->magic, gs->has_torch, gs->is_dead, gs->completed);
+    printf("player_name=%s, room=%d, turns=%d, cash=%d, killed=%d, fought=%d, magic=%d, "
+           "has_torch=%d, is_dead=%d, completed=%d, must_fight=%d\n",
+        gs->player_name, gs->room, gs->turns, gs->cash, gs->monsters_killed,gs->monsters_fought, gs->magic,
+        gs->has_torch, gs->is_dead, gs->completed, gs->must_fight);
     display_char_attributes(gs->stats);
     display_inventory(gs);
     printf("\n");
@@ -915,6 +994,7 @@ void reset(GameState * gs, const uint32_t seed) {
         }
     }
 
+    update_perception(gs);
 }
 
 
@@ -954,7 +1034,7 @@ static void cleanup(GameState * gs) {
 constexpr bool CONTINUE_GAME = true;
 constexpr bool END_GAME = false;
 
-char const * const VALID_COMMANDS = "HIQATRFPGNSEWUDL1M";
+char const * const VALID_COMMANDS = "HIQATRFPGNSEWUDLM12";
 char const * const VALID_DIRECTIONS = "NSEWUD";
 
 
@@ -1007,17 +1087,7 @@ static bool process_quit(const GameState * gs) {
 }
 
 
-// checks if there is a monster and if so, that the user has selected either F or R. Returns true for success.
-bool monster_check(const GameState * gs, bool has_monster, char first_letter) {
-    if ( has_monster && ( first_letter == 'F' || first_letter == 'R' )) {
-        return true;
-    }
-    if (has_monster) {
-        display_line("DANGER! You must either FIGHT or RETREAT.");
-        return false;
-    }
-    return true;
-}
+
 
 // first_letter must be in "NSEWUD"
 // return true if command was sucessfully processed. If false, the move is not allowed and an error message
@@ -1052,7 +1122,6 @@ static bool pick_up_treasure(GameState * gs) {
         return false;
     }
 
-
     if ( treasure_index == ITEM_TORCH ) {
         gs->has_torch = true;
     }
@@ -1069,20 +1138,43 @@ static bool pick_up_treasure(GameState * gs) {
     return true;
 }
 
+// clear the monster in the current room and its entry in the ROOMS array
+static void clear_monster(const GameState * gs) {
+    ROOM_GRAPH[gs->room][RGINDEX_MONSTER] = 0;
+    ROOMS[gs->room].monster = (Monster){};
+}
+
+/**
+ * Shared Validation: Can an item be dropped here?
+ * Returns true if valid, false otherwise.
+ * Prints error messages only if verbose is true.
+ */
+static bool can_drop_item(const GameState *gs, int item_index, bool verbose) {
+    if (!has_items(gs)) {
+        if (verbose) display_line("You have nothing to get rid of.");
+        return false;
+    }
+    if (ROOM_GRAPH[gs->room][RGINDEX_TREASURE]) {
+        if (verbose) {
+            display("There is already a ");
+            display(ROOMS[gs->room].treasure.name);
+            display_line(" here.");
+        }
+        return false;
+    }
+    if (item_index == 0) return true; // Cancel/No-op is valid
+    if (item_index < 0 || item_index >= ITEM_COUNT || !gs->items[item_index]) {
+        if (verbose) display_line("You are not carrying that item.");
+        return false;
+    }
+    return true;
+}
+
 // Entry point for human user path. This displays some information, prompts user for some choices, and passes those to
 // drop_action(), the ML entry point for the drop action.
 static bool get_rid_of(GameState * gs) {
-
-    if (!has_items(gs)) {
-        display_line("You have nothing to get rid of.");
-        return false;
-    }
-    if ( ROOM_GRAPH[gs->room][RGINDEX_TREASURE] ) {
-        display("There is already a ");
-        display(ROOMS[gs->room].treasure.name);
-        display_line(" here.");
-        return false;
-    }
+    // Pre-check: If the room is already full, don't even start the loop
+    if (!can_drop_item(gs, 0, true)) return false;
 
     int item = 0;
     for (;;) {
@@ -1097,29 +1189,19 @@ static bool get_rid_of(GameState * gs) {
         }
         display_line("You are not carrying that item.");
     }
-
     return perform_action(gs, 'G', item, 0, 0);
 }
 
 
 
-// clear the monster in the current room and its entry in the ROOMS array
-static void clear_monster(const GameState * gs) {
-    ROOM_GRAPH[gs->room][RGINDEX_MONSTER] = 0;
-    ROOMS[gs->room].monster = (Monster){};
-}
-
-bool drop_action(GameState * gs, int item_index) {
-    if (!has_items(gs)) {
-        return false;  // nothing to drop
-    }
-    if ( ROOM_GRAPH[gs->room][RGINDEX_TREASURE] ) {
-        return false;  // already an item here
+/** Logic Entry Point: ML and Human both end up here */
+bool drop_action(GameState *gs, int item_index) {
+    // Perform the check (protects against ML typos)
+    if (!can_drop_item(gs, item_index, !GLOBALS.silent_mode)) {
+        return false;
     }
 
-    if (!item_index) {
-        return true;  // no-op, not dropping anything
-    }
+    if (item_index == 0) return true; // successful no-op
 
     gs->items[item_index] = 0;
     ROOM_GRAPH[gs->room][RGINDEX_TREASURE] = item_index;
@@ -1148,6 +1230,7 @@ bool fight_action(GameState * gs, int strategy, enum StatIndex stat1, enum StatI
     } 
     
     gs->monsters_fought++;
+    gs->must_fight = false;
     
     if (strategy == 1) {
         display_line("Your magic destroys it!");
@@ -1298,7 +1381,6 @@ bool fight_action(GameState * gs, int strategy, enum StatIndex stat1, enum StatI
 static bool process_fight(GameState * gs) {
     if (!ROOM_GRAPH[gs->room][RGINDEX_MONSTER]) {
         display_line("There is nothing to fight.");
-        gs->turns++; // this branch means we are not calling perform_action(), which increments `turns`.
         return false;
     }
     
@@ -1382,14 +1464,55 @@ static bool process_retreat(GameState * gs) {
 
     if ( rnd_d(gs) < .6 || num_exits == 0 || retreat_index == room) {
         display_line("The creature blocks your path. You must fight.");
-        // We return the result of the fight. If the fight happens, it's a valid turn.
-        return process_fight(gs);
+        gs->must_fight = true;
+        return false;
     }
 
     gs->room = exits[retreat_index];
     return true;
 }
 
+static void update_perception(GameState * gs) {
+    const int room_index     = gs->room;
+    const int monster_index  = ROOM_GRAPH[room_index][RGINDEX_MONSTER];
+    const int treasure_index = ROOM_GRAPH[room_index][RGINDEX_TREASURE];
+
+    // reset perceptions
+    gs->perception.monster_is_visible  = false;
+    gs->perception.treasure_is_visible = false;
+    gs->perception.current_monster  = (Monster){};
+    gs->perception.current_treasure = (Treasure){};
+
+    // Only see things if the room is lit
+    // Note: Treasure index 1 is the Torch itself, which is visible in the dark.
+    if (gs->has_torch || treasure_index == ITEM_TORCH ) {
+        if (monster_index > 0 ) {
+            gs->perception.current_monster = ROOMS[room_index].monster;
+            gs->perception.monster_is_visible  = true;
+        }
+        if (treasure_index > 0 ) {
+            gs->perception.current_treasure = ROOMS[room_index].treasure;
+            gs->perception.treasure_is_visible  = true;
+        }
+    }
+
+}
+
+// checks if there is a monster and if so, that the user has selected either F or R. Returns true for success.
+bool monster_check(const GameState * gs, const char cmd) {
+    const bool has_monster = ROOM_GRAPH[gs->room][RGINDEX_MONSTER];
+    // Rule: Must deal with monsters first. Recognized command, but logic fails.
+    if ( has_monster && gs->must_fight && cmd != 'F') {
+        display_line("DANGER! You can only FIGHT!");
+        return false;
+    }
+    if (has_monster && cmd != 'F' && cmd != 'R') {
+        display_line("DANGER! You must either FIGHT or RETREAT.");
+        return false;
+    }
+
+    return true;
+}
 
 /**
   * Core Game Engine Logic
@@ -1422,13 +1545,8 @@ bool perform_action(GameState *gs, char action, int arg1, int arg2, int arg3) {
         gs->items[ITEM_SILVER_KEY] = 0;
     }
 
-
-    const bool has_monster = ROOM_GRAPH[gs->room][RGINDEX_MONSTER];
-
-    // Rule: Must deal with monsters first. Recognized command, but logic fails.
-    if (has_monster && cmd != 'F' && cmd != 'R') {
-        display_line("DANGER! You must either FIGHT or RETREAT.");
-        return false; 
+    if ( !monster_check(gs, cmd) ) {
+        return false;
     }
 
     if (strchr(VALID_DIRECTIONS, cmd)) {
@@ -1442,40 +1560,58 @@ bool perform_action(GameState *gs, char action, int arg1, int arg2, int arg3) {
             return false;
         }
 
-        return process_move_command(gs, cmd);
+        // We must update perception after the move is processed but before returning
+        // so the new room's content is visible in the GameState.
+        const bool result = process_move_command(gs, cmd);
+        update_perception(gs);  // room may have changed
+        return result;
     }
 
-    //todo (rob) : Fight requires additional input from user, need to model this for ML
-    // same for get_rid_of()
+    bool result = false;
     switch (cmd) {
         case 'P':
-            return pick_up_treasure(gs);
+            result = pick_up_treasure(gs);
+            break;
         case 'F':
-            return fight_action(gs, arg1, (enum StatIndex)arg2, (enum StatIndex)arg3);
+            result = fight_action(gs, arg1, (enum StatIndex)arg2, (enum StatIndex)arg3);
+            break;
         case 'R':
-            return process_retreat(gs);
+            result =  process_retreat(gs);
+            break;
         case 'G':
-            // ML would pass the item index to drop in arg1
-            return drop_action(gs, arg1);
+            result =  drop_action(gs, arg1);
+            break;
         case 'H':
             display_help_info();
-            return CONTINUE_GAME;
+            result = true;
+            break;
         case 'I':
             display_inventory(gs);
-            return CONTINUE_GAME;
+            result = true;
+            break;
         case 'A':
             display_char_attributes(gs->stats);
-            return CONTINUE_GAME;
+            result = true;
+            break;
         case 'T':
             // These are valid turns, but have no state-solving logic for ML.
             display_score(gs);
-            return CONTINUE_GAME;
+            result = true;
+            break;
         case 'Q':
             gs->completed = true; // Signal the engine to stop
-            return true;
+            result = true;
+            break;
         default:
-            return false; // Unknown action
+            // Unknown action
+            result = false;
+            break;
     }
+
+    // Single point of truth. Update perception after any turn-based action.
+    update_perception(gs);
+
+    return result;
 }
 
 /**
@@ -1506,6 +1642,7 @@ bool check_game_over(GameState *gs) {
     return false;
 }
 
+constexpr int DEBUG_RAND_SEED = 67;
 
 static bool main_game_loop(GameState * gs) {
     uint32_t saved_sleep_duration = GLOBALS.char_sleep_duration;
@@ -1531,33 +1668,39 @@ static bool main_game_loop(GameState * gs) {
     display_room_content(gs);
 
     flush_input();
-    char first_letter = get_command_char("\nWhat do you want to do? ", VALID_COMMANDS, nullptr);
+    char cmd = get_command_char("\nWhat do you want to do? ", VALID_COMMANDS, nullptr);
 
     //todo (rob) debug code
-    if (first_letter == 'L') {
+    if (cmd == 'L') {
         display_globals();
     }
-    if (first_letter == 'M') {
+    if (cmd == 'M') {
         gs->magic = 50;
     }
-    if (first_letter == '1') {
+    if (cmd == '1') {
         display_game_state(gs);
     }
+    if (cmd == '2') {
+        reset(gs, DEBUG_RAND_SEED);
+    }
 
-
-    if (first_letter == 'Q') {
+    if (cmd == 'Q') {
         set_char_sleep(saved_sleep_duration);
         return process_quit(gs);
     }
 
-    if ( first_letter == 'F' ) {
+    if ( !monster_check(gs, cmd) ) {
+        return true;
+    }
+
+    if ( cmd == 'F' ) {
         //specialized code to prompt user and gather options to pass to perform_action()
         process_fight(gs);
-    } else if (first_letter == 'G'){
+    } else if (cmd == 'G'){
         get_rid_of(gs);
     } else {
         // Now the human call and the ML call use the exact same entry point
-        perform_action(gs, first_letter, 0,0, 0);
+        perform_action(gs, cmd, 0,0, 0);
     }
 
     set_char_sleep(saved_sleep_duration);
@@ -1579,7 +1722,7 @@ int main(void) {
     const struct StringBuffer sb = greet_player();
 
     initialize(sb.buffer);
-    reset(&gs, 67);
+    reset(&gs, DEBUG_RAND_SEED);
 
     bool continue_loop;
     do {

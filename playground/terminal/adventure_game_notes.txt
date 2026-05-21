@@ -59,3 +59,21 @@ Balance design
             assuming similar experience levels and balanced equipment (weapons, spells, special skills (Kung Fu), when
             battling each other to have similar records of wins vs losses. Tool should simulate many such interactions
             to verify this balance.
+            
+            
+            
+            
+MACHINE LEARNING
+To let an AI play your game, you effectively have to turn citadel_of_pershu.c into a library that follows
+the "Gymnasium" (formerly OpenAI Gym) pattern. You need to expose four specific things:
+1. The Reset Function: A way for the AI to instantly restart the game to START_ROOM with a fresh GameState.
+2. The Step Function: Instead of the main_game_loop waiting for getchar(),
+    you need a function where the AI sends a command (e.g., 0 for North, 1 for South) and the function returns:
+    ◦ The Observation: The current state (either the raw numbers or the text description).
+    ◦ The Reward: A floating-point number. You might give +1.0 for picking up a key,
+        -0.1 for each turn taken (to encourage speed), and +100.0 for reaching the end.
+    ◦ The "Done" Flag: A boolean telling the AI if it died or won.
+3. The Action Space: A clear mapping of numbers to actions. The AI doesn't type "NORTH"; it sends the integer 0.
+4. The Observation Space: A structured way for the AI to "see" the world. If you want it to learn quickly,
+    you give it the raw GameState variables. If you want it to be "human-like," you only give it the text strings
+    you print to the console.
