@@ -60,8 +60,11 @@ Balance design
             battling each other to have similar records of wins vs losses. Tool should simulate many such interactions
             to verify this balance.
             
-            
-            
+
+Game Engines:
+    * Combat engine
+    * Procedural engine
+    * BX system (streamlines early D&D rules)
             
 MACHINE LEARNING
 To let an AI play your game, you effectively have to turn citadel_of_pershu.c into a library that follows
