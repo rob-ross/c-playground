@@ -169,7 +169,7 @@ static uint32_t get_random_uint_from_urandom() {
         // or terminate if strong randomness is critical.
         // For this example, we'll just return a simple rand() result as a last resort.
         srand(time(nullptr)); // NOLINT(*-msc51-cpp)
-        return rand();
+        return rand(); // NOLINT(*-msc50-cpp)
     }
 
     ssize_t bytes_read = read(fd, &random_value, sizeof(random_value));
@@ -177,12 +177,12 @@ static uint32_t get_random_uint_from_urandom() {
         perror("Error reading from /dev/urandom");
         close(fd);
         srand(time(nullptr)); // NOLINT(*-msc51-cpp)
-        return rand(); // Weak fallback
+        return rand(); // NOLINT(*-msc50-cpp)
     } else if (bytes_read != sizeof(random_value)) {
         fprintf(stderr, "Warning: Read fewer bytes (%zd) than expected (%zu) from /dev/urandom\n", bytes_read, sizeof(random_value));
         close(fd);
         srand(time(nullptr)); // NOLINT(*-msc51-cpp)
-        return rand(); // Weak fallback
+        return rand(); // NOLINT(*-msc50-cpp)
     }
 
     close(fd);
