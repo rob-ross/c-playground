@@ -97,16 +97,16 @@ char const * const BAD_MOVE_DESC[6] = {
     "YOU CANNOT DESCEND FROM HERE",
 };
 
-struct RandomText {
+typedef struct RandomText {
     const char *text;  // displayed if chance_percent is satisifed
     const char *else_text; // if not null, displayed when chance_percent not satisfied
     double chance_percent;  // betwen 0 and 1. Random number between 0 and 1  must be less (<) than this to be displayed
-};
+} RandomText;
 
-struct RandomTextArray {
+typedef struct RandomTextArray {
     size_t length;
-    struct RandomText lines[];  // flexible array
-};
+    RandomText lines[];  // flexible array
+} RandomTextArray;
 
 enum StatIndex {
     STAT_NULL [[maybe_unused]],
@@ -134,40 +134,40 @@ enum StatIndex {
     int as_array[STAT_COUNT];     \
     struct { CHAR_STATS_LIST };
 
-struct CharStats {
+typedef struct CharStats {
     union { CHAR_STATS_UNION_BODY };
-};
+} CharStats;
 
-struct Monster {
+typedef struct Monster {
     char const * name;
-    int monster_index;
+    [[maybe_unused]] int monster_index;
     union {
-        struct CharStats stats; // Named access: m.stats.strength
+        CharStats stats; // Named access: m.stats.strength
         union { CHAR_STATS_UNION_BODY }; // Anonymous access: m.strength & m.as_array
     };
-};
+} Monster;
 
-struct Treasure {
+typedef struct Treasure {
     char const * name;
-    int treasure_index;
+    [[maybe_unused]] int treasure_index;
     int value;
-};
+} Treasure;
 
-struct Room {
-    int id;
-    char const * name;
+typedef struct Room {
+    [[maybe_unused]] int id;
+    [[maybe_unused]] char const * name;
     char const * desc;
-    struct RandomTextArray  * preamble;
-    struct RandomTextArray  * epilog;
-    struct Monster  monster;
-    struct Treasure treasure;
-};
+    RandomTextArray  * preamble;
+    RandomTextArray  * epilog;
+    Monster  monster;
+    Treasure treasure;
+} Room;
 
 
 // todo (rob) We should just store the full description on a single line of text (no embedded newlines), and let the
 // display argument paginate the text as needed for the display. Currently we use the same line breaks as in the original
 // BASIC app.
-static struct Room ROOMS[NUM_ROOMS] = {
+static Room ROOMS[NUM_ROOMS] = {
 {.id =  0,  .name= "NULL ROOM",  .desc = "NULL ROOM"},
 {.id =  1,  .name= "ROOM 1",  .desc = "An underground river flows swiftly by."},
 {.id =  2,  .name= "ROOM 2",  .desc = "You are in the Citadel's food storage area.\nOld cheeses and black loaves of bread can\nbe seen, as well as many sacks of supplies."},
@@ -336,7 +336,7 @@ constexpr int TREASURE_SILVER_KEY = 2;
 constexpr int TREASURE_GOLD_KEY   = 3;
 
 
-struct GameState {
+typedef struct GameState {
     const char * player_name;
     int room;  // current room
     int turns; // 1 point per turn
@@ -348,7 +348,7 @@ struct GameState {
     int magic;  // number of spells
 
     union {
-        struct CharStats stats; // Named access: m.stats.strength
+        CharStats stats; // Named access: m.stats.strength
         union { CHAR_STATS_UNION_BODY }; // Anonymous access: m.strength & m.as_array
     };
 
@@ -361,7 +361,7 @@ struct GameState {
 
     int  items[ITEM_COUNT];  // first 9 items of Treasure have a slot here with the same index
     bool rooms_visited[NUM_ROOMS];
-};
+} GameState;
 
 // usleep() takes argument in microseconds
 // these are equivalent milliseconds
@@ -390,18 +390,18 @@ void set_silent_mode(const bool silent) {
 //// ------------------------------------------------------------
 
 // return random int in range [min_inclusive, max_exclusive)
-static int rnd_range(struct GameState * gs, int min_inclusive, int max_exclusive) {
+static int rnd_range(GameState * gs, int min_inclusive, int max_exclusive) {
     return (int)mt_rand_range(&gs->mt_state, min_inclusive, max_exclusive);
 }
 
 // return random double in range [0,1)
-static double rnd_d(struct GameState * gs) {
+static double rnd_d(GameState * gs) {
     return mt_random_double(&gs->mt_state);
 }
 
 
 
-static int roll_d6(struct GameState * gs, const int num_dice) {
+static int roll_d6(GameState * gs, const int num_dice) {
     int result = 0;
     for (int i = 0; i < num_dice; ++i ) {
         result += rnd_range(gs, 1, 7);
@@ -410,8 +410,8 @@ static int roll_d6(struct GameState * gs, const int num_dice) {
     return result;
 }
 
-static struct CharStats random_hero_stats(struct GameState * gs) {
-    struct CharStats stats;
+static CharStats random_hero_stats(GameState * gs) {
+    CharStats stats;
     stats.null_stat       = 0;
     stats.strength        = roll_d6(gs,3);
     stats.charisma        = roll_d6(gs,3);
@@ -422,8 +422,8 @@ static struct CharStats random_hero_stats(struct GameState * gs) {
     return stats;
 }
 
-static struct CharStats random_monster_stats(struct GameState * gs) {
-    struct CharStats stats;
+static CharStats random_monster_stats(GameState * gs) {
+    CharStats stats;
     stats.null_stat       = 0;
     stats.strength        = 3  * rnd_range(gs, 0, 6) + 1;
     stats.charisma        = 3  * rnd_range(gs, 0, 6) + 1;
@@ -500,7 +500,7 @@ static void display_line(char const* msg) {
 }
 
 
-static void display_char_attributes(const struct CharStats stats) {
+static void display_char_attributes(const CharStats stats) {
     display("Strength:  ");
     printf("%2d", stats.strength);
     display("  Charisma:     ");
@@ -518,7 +518,7 @@ static void display_char_attributes(const struct CharStats stats) {
 }
 
 
-static void display_inventory(const struct GameState * gs) {
+static void display_inventory(const GameState * gs) {
     if (!GLOBALS.silent_mode ) {
         display_line("");
         int item_count = 0;
@@ -543,7 +543,7 @@ static void display_inventory(const struct GameState * gs) {
 }
 
 
-static void display_status(const struct GameState * gs) {
+static void display_status(const GameState * gs) {
     display("magic spells: ");
     printf("%d\n", gs->magic);
 
@@ -555,9 +555,9 @@ static void display_status(const struct GameState * gs) {
     }
 }
 
-static void display_random_room_text(struct GameState * gs, const struct RandomTextArray *rta) {
+static void display_random_room_text(GameState * gs, const struct RandomTextArray *rta) {
     for (int i=0; i< rta->length; ++i) {
-        const struct RandomText rt = rta->lines[i];
+        const RandomText rt = rta->lines[i];
         const double random = mt_random_double(&gs->mt_state); // random double in [0,1)
         if (random < rt.chance_percent) {
             display_line(rt.text);
@@ -567,12 +567,12 @@ static void display_random_room_text(struct GameState * gs, const struct RandomT
     }
 }
 
-static void display_room_desc(struct GameState * gs) {
+static void display_room_desc(GameState * gs) {
     display_line("");
     if (!gs->has_torch && ROOM_GRAPH[gs->room][RGINDEX_TREASURE] != 1 ) {
         display_line("IT IS TOO DARK TO SEE ANYTHING!\n");
     } else {
-        struct Room r = ROOMS[gs->room];
+        Room r = ROOMS[gs->room];
         if (r.preamble) {
             display_random_room_text(gs, r.preamble);
         }
@@ -588,7 +588,7 @@ static void display_room_desc(struct GameState * gs) {
 
 
 
-static void display_room_monster(struct GameState * gs) {
+static void display_room_monster(GameState * gs) {
     const int monster_index = ROOM_GRAPH[gs->room][RGINDEX_MONSTER];
     if ( monster_index == 0 ) {
         return;
@@ -600,7 +600,7 @@ static void display_room_monster(struct GameState * gs) {
         } else {
             display("The room contains a ");
         }
-        struct Room room =  ROOMS[gs->room];
+        Room room =  ROOMS[gs->room];
         display(room.monster.name);
         display_line(":\n");
         display_char_attributes(room.monster.stats);
@@ -609,12 +609,12 @@ static void display_room_monster(struct GameState * gs) {
     }
 }
 
-static void display_room_treasure(const struct GameState * gs) {
+static void display_room_treasure(const GameState * gs) {
     const int treasure_index = ROOM_GRAPH[gs->room][RGINDEX_TREASURE];
     if ( treasure_index == 0 || (!gs->has_torch && gs->room != START_ROOM )) {
         return;
     }
-    struct Room room =ROOMS[gs->room];
+    Room room =ROOMS[gs->room];
     display("\nYou can see ");
 
     if (treasure_index > 9 ) {
@@ -626,13 +626,13 @@ static void display_room_treasure(const struct GameState * gs) {
     }
 }
 
-static void display_room_content(struct GameState * gs) {
+static void display_room_content(GameState * gs) {
     display_room_monster(gs);
     display_room_treasure(gs);
 }
 
 
-static void display_conclusion(const struct GameState * gs) {
+static void display_conclusion(const GameState * gs) {
     set_char_sleep(_30ms);  // so final text display is slowed down
 
     if (gs->completed && !gs->is_dead) {
@@ -645,10 +645,10 @@ static void display_conclusion(const struct GameState * gs) {
     }
 }
 
-static int calc_score(const struct GameState * gs) ;
-static int count_rooms_visited(const struct GameState * gs);
+static int calc_score(const GameState * gs) ;
+static int count_rooms_visited(const GameState * gs);
 
-static void display_score(const struct GameState * gs) {
+static void display_score(const GameState * gs) {
     if (! GLOBALS.silent_mode ) {
         display("\nSCORE: ");
         printf("%d\n", calc_score(gs));
@@ -681,7 +681,7 @@ void display_globals(void) {
     printf("player_name=%s, char_sleep_duration=%d, silent_mode=%d\n", GLOBALS.player_name, GLOBALS.char_sleep_duration, GLOBALS.silent_mode);
 }
 
-void display_game_state(const struct GameState *gs) {
+void display_game_state(const GameState *gs) {
     printf("player_name=%s, room=%d, turns=%d, cash=%d, killed=%d, fought=%d, magic=%d, has_torch=%d, is_dead=%d, completed=%d\n",
         gs->player_name, gs->room, gs->turns, gs->cash, gs->monsters_killed,gs->monsters_fought, gs->magic, gs->has_torch, gs->is_dead, gs->completed);
     display_char_attributes(gs->stats);
@@ -826,7 +826,7 @@ struct StringBuffer greet_player() {
 
 
 struct RandomTextArray * create_rta(int length) {
-    const size_t mem_size = sizeof(struct RandomTextArray) + sizeof(struct RandomText) * length;
+    const size_t mem_size = sizeof(struct RandomTextArray) + sizeof(RandomText) * length;
     struct RandomTextArray * result = calloc(1, mem_size);
     result->length = length;
     return result;
@@ -838,32 +838,32 @@ static void  init_rooms() {
     // randomized text in Rooms 1, 18, 37, 39
     // room 1
     ROOMS[1].epilog = create_rta(2);
-    ROOMS[1].epilog->lines[0] = (struct RandomText){ .chance_percent = .5, .text="There is an exit to the west."};
-    ROOMS[1].epilog->lines[1] = (struct RandomText){ .chance_percent = .5, .text="A tunnel leads to the south."};
+    ROOMS[1].epilog->lines[0] = (RandomText){ .chance_percent = .5, .text="There is an exit to the west."};
+    ROOMS[1].epilog->lines[1] = (RandomText){ .chance_percent = .5, .text="A tunnel leads to the south."};
     // room 18
     ROOMS[18].epilog = create_rta(1);
-    ROOMS[18].epilog->lines[0] = (struct RandomText){ .chance_percent = .5, .text="A bat flies past you, shrieking."};
+    ROOMS[18].epilog->lines[0] = (RandomText){ .chance_percent = .5, .text="A bat flies past you, shrieking."};
     // room 37
     ROOMS[37].epilog = create_rta(2);
-    ROOMS[37].epilog->lines[0] = (struct RandomText){ .chance_percent = .7, .text="But now it tells you there is\na hidden stairwell in the room."};
-    ROOMS[37].epilog->lines[1] = (struct RandomText){ .chance_percent = .3, .text="The voice faintly murmurs of the door to the south."};
+    ROOMS[37].epilog->lines[0] = (RandomText){ .chance_percent = .7, .text="But now it tells you there is\na hidden stairwell in the room."};
+    ROOMS[37].epilog->lines[1] = (RandomText){ .chance_percent = .3, .text="The voice faintly murmurs of the door to the south."};
     // room 39
     ROOMS[39].epilog = create_rta(1);
-    ROOMS[39].epilog->lines[0] = (struct RandomText){ .chance_percent = .6, .text="A small door leaads to the north\nand another to the east."};
+    ROOMS[39].epilog->lines[0] = (RandomText){ .chance_percent = .6, .text="A small door leaads to the north\nand another to the east."};
 }
 
-static struct Treasure generate_treasure( struct GameState * gs, int treasure_index) {
-    return (struct Treasure){
+static Treasure generate_treasure( GameState * gs, int treasure_index) {
+    return (Treasure){
         .name = TREASURE_NAMES[treasure_index],
         .treasure_index = treasure_index,
         .value = rnd_range(gs, 0, 100 ) + 56};
 }
 
 // called at the start of each new game
-void reset(struct GameState * gs, const uint32_t seed) {
+void reset(GameState * gs, const uint32_t seed) {
     const char * player_name = GLOBALS.player_name;  // we reuse the same string
     // reset GameState
-    *gs = (struct GameState){ .player_name = player_name, .room = START_ROOM, .cash = 100, .magic = 3 };
+    *gs = (GameState){ .player_name = player_name, .room = START_ROOM, .cash = 100, .magic = 3 };
     
     mt_initialize_state(&gs->mt_state, seed);  // initialize the PRNG
     
@@ -874,8 +874,8 @@ void reset(struct GameState * gs, const uint32_t seed) {
         // note: if we dynamically modify the edge graph we'll need to reset those edges here
         ROOM_GRAPH[room_index][RGINDEX_TREASURE] = 0;
         ROOM_GRAPH[room_index][RGINDEX_MONSTER] = 0;
-        ROOMS[room_index].monster =  (struct Monster){};
-        ROOMS[room_index].treasure =  (struct Treasure){};
+        ROOMS[room_index].monster =  (Monster){};
+        ROOMS[room_index].treasure =  (Treasure){};
     }
 
     // special treasure items
@@ -897,7 +897,7 @@ void reset(struct GameState * gs, const uint32_t seed) {
                     rand_room == GLOVE_STOREROOM)) {
                 ROOM_GRAPH[rand_room][RGINDEX_MONSTER]  = monster_index;
                 ROOMS[rand_room].monster =
-                    (struct Monster){
+                    (Monster){
                         .name = MONSTER_NAMES[monster_index],
                         .monster_index = monster_index,
                         .stats = random_monster_stats(gs)};
@@ -945,7 +945,7 @@ static void destroy_rooms() {
     }
 }
 
-static void cleanup(struct GameState * gs) {
+static void cleanup(GameState * gs) {
     destroy_rooms();
     const char * free_ptr = gs->player_name;
     gs->player_name = nullptr;
@@ -967,7 +967,7 @@ char const * const VALID_DIRECTIONS = "NSEWUD";
 //// ------------------------------------------------------------
 
 
-static int count_rooms_visited(const struct GameState * gs) {
+static int count_rooms_visited(const GameState * gs) {
     int result = 0;
     for (int i = 0; i < NUM_ROOMS; ++i ) {
         result += gs->rooms_visited[i];
@@ -976,13 +976,13 @@ static int count_rooms_visited(const struct GameState * gs) {
 }
 
 
-static int calc_score(const struct GameState * gs) {
+static int calc_score(const GameState * gs) {
     int sum_attributes = gs->stats.strength + gs->stats.charisma + gs->stats.dexterity +
         gs->stats.intelligence + gs->stats.wisdom + gs->stats.constitution;
     return 3 * gs->cash +  30 * gs->monsters_killed + 3 * sum_attributes + gs->turns  ;
 }
 
-static bool process_quit(const struct GameState * gs) {
+static bool process_quit(const GameState * gs) {
     display_line("COWARD...QUITTER....TURNCOAT.....");
     // todo (rob) ask for confirmation?
     return END_GAME;
@@ -990,7 +990,7 @@ static bool process_quit(const struct GameState * gs) {
 
 
 // checks if there is a monster and if so, that the user has selected either F or R. Returns true for success.
-bool monster_check(const struct GameState * gs, bool has_monster, char first_letter) {
+bool monster_check(const GameState * gs, bool has_monster, char first_letter) {
     if ( has_monster && ( first_letter == 'F' || first_letter == 'R' )) {
         return true;
     }
@@ -1004,7 +1004,7 @@ bool monster_check(const struct GameState * gs, bool has_monster, char first_let
 // first_letter must be in "NSEWUD"
 // return true if command was sucessfully processed. If false, the move is not allowed and an error message
 // will have been displayed
-static bool process_move_command(struct GameState * gs, char const first_letter) {
+static bool process_move_command(GameState * gs, char const first_letter) {
     const int location = gs->room;
     const int direction_index = calc_direction_index(first_letter);
     if (direction_index == DIRECTION_ERR) {
@@ -1022,7 +1022,7 @@ static bool process_move_command(struct GameState * gs, char const first_letter)
     return false;
 }
 
-static bool pick_up_treasure(struct GameState * gs) {
+static bool pick_up_treasure(GameState * gs) {
     const int treasure_index = ROOM_GRAPH[gs->room][RGINDEX_TREASURE];
     if (!treasure_index) {
         display_line("There is nothing to pick up.");
@@ -1038,18 +1038,18 @@ static bool pick_up_treasure(struct GameState * gs) {
     }
 
     if (treasure_index > ITEM_WAND) {
-        const struct Treasure treasure = ROOMS[gs->room].treasure;
+        const Treasure treasure = ROOMS[gs->room].treasure;
         gs->cash += treasure.value;
     } else {
         gs->items[treasure_index] = treasure_index;
     }
 
     ROOM_GRAPH[gs->room][RGINDEX_TREASURE] = 0;
-    ROOMS[gs->room].treasure = (struct Treasure){};
+    ROOMS[gs->room].treasure = (Treasure){};
     return true;
 }
 
-static bool get_rid_of(struct GameState * gs) {
+static bool get_rid_of(GameState * gs) {
     display_line("I don't know how to get rid of anything yet, Dave.");
     return true;
 }
@@ -1057,19 +1057,19 @@ static bool get_rid_of(struct GameState * gs) {
 
 
 // clear the monster in the current room and its entry in the ROOMS array
-static void clear_monster(const struct GameState * gs) {
+static void clear_monster(const GameState * gs) {
     ROOM_GRAPH[gs->room][RGINDEX_MONSTER] = 0;
-    ROOMS[gs->room].monster = (struct Monster){};
+    ROOMS[gs->room].monster = (Monster){};
 }
 
 //todo (rob) make `strategy` an enum
-bool fight_action(struct GameState * gs, int strategy, enum StatIndex stat1, enum StatIndex stat2) {
+bool fight_action(GameState * gs, int strategy, enum StatIndex stat1, enum StatIndex stat2) {
     if (!ROOM_GRAPH[gs->room][RGINDEX_MONSTER]) {
         display_line("There is nothing to fight.");
         return false;
     }    
     
-    struct Monster m = ROOMS[gs->room].monster;
+    Monster m = ROOMS[gs->room].monster;
     
     if (strategy == 1 && gs->magic == 0 ) {
         // not enough magic
@@ -1221,14 +1221,14 @@ bool fight_action(struct GameState * gs, int strategy, enum StatIndex stat1, enu
 
 //Entry point for human user path. This displays some information, prompts user for some choices, and passes those to
 // fight_action(), the ML entry point for the fight action.
-static bool process_fight(struct GameState * gs) {
+static bool process_fight(GameState * gs) {
     if (!ROOM_GRAPH[gs->room][RGINDEX_MONSTER]) {
         display_line("There is nothing to fight.");
         gs->turns++; // this branch means we are not calling perform_action(), which increments turns.
         return false;
     }
     
-    struct Monster m = ROOMS[gs->room].monster;
+    Monster m = ROOMS[gs->room].monster;
     
     display("\nYour opponent is a ");
     display_line(m.name);
@@ -1257,7 +1257,7 @@ static bool process_fight(struct GameState * gs) {
     if (gs->items[ITEM_WAND]) {
         display_line("The Wand of Fireballs enhances your strength");
     }
-    bool perform_action(struct GameState *, char action, int arg1, int arg2, int arg3);
+    bool perform_action(GameState *, char action, int arg1, int arg2, int arg3);
 
     if (gs->magic) {
         int choice = get_int("Enter 1 to fight with magic or 2 to rely on skill: ", 1, 2);
@@ -1281,7 +1281,7 @@ static bool process_fight(struct GameState * gs) {
     return perform_action(gs, 'F', 2, first_skill, second_skill);
 }
 
-static bool process_retreat(struct GameState * gs) {
+static bool process_retreat(GameState * gs) {
     const int room = gs->room;
     if (!ROOM_GRAPH[room][RGINDEX_MONSTER]) {
         display_line("There is nothing to retreat from.");
@@ -1321,11 +1321,13 @@ static bool process_retreat(struct GameState * gs) {
   * This function is "Pure Logic" - it updates state based on an action.
   * It returns true if the action was accepted as a turn, false otherwise.
   *
+  * @param gs
+  * @param action
   * @param arg1 For 'F': strategy (1:magic, 2:skill). For 'G': item index.
   * @param arg2 For 'F': first skill stat index.
   * @param arg3 For 'F': second skill stat index.
   */
-bool perform_action(struct GameState *gs, char action, int arg1, int arg2, int arg3) {
+bool perform_action(GameState *gs, char action, int arg1, int arg2, int arg3) {
     const char cmd = (char)toupper(action);
 
     if (!strchr(VALID_COMMANDS, cmd)) {
@@ -1404,7 +1406,7 @@ bool perform_action(struct GameState *gs, char action, int arg1, int arg2, int a
  * RETURNS: true if the game is over (win or loss).
  * The caller should check gs->is_dead or gs->completed to see the outcome.
  */
-bool check_game_over(struct GameState *gs) {
+bool check_game_over(GameState *gs) {
     if (gs->completed) return true;
 
     if (gs->room == END_ROOM || gs->room >= DROWNING_ROOM) {
@@ -1428,7 +1430,7 @@ bool check_game_over(struct GameState *gs) {
 }
 
 
-static bool main_game_loop(struct GameState * gs) {
+static bool main_game_loop(GameState * gs) {
     uint32_t saved_sleep_duration = GLOBALS.char_sleep_duration;
     if ( gs->rooms_visited[gs->room] ) {
         // if we've already seen this room, speed up output display
@@ -1489,7 +1491,7 @@ static bool main_game_loop(struct GameState * gs) {
 
 int main(void) {
     setvbuf(stdin, nullptr, _IONBF, 0);
-    struct GameState gs = {};
+    GameState gs = {};
 
     const struct StringBuffer sb = greet_player();
 
