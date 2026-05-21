@@ -520,12 +520,13 @@ static void display_char_attributes(const CharStats stats) {
 
 static void display_inventory(const GameState * gs) {
     if (!GLOBALS.silent_mode ) {
-        display_line("");
+        display_line("\nItems:");
         int item_count = 0;
-        for (int bag_index = 0; bag_index < ITEM_COUNT; ++bag_index ) {
+        for (int bag_index = 1; bag_index < ITEM_COUNT; ++bag_index ) {
             if (gs->items[bag_index]) {
+                printf("%d. ", bag_index);
                 display(TREASURE_NAMES[gs->items[bag_index]]);
-                display(" - ");
+                display("  ");
                 item_count++;
                 if ( ! (item_count % 3) ) {
                     display_line("");  // display 3 items per line
@@ -602,8 +603,9 @@ static void display_room_monster(GameState * gs) {
         }
         Room room =  ROOMS[gs->room];
         display(room.monster.name);
-        display_line(":\n");
-        display_char_attributes(room.monster.stats);
+        display_line("");
+        // display_line(":\n");
+        // display_char_attributes(room.monster.stats);
     } else {
         display_line("YOU FEEL A DANGEROUS PRESENCE!");
     }
@@ -611,7 +613,7 @@ static void display_room_monster(GameState * gs) {
 
 static void display_room_treasure(const GameState * gs) {
     const int treasure_index = ROOM_GRAPH[gs->room][RGINDEX_TREASURE];
-    if ( treasure_index == 0 || (!gs->has_torch && gs->room != START_ROOM )) {
+    if ( treasure_index == 0 || (!gs->has_torch && treasure_index != ITEM_TORCH )) {
         return;
     }
     Room room =ROOMS[gs->room];
@@ -672,25 +674,21 @@ static void display_help_info(void) {
         display_line("[U]p         [D]own");
 
         display_line("\nDEBUG:");
-        display_line("g[L]obals         [1] GameState");
+        display_line("g[L]obals  [M]agic  [1]GameState");
     }
 }
 
 //debug methods
 void display_globals(void) {
-    printf("player_name=%s, char_sleep_duration=%d, silent_mode=%d\n", GLOBALS.player_name, GLOBALS.char_sleep_duration, GLOBALS.silent_mode);
+    printf("\nplayer_name=%s, char_sleep_duration=%d, silent_mode=%d\n", GLOBALS.player_name, GLOBALS.char_sleep_duration, GLOBALS.silent_mode);
 }
 
 void display_game_state(const GameState *gs) {
+    printf("\nGameState:\n");
     printf("player_name=%s, room=%d, turns=%d, cash=%d, killed=%d, fought=%d, magic=%d, has_torch=%d, is_dead=%d, completed=%d\n",
         gs->player_name, gs->room, gs->turns, gs->cash, gs->monsters_killed,gs->monsters_fought, gs->magic, gs->has_torch, gs->is_dead, gs->completed);
     display_char_attributes(gs->stats);
-    printf("Items:\n");
-    for (int item=0; item < ITEM_COUNT; ++item ) {
-        if (gs->items[item]) {
-            printf("%d: %d, ", item, gs->items[item]);
-        }
-    }
+    display_inventory(gs);
     printf("\n");
     printf("Rooms visited:\n");
     for (int room=0; room < NUM_ROOMS; ++room ) {
@@ -956,7 +954,7 @@ static void cleanup(GameState * gs) {
 constexpr bool CONTINUE_GAME = true;
 constexpr bool END_GAME = false;
 
-char const * const VALID_COMMANDS = "HIQATRFPGNSEWUDL1";
+char const * const VALID_COMMANDS = "HIQATRFPGNSEWUDL1M";
 char const * const VALID_DIRECTIONS = "NSEWUD";
 
 
@@ -966,6 +964,7 @@ char const * const VALID_DIRECTIONS = "NSEWUD";
 ////
 //// ------------------------------------------------------------
 
+bool perform_action(GameState *gs, char action, int arg1, int arg2, int arg3);
 
 static int count_rooms_visited(const GameState * gs) {
     int result = 0;
@@ -975,6 +974,25 @@ static int count_rooms_visited(const GameState * gs) {
     return result;
 }
 
+static int count_items_carried(const GameState * gs) {
+    int result = 0;
+    for (int bag_index = 1; bag_index < ITEM_COUNT; ++bag_index ) {
+        if (! gs->items[bag_index] ) {
+            result++;
+        }
+    }
+    return result;
+}
+
+// return true if carrying any items
+static bool has_items(const GameState * gs) {
+    for (int bag_index = 1; bag_index < ITEM_COUNT; ++bag_index ) {
+        if (! gs->items[bag_index] ) {
+            return true;
+        }
+    }
+    return false;
+}
 
 static int calc_score(const GameState * gs) {
     int sum_attributes = gs->stats.strength + gs->stats.charisma + gs->stats.dexterity +
@@ -1024,14 +1042,16 @@ static bool process_move_command(GameState * gs, char const first_letter) {
 
 static bool pick_up_treasure(GameState * gs) {
     const int treasure_index = ROOM_GRAPH[gs->room][RGINDEX_TREASURE];
-    if (!treasure_index) {
-        display_line("There is nothing to pick up.");
-        return false;
-    }
     if ( !gs->has_torch && treasure_index != ITEM_TORCH ) {
         display_line("It is too dark to see anything.");
         return false;
     }
+
+    if (!treasure_index) {
+        display_line("There is nothing to pick up.");
+        return false;
+    }
+
 
     if ( treasure_index == ITEM_TORCH ) {
         gs->has_torch = true;
@@ -1049,9 +1069,36 @@ static bool pick_up_treasure(GameState * gs) {
     return true;
 }
 
+// Entry point for human user path. This displays some information, prompts user for some choices, and passes those to
+// drop_action(), the ML entry point for the drop action.
 static bool get_rid_of(GameState * gs) {
-    display_line("I don't know how to get rid of anything yet, Dave.");
-    return true;
+
+    if (!has_items(gs)) {
+        display_line("You have nothing to get rid of.");
+        return false;
+    }
+    if ( ROOM_GRAPH[gs->room][RGINDEX_TREASURE] ) {
+        display("There is already a ");
+        display(ROOMS[gs->room].treasure.name);
+        display_line(" here.");
+        return false;
+    }
+
+    int item = 0;
+    for (;;) {
+        display_inventory(gs);
+        item = get_int("Enter number of object to drop (0 for none): ", 0, 9);
+        if ( !item ) {
+            return true;  // exit without dropping anything
+        }
+
+        if (gs->items[item]) {
+            break;
+        }
+        display_line("You are not carrying that item.");
+    }
+
+    return perform_action(gs, 'G', item, 0, 0);
 }
 
 
@@ -1062,11 +1109,34 @@ static void clear_monster(const GameState * gs) {
     ROOMS[gs->room].monster = (Monster){};
 }
 
+bool drop_action(GameState * gs, int item_index) {
+    if (!has_items(gs)) {
+        return false;  // nothing to drop
+    }
+    if ( ROOM_GRAPH[gs->room][RGINDEX_TREASURE] ) {
+        return false;  // already an item here
+    }
+
+    if (!item_index) {
+        return true;  // no-op, not dropping anything
+    }
+
+    gs->items[item_index] = 0;
+    ROOM_GRAPH[gs->room][RGINDEX_TREASURE] = item_index;
+    ROOMS[gs->room].treasure = generate_treasure(gs, item_index);
+    if (item_index == ITEM_TORCH) {
+        gs->has_torch = false;
+    }
+
+    return true;
+
+}
+
 //todo (rob) make `strategy` an enum
+//return false if fight action could not be completed, otherwise return true
 bool fight_action(GameState * gs, int strategy, enum StatIndex stat1, enum StatIndex stat2) {
     if (!ROOM_GRAPH[gs->room][RGINDEX_MONSTER]) {
-        display_line("There is nothing to fight.");
-        return false;
+        return false;  // nothing to fight
     }    
     
     Monster m = ROOMS[gs->room].monster;
@@ -1101,6 +1171,10 @@ bool fight_action(GameState * gs, int strategy, enum StatIndex stat1, enum StatI
     hero_tally += gs->stats.as_array[stat2];
     monster_tally += m.stats.as_array[stat1];
     monster_tally += m.stats.as_array[stat2];
+
+    if (!gs->has_torch) {
+        hero_tally -= 5;  // harder to see in the dark
+    }
     
     if (!GLOBALS.silent_mode) {
         display("\nThe fight starts in favor of ");
@@ -1219,23 +1293,24 @@ bool fight_action(GameState * gs, int strategy, enum StatIndex stat1, enum StatI
     
 }
 
-//Entry point for human user path. This displays some information, prompts user for some choices, and passes those to
+// Entry point for human user path. This displays some information, prompts user for some choices, and passes those to
 // fight_action(), the ML entry point for the fight action.
 static bool process_fight(GameState * gs) {
     if (!ROOM_GRAPH[gs->room][RGINDEX_MONSTER]) {
         display_line("There is nothing to fight.");
-        gs->turns++; // this branch means we are not calling perform_action(), which increments turns.
+        gs->turns++; // this branch means we are not calling perform_action(), which increments `turns`.
         return false;
     }
     
     Monster m = ROOMS[gs->room].monster;
-    
-    display("\nYour opponent is a ");
-    display_line(m.name);
-    display_line("With the following attributes:");
-    display_char_attributes(m.stats);
-    display_line("\nYour attributes are:");
-    display_char_attributes(gs->stats);
+    if (gs->has_torch) {
+        display("\nYour opponent is a ");
+        display_line(m.name);
+        display_line("With the following attributes:");
+        display_char_attributes(m.stats);
+    }
+        display_line("\nYour attributes are:");
+        display_char_attributes(gs->stats);
 
 
     if (gs->items[ITEM_SWORD]) {
@@ -1257,7 +1332,6 @@ static bool process_fight(GameState * gs) {
     if (gs->items[ITEM_WAND]) {
         display_line("The Wand of Fireballs enhances your strength");
     }
-    bool perform_action(GameState *, char action, int arg1, int arg2, int arg3);
 
     if (gs->magic) {
         int choice = get_int("Enter 1 to fight with magic or 2 to rely on skill: ", 1, 2);
@@ -1316,6 +1390,7 @@ static bool process_retreat(GameState * gs) {
     return true;
 }
 
+
 /**
   * Core Game Engine Logic
   * This function is "Pure Logic" - it updates state based on an action.
@@ -1326,6 +1401,8 @@ static bool process_retreat(GameState * gs) {
   * @param arg1 For 'F': strategy (1:magic, 2:skill). For 'G': item index.
   * @param arg2 For 'F': first skill stat index.
   * @param arg3 For 'F': second skill stat index.
+  *
+  *
   */
 bool perform_action(GameState *gs, char action, int arg1, int arg2, int arg3) {
     const char cmd = (char)toupper(action);
@@ -1379,7 +1456,7 @@ bool perform_action(GameState *gs, char action, int arg1, int arg2, int arg3) {
             return process_retreat(gs);
         case 'G':
             // ML would pass the item index to drop in arg1
-            return get_rid_of(gs); 
+            return drop_action(gs, arg1);
         case 'H':
             display_help_info();
             return CONTINUE_GAME;
@@ -1460,18 +1537,24 @@ static bool main_game_loop(GameState * gs) {
     if (first_letter == 'L') {
         display_globals();
     }
+    if (first_letter == 'M') {
+        gs->magic = 50;
+    }
     if (first_letter == '1') {
         display_game_state(gs);
     }
+
 
     if (first_letter == 'Q') {
         set_char_sleep(saved_sleep_duration);
         return process_quit(gs);
     }
 
-    if (first_letter == 'F') {
+    if ( first_letter == 'F' ) {
         //specialized code to prompt user and gather options to pass to perform_action()
         process_fight(gs);
+    } else if (first_letter == 'G'){
+        get_rid_of(gs);
     } else {
         // Now the human call and the ML call use the exact same entry point
         perform_action(gs, first_letter, 0,0, 0);
@@ -1496,7 +1579,7 @@ int main(void) {
     const struct StringBuffer sb = greet_player();
 
     initialize(sb.buffer);
-    reset(&gs, 42);
+    reset(&gs, 67);
 
     bool continue_loop;
     do {
