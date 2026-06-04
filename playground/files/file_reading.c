@@ -198,7 +198,6 @@ int echo_file( FILE *fptr) {
 // ensures stream is closed regardless of outcome
 // file processing is delegated to the `function` argument function pointer.
 int process_file(string file_name, file_process_action function) {
-int process_file(string file_name, file_process_action function) {
     FILE *fptr = nullptr;
 
     fptr = fopen(file_name, "r");
