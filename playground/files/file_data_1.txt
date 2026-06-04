@@ -1,0 +1,2 @@
+Line one of text. Ends with newline.
+Line two of text. No newline.
