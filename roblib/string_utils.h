@@ -4,7 +4,6 @@
 // Various utility functions operating on ASCII strings.
 
 #pragma once
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
 
@@ -64,12 +63,12 @@ bool sutil_char_in(uint32_t c, const char *chars);
  *
  * @param str1 first const char* to concat
  * @param ... const char* zero or more additional strings
- * @return a newly allocated string concatenation of the arugment list.
+ * @return a newly allocated string concatenation of the argument list.
  */
 char * sutil_concat_strings(const char *str1, ...);
 /**
  * Returns a newly allocated string that is a copy of the input string.
- * @param str input string, non null
+ * @param str input string, non-null
  * @return a newly allocated string copy of the original string, or nullptr if error occurred.
  */
 char * sutil_copy_char(const char *str);
@@ -77,8 +76,8 @@ char * sutil_copy_char(const char *str);
 
 /**
  * Returns true if the input string ends with the specified suffix, otherwise return false.
- * @param str the input string, non null
- * @param suffix the substring to match at the end of the input string, non null
+ * @param str the input string, non-null
+ * @param suffix the substring to match at the end of the input string, non-null
  * @return true if `str` ends with `suffix`, else false.
  */
 bool sutil_ends_with(const char *str, const char *suffix);
@@ -90,9 +89,9 @@ bool sutil_ends_with(const char *str, const char *suffix);
 /**
  * sutil_index(const char *str, const char *substring, [size_t start [, size_t end ]]
  *
- * Return the index of first occurrence of `substring` in `str`, both non null. Optional arguments `start` and `end`
- * allow specifying where to start/stop looking for `substr` in `str`.
- * Returns -1 if `substr` not found.
+ * Returns the index of the first occurrence of `substring` in `str`, both non-null.
+ * Optional arguments `start` and `end` allow specifying where to start/stop looking for `substring` in `str`.
+ * Returns -1 if `substring` is not found.
  *
  */
 #define sutil_index(...) \
