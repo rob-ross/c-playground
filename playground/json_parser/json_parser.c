@@ -89,9 +89,13 @@ static bool parse_null(json_context *ctx, json_error *error) {
     if ( match_len >= 0) {
         // debug
         // printf("match found for %s\n",ctx->json);
-        ctx->json += match_len;
+        ctx->json   += match_len;
+        ctx->column += match_len;
         return true;
     }
+    error->column = ctx->column;
+    error->line   = ctx->line;
+    error->message = "expected 'null', got ";
     return false;
 }
 
@@ -102,6 +106,7 @@ static bool parse_true(json_context *ctx, json_error *error) {
         // debug
         printf("match found for %s\n",ctx->json);
         ctx->json += match_len;
+        ctx->column += match_len;
         return true;
     }
     return false;
@@ -113,6 +118,7 @@ static bool parse_false(json_context *ctx, json_error *error) {
         // debug
         printf("match found for %s\n",ctx->json);
         ctx->json += match_len;
+        ctx->column += match_len;
         return true;
     }
     return false;
@@ -143,8 +149,9 @@ static bool parse_string(json_context *ctx, json_error *error) {
     while (*json_ptr) {
         if (*json_ptr == QUOTE) {
             // happy case. We found the terminating quote
-            long match_len = (json_ptr + 1) - ctx->json;
-            ctx->json += match_len;
+            int match_len = (int)((json_ptr + 1) - ctx->json);
+            ctx->json   += match_len;
+            ctx->column += match_len;
             return true;
         }
 
