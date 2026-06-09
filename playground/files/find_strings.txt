@@ -1,0 +1,7 @@
+// file to test ability to parse quote delimited strings.
+"string one" newline->
+not a string but "string two" here.
+this "string
+three" starts on a line but
+ends on a different line
+this "string 4 is not terminated. EOL->

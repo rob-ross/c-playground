@@ -15,7 +15,7 @@
 #include <assert.h>
 
 
-static inline size_t min_size(const size_t a, const size_t b) {
+[[maybe_unused]] static inline size_t min_size(const size_t a, const size_t b) {
     return (a < b) ? a : b;
 }
 
@@ -67,7 +67,7 @@ char * sutil_concat_strings(const char *str1, ...){
     va_start(args, str1);
     const char *next;
 
-    // Loop until nullptr sentinel is found or max arguments is reached
+    // Loop until nullptr sentinel is found or max number of arguments is reached
     while ( arg_list_count < SUTIL_MAX_ARGS && (next = va_arg(args, const char *)) != nullptr) {
         size_t len = strlen(next);
         arg_lengths[arg_list_count] = len;
@@ -331,7 +331,7 @@ char * sutil_strip(const char *str, const char *chars) {
         return sutil_copy_char("");
     }
 
-    //find position of first non-stripped character. This is relative to the end of the list counting backwards
+    //Find the position of the first non-stripped character. This is relative to the end of the list counting backwards
     size_t end = 0;
     for ( end = 0; end < str_len; ++end) {
         if (!sutil_char_in(str[str_len - end - 1], char_set)) {

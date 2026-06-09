@@ -1,0 +1,4 @@
+"String with quotes" plus newline.
+"String with quotes" plus backspace-n \n
+"Hello \"World\"\n";
+"String with quotes" no newline.
