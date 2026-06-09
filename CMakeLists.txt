@@ -75,9 +75,9 @@ add_executable(all_tests
 add_executable( hashing CS50X/week5/hashing.c CS50X/week5/hash_methods.c )
 
 add_executable( json_parse
-        playground/json_parser/json_parser.c
-        playground/json_parser/arena.c
-        playground/json_parser/error_result.c
+        roblib/json_parser/json_parser.c
+        roblib/json_parser/arena.c
+        roblib/json_parser/error_result.c
 )
 target_compile_options(json_parse PRIVATE -Wno-unused-function)
 
