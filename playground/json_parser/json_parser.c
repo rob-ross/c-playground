@@ -139,33 +139,65 @@ static bool parse_string(json_context *ctx, json_error *error) {
     // 2. EOF, AKA null terminator, \x00
     // 3. any of the delimiter chars bracket, brace, colon, comma.
 
-    // only #1 is the happy case and a successful parse. All other cases result in a parse error
-    const char *prev_char = ctx->json;
-    const char *json_ptr = prev_char + 1;
+    const char *json_ptr = ctx->json + 1; // Skip the opening quote
     while (*json_ptr) {
-        if (*json_ptr == QUOTE && *prev_char != REVERSE_SOLIDUS) {
+        if (*json_ptr == QUOTE) {
             // happy case. We found the terminating quote
-            long match_len = json_ptr - ctx->json;
+            long match_len = (json_ptr + 1) - ctx->json;
             ctx->json += match_len;
             return true;
         }
+
+        if (*json_ptr == REVERSE_SOLIDUS) {
+            json_ptr++; // Move to the escaped character
+            if (*json_ptr == '\0') {
+                printf(" Unexpected EOF after backslash\n");
+
+                return false; // Unexpected EOF
+            }
+            
+            // Validate escape sequence
+            switch (*json_ptr) {
+                case '"': case '\\': case '/': case 'b':
+                case 'f': case 'n': case 'r': case 't':
+                    break;
+                case 'u':
+                    // RFC 8259: \u followed by 4 hex digits
+                    for (int i = 0; i < 4; i++) {
+                        json_ptr++;
+                        if (*json_ptr == '\0') {
+                            printf(" Unexpected EOF in Unicode escape\n");
+                            return false;
+                        }
+                        if (!isxdigit((unsigned char)*json_ptr)) {
+                            printf(" Invalid hex digit in Unicode escape: %c\n", *json_ptr);
+                            return false;
+                        }
+                    }
+                    break;
+                default:
+                    printf(" Invalid escape sequence: \\%c\n", *json_ptr);
+                    return false;
+            }
+        } else if ((unsigned char)*json_ptr <= 0x1F) {
+            // RFC 8259: Control characters U+0000 through U+001F MUST be escaped.
+            // This means the literal bytes cannot appear here.
+            printf(" Unexpected unescaped control character: 0x%.2X\n", (unsigned char)*json_ptr);
+            return false;
+        }
+
         switch (*json_ptr) {
             case LEFT_BRACKET:
             case RIGHT_BRACKET:
             case LEFT_BRACE:
             case RIGHT_BRACE:
             case COLON:
-            case COMMA:
-                // all these indicate a possibly missing terminating quote
-                long match_len = json_ptr - ctx->json;
-                ctx->json += match_len;
-                printf(" Unexpected character: '%c'.\n", *ctx->json);
-
-                return false;
-            default: break;
+            case COMMA: {
+                // These are actually valid characters inside a JSON string
+                // unless they are outside the quotes.
+                break;
+            }
         }
-
-        prev_char++;
         json_ptr++;
     }
 
@@ -378,6 +410,12 @@ int main( ) {
     test_parse_str(" \"This  \\\"json\\\" string has embedded quotes but no matching closing quote : but it has a delimeter");
     test_parse_str(" \"This  \\\"json\\\" string has embedded quotes but no matching closing quote , but it has a delimeter");
 
+    test_parse_str(" \"This  \\\"json\\\" string has no\nclosing quote , but it has a delimeter and newline");
+    test_parse_str(" \"This string has a newline here->\n that is not escaped.  \"");
+
+    test_parse_str(" \"This string has a newline 0x13 here->\\\n that IS escaped.  \"");
+
+    test_parse_str(" \"This string has an escape-n newline here->\\n that IS escaped.  \"");
 
     jsonp_destroy();
 

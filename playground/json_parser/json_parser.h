@@ -89,7 +89,7 @@ constexpr int NUM_REGEX_PATTERNS = 4;
 RegexPattern REGEX_TRUE_PATTERN    = { .pattern_string  =  REGEX_TRUE,   .name="true",   .token = TOK_TRUE  };
 RegexPattern REGEX_FALSE_PATTERN   = { .pattern_string  =  REGEX_FALSE,  .name="false",  .token = TOK_FALSE };
 RegexPattern REGEX_NULL_PATTERN    = { .pattern_string  =  REGEX_NULL,   .name="null",   .token = TOK_NULL  };
-RegexPattern REGEX_STRING_PATTERN  = { .pattern_string  =  REGEX_STRING,   .name="string", .token = TOK_STRING  };
+RegexPattern REGEX_STRING_PATTERN  = { .pattern_string  =  REGEX_STRING, .name="string", .token = TOK_STRING  };
 
 
 // can't do this at compile time as we can in Python and Java, must do it in the init method.
